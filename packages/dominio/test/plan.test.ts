@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { unaPorFuncion } from '../src/plan';
 
-describe('lo que se muestra', () => {
 describe('una funcion no aparece dos veces', () => {
   it('deja solo la ocurrencia mas proxima de cada funcion', () => {
     const ocurrencias = [
