@@ -9,7 +9,7 @@ import {
   ocurrenciasEntre,
   ordenarPlan,
   pendientes,
-  proximas,
+  seleccionarPlan,
   tramosLlenos,
   TRAMOS,
   unaPorFuncion,
@@ -63,7 +63,7 @@ export default async function Semana() {
 
   // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
   const plan = ordenarPlan(
-    proximas(unaPorFuncion(abiertas), CUANTAS).map((o) => {
+    seleccionarPlan(unaPorFuncion(abiertas), CUANTAS).map((o) => {
       const urgencia = urgenciaDe(o.faltan);
       const efectiva = importanciaEfectiva(o.importancia, o.faltan, o.periodicidad);
       return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva) };

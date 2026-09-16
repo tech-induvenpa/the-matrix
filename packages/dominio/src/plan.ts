@@ -1,12 +1,5 @@
 import type { Fecha } from './calendario';
 
-// La ventana de cinco dias habiles delimita la meta de la semana, no lo que se
-// muestra: la lista siempre trae lo mas proximo, aunque venza mas adelante.
-// ponytail: ordenar y cortar. El orden por cuadrante y ponderacion es CEB-109.
-export function proximas<T extends { vence: Fecha }>(ocurrencias: readonly T[], cuantas: number): T[] {
-  return [...ocurrencias].sort((a, b) => a.vence.localeCompare(b.vence)).slice(0, cuantas);
-}
-
 // Una funcion nunca aparece dos veces en el plan: se muestra su proxima
 // ocurrencia, y la siguiente solo cuando le toque (INV-10).
 export function unaPorFuncion<T extends { funcionId: string; vence: Fecha }>(
@@ -18,4 +11,24 @@ export function unaPorFuncion<T extends { funcionId: string; vence: Fecha }>(
     if (!actual || o.vence < actual.vence) proxima.set(o.funcionId, o);
   }
   return [...proxima.values()];
+}
+
+// La regla de proximidad no vale para las diarias ni las semanales: vencen hoy
+// por definicion, asi que ganarian siempre y taparian lo que de verdad tiene
+// fecha. Entran despues, y entre ellas manda lo que mas importa.
+const CORTAS: readonly string[] = ['diaria', 'semanal'];
+
+export function seleccionarPlan<
+  T extends { vence: Fecha; periodicidad: string; importancia: number },
+>(ocurrencias: readonly T[], cuantas: number): T[] {
+  const conFecha = ocurrencias
+    .filter((o) => !CORTAS.includes(o.periodicidad))
+    .sort((a, b) => a.vence.localeCompare(b.vence));
+
+  const delDiaADia = ocurrencias
+    .filter((o) => CORTAS.includes(o.periodicidad))
+    .sort((a, b) => b.importancia - a.importancia || a.vence.localeCompare(b.vence));
+
+  // Relleno hasta completar: si solo hay trabajo del dia a dia, eso se muestra.
+  return [...conFecha, ...delDiaADia].slice(0, cuantas);
 }
