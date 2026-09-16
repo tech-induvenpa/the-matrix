@@ -111,3 +111,26 @@ fila, así que esto corre a mano y solo aquí, nunca desde el servidor web.
 La cuenta de servicio entra al documento como una persona más: hay que
 compartirle la copia. Solo pide `spreadsheets.readonly`; escribir la pestaña de
 razones es otro alcance y otro ticket (CEB-116).
+
+## Quién puede escribir en el documento
+
+Cada superficie tiene un solo dueño de escritura, y eso lo hacen cumplir los
+rangos protegidos de la hoja, no la buena conducta del código:
+
+```bash
+pnpm proteger              # dice qué protegería, no toca nada
+pnpm proteger --confirmar  # protege lo que puede
+```
+
+- `RAZONES` la escribe **la aplicación**. Es una proyección que se regenera
+  entera en cada marca, así que lo que alguien escriba ahí a mano se pierde. El
+  comando la protege dejando solo a la cuenta de servicio.
+- Las hojas de funciones las escribe **JFS**; la aplicación solo lee. Esa
+  protección **no puede crearla el comando**: Google responde *"You can't remove
+  yourself as an editor"* cuando la cuenta intenta excluirse a sí misma, y tiene
+  razón — si pudiera excluirse también podría incluirse. La pone el dueño del
+  documento a mano, en Datos → Proteger hojas y rangos → "Restringir quién puede
+  editar" → Personalizado, quitando el visto a la cuenta de la aplicación.
+
+El dueño se configura en `DUENO_DEL_DOCUMENTO`. Ojo con un límite de Google: el
+propietario del archivo siempre puede editar todo y no se le puede excluir.
