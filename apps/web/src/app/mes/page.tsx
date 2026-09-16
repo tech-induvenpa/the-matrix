@@ -48,14 +48,16 @@ export default async function Mes() {
         }),
     );
 
-  const atrasos = eventos.filter((e) => e.estado === 'atrasado' && e.en.slice(0, 10) >= desde);
+  const atrasos = eventos.filter(
+    (e) => e.estado === 'atrasado' && e.en.slice(0, 10) >= desde && nombreDe.has(e.funcion_id),
+  );
   const flujosDelMes = [...new Set(atrasos.map((e) => e.funcion_id))].map((funcionId) => ({
     funcionId,
     atrasosEnElMes: atrasos.filter((e) => e.funcion_id === funcionId).length,
     razones: atrasos.filter((e) => e.funcion_id === funcionId).map((e) => e.razon ?? '').filter(Boolean),
   }));
 
-  const patrones = patronesDelMes(historial, flujosDelMes);
+  const patrones = patronesDelMes(historial, flujosDelMes).filter((p) => nombreDe.has(p.funcionId));
 
   const racha = Math.max(
     0,
@@ -135,7 +137,7 @@ export default async function Mes() {
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {patrones.map((p) => (
                   <li key={p.funcionId} style={PATRON}>
-                    <span style={{ fontSize: 16, fontWeight: 600 }}>{nombreDe.get(p.funcionId) ?? p.funcionId}</span>
+                    <span style={{ fontSize: 16, fontWeight: 600 }}>{nombreDe.get(p.funcionId)}</span>
                     {p.razones.map((razon, i) => (
                       <span key={i} style={{ fontSize: 14, color: 'var(--gris)', lineHeight: 1.4 }}>
                         “{razon}”

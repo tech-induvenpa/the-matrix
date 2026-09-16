@@ -28,6 +28,16 @@ describe('patrones del cierre', () => {
     expect(patronesDelMes(historial, [])[0]?.razones).toEqual([]);
   });
 
+  it('la misma razon escrita dos veces se dice una vez', () => {
+    // Repetir el mismo texto no anade informacion, solo ruido en la tarjeta.
+    const historial = [
+      { funcionId: 'cxp', periodo: '2026-08', cumplida: false, razon: 'No tenía bolívares' },
+      { funcionId: 'cxp', periodo: '2026-09', cumplida: false, razon: 'No tenía bolívares' },
+    ];
+
+    expect(patronesDelMes(historial, [])[0]?.razones).toEqual(['No tenía bolívares']);
+  });
+
   it('un flujo con dos atrasos declarados en el mes tambien es patron', () => {
     expect(patronesDelMes([], [{ funcionId: 'cxp', atrasosEnElMes: 2, razones: ['Espero a Rosibel'] }])).toEqual([
       { funcionId: 'cxp', periodos: [], razones: ['Espero a Rosibel'] },

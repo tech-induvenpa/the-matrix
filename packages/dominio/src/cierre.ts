@@ -35,7 +35,8 @@ export function patronesDelMes(
         patrones.push({
           funcionId,
           periodos: [primero.periodo, segundo.periodo],
-          razones: [primero.razon, segundo.razon].filter((r): r is string => Boolean(r)),
+          // La misma razon dos veces no dice mas que una vez.
+          razones: [...new Set([primero.razon, segundo.razon].filter((r): r is string => Boolean(r)))],
         });
         break;
       }
@@ -44,7 +45,7 @@ export function patronesDelMes(
 
   for (const f of flujos) {
     if (f.atrasosEnElMes >= ATRASOS_QUE_HACEN_PATRON) {
-      patrones.push({ funcionId: f.funcionId, periodos: [], razones: f.razones });
+      patrones.push({ funcionId: f.funcionId, periodos: [], razones: [...new Set(f.razones)] });
     }
   }
 
