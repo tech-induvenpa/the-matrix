@@ -10,12 +10,13 @@
 // sale del documento.
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
-import { identidadDe, leerBloques, reconciliar } from '@matriz/dominio';
+import { identidadDe, leerBloques, normalizar, reconciliar } from '@matriz/dominio';
 import type { FilaDelDocumento, FuncionExistente } from '@matriz/dominio';
 import { credenciales, leerPestana, pestanas } from './hoja.mts';
 
 const argumentos = process.argv.slice(2);
 const confirmar = argumentos.includes('--confirmar');
+const crearEmpleados = argumentos.includes('--crear-empleados');
 const soloPestanas = argumentos.includes('--pestanas');
 const dondeHoja = argumentos.indexOf('--hoja');
 const pestana = dondeHoja >= 0 ? argumentos[dondeHoja + 1] : undefined;
@@ -66,10 +67,34 @@ const supabase = createClient(
   { auth: { persistSession: false } },
 );
 
+// El nombre del bloque se compara normalizado en los dos lados: en la hoja
+// lleva espacios de mas y parentesis, y eso no puede decidir de quien es una
+// funcion.
 const { data: empleados } = await supabase.from('empleado').select('id, nombre_bloque');
-const porBloque = Object.fromEntries((empleados ?? []).map((e) => [e.nombre_bloque, e.id]));
+const porBloque = Object.fromEntries((empleados ?? []).map((e) => [normalizar(e.nombre_bloque), e.id]));
 
-const { filas, bloquesDesconocidos, bloquesAmbiguos } = leerBloques(cuadricula, porBloque);
+let { filas, bloquesDesconocidos, bloquesAmbiguos } = leerBloques(cuadricula, porBloque);
+
+// Datos de prueba: un bloque desconocido normalmente NO crea empleado (se
+// lista y ya). Con --crear-empleados se siembran con un correo inventado, que
+// es lo unico que falta para ver la aplicacion llena.
+if (crearEmpleados && bloquesDesconocidos.length) {
+  const correoDe = (bloque: string) =>
+    `${bloque.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}@jfs.test`;
+
+  const nuevos = bloquesDesconocidos.map((b) => ({ nombre_bloque: b, correo: correoDe(b) }));
+  console.log(`
+Creando ${nuevos.length} empleados de prueba:`);
+  for (const e of nuevos) console.log(`    · ${e.nombre_bloque} → ${e.correo}`);
+
+  if (confirmar) {
+    const { error } = await supabase.from('empleado').insert(nuevos);
+    if (error) throw error;
+    const { data: todos } = await supabase.from('empleado').select('id, nombre_bloque');
+    const actualizado = Object.fromEntries((todos ?? []).map((e) => [normalizar(e.nombre_bloque), e.id]));
+    ({ filas, bloquesDesconocidos, bloquesAmbiguos } = leerBloques(cuadricula, actualizado));
+  }
+}
 
 const { data: actuales } = await supabase
   .from('funcion')

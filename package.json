@@ -8,7 +8,8 @@
     "build": "pnpm -r build",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset --linked",
-    "importar": "tsx scripts/importar.mts"
+    "importar": "tsx scripts/importar.mts",
+    "dummy": "tsx scripts/rellenar-dummy.mts"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

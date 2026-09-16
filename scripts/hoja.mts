@@ -11,6 +11,9 @@ import { readFileSync } from 'node:fs';
 type Credenciales = { client_email: string; private_key: string };
 
 const SOLO_LECTURA = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+// Escribir pide el alcance completo. Lo que impide tocar lo que no toca son los
+// rangos protegidos del documento, no el alcance (CEB-116).
+const CON_ESCRITURA = 'https://www.googleapis.com/auth/spreadsheets';
 
 const enBase64Url = (texto: string) => Buffer.from(texto).toString('base64url');
 
@@ -49,9 +52,19 @@ async function token(cred: Credenciales, alcance: string): Promise<string> {
   return datos.access_token;
 }
 
-async function pedir<T>(url: string, cred: Credenciales, alcance = SOLO_LECTURA): Promise<T> {
+async function pedir<T>(
+  url: string,
+  cred: Credenciales,
+  alcance = SOLO_LECTURA,
+  cuerpo?: unknown,
+): Promise<T> {
   const respuesta = await fetch(url, {
-    headers: { authorization: `Bearer ${await token(cred, alcance)}` },
+    method: cuerpo ? 'POST' : 'GET',
+    headers: {
+      authorization: `Bearer ${await token(cred, alcance)}`,
+      ...(cuerpo ? { 'content-type': 'application/json' } : {}),
+    },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
   });
 
   if (!respuesta.ok) {
@@ -89,3 +102,39 @@ export async function leerPestana(
   );
   return datos.values ?? [];
 }
+
+export type Celda = { rango: string; valor: string };
+
+// Escribe celdas sueltas, cada una con su rango en notacion A1. No toca nada
+// mas: no hay forma de que una escritura se lleve por delante una columna
+// entera por descuido.
+export async function escribirCeldas(
+  documentoId: string,
+  celdas: readonly Celda[],
+  cred: Credenciales,
+): Promise<number> {
+  if (!celdas.length) return 0;
+
+  const datos = await pedir<{ totalUpdatedCells?: number }>(
+    `https://sheets.googleapis.com/v4/spreadsheets/${documentoId}/values:batchUpdate`,
+    cred,
+    CON_ESCRITURA,
+    {
+      valueInputOption: 'RAW',
+      data: celdas.map((c) => ({ range: c.rango, values: [[c.valor]] })),
+    },
+  );
+
+  return datos.totalUpdatedCells ?? 0;
+}
+
+// La columna 0 es A: el documento empieza en la B.
+export const letraDeColumna = (indice: number): string => {
+  let n = indice;
+  let letra = '';
+  do {
+    letra = String.fromCharCode(65 + (n % 26)) + letra;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return letra;
+};
