@@ -195,3 +195,51 @@ export async function limpiarRango(documentoId: string, rango: string, cred: Cre
     {},
   );
 }
+
+export type Hoja = { titulo: string; id: number; protecciones: number };
+
+export async function hojas(documentoId: string, cred: Credenciales): Promise<Hoja[]> {
+  const datos = await pedir<{
+    sheets: { properties: { title: string; sheetId: number }; protectedRanges?: unknown[] }[];
+  }>(
+    `https://sheets.googleapis.com/v4/spreadsheets/${documentoId}?fields=sheets(properties(title,sheetId),protectedRanges)`,
+    cred,
+  );
+
+  return datos.sheets.map((h) => ({
+    titulo: h.properties.title,
+    id: h.properties.sheetId,
+    protecciones: h.protectedRanges?.length ?? 0,
+  }));
+}
+
+// Protege una hoja entera en modo restringido: solo los correos que se pasan
+// pueden editarla. "Mostrar advertencia" no sirve aqui, porque avisa y deja
+// pasar; lo que hace cumplir INV-12 es que Google rechace la escritura.
+export async function protegerHoja(
+  documentoId: string,
+  hojaId: number,
+  descripcion: string,
+  editores: readonly string[],
+  cred: Credenciales,
+): Promise<void> {
+  await pedir(
+    `https://sheets.googleapis.com/v4/spreadsheets/${documentoId}:batchUpdate`,
+    cred,
+    CON_ESCRITURA,
+    {
+      requests: [
+        {
+          addProtectedRange: {
+            protectedRange: {
+              range: { sheetId: hojaId },
+              description: descripcion,
+              warningOnly: false,
+              editors: { users: [...editores] },
+            },
+          },
+        },
+      ],
+    },
+  );
+}
