@@ -58,3 +58,6 @@ create policy "el calendario lo lee cualquiera con sesion"
 -- El proyecto no expone tablas nuevas de forma automatica: se concede a mano.
 grant usage on schema public to authenticated;
 grant select on empleado, funcion, dia_no_habil to authenticated;
+
+grant usage on schema public to service_role;
+grant select, insert, update, delete on empleado, funcion, dia_no_habil to service_role;
