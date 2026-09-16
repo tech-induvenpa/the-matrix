@@ -1,0 +1,20 @@
+:root {
+  --tinta: #1a1713;
+  --gris: #6e655a;
+  --panel: #faf7f1;
+  --suave: #f3f0ea;
+  --hacer: #d9503a;
+  --agendar: #1b6e8c;
+  --mantener: #e8ce7a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--tinta);
+  font-family: 'Outfit', 'Avenir Next', system-ui, sans-serif;
+}
+
+button { font: inherit; cursor: pointer; border: none; }
