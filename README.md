@@ -28,6 +28,18 @@ cp .env.example apps/web/.env.local   # completar con el proyecto de Supabase
 pnpm --filter @matriz/web dev
 ```
 
+El correo de acceso tiene que apuntar a nuestro callback con el token en la
+consulta, no en el fragmento: en **Authentication → Email Templates → Magic Link**,
+el enlace va como
+
+```
+{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=magiclink
+```
+
+Con la plantilla por defecto, Supabase devuelve la sesion en el `#fragment`, que el
+servidor nunca ve. Y en **URL Configuration**, la Site URL y las Redirect URLs deben
+incluir el entorno desde el que se entra.
+
 La base se crea con las migraciones de `supabase/migrations` y los datos de ejemplo de
 `supabase/seed.sql`. Cada tabla nace con seguridad por fila activa y sin políticas no
 devuelve nada: es cerrado por defecto y deliberado.
