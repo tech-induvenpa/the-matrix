@@ -21,6 +21,17 @@ export function credenciales(ruta: string): Credenciales {
   return JSON.parse(readFileSync(ruta, 'utf8')) as Credenciales;
 }
 
+// En el servidor web no hay un archivo que leer: la cuenta llega entera por
+// entorno. En local sigue valiendo la ruta, que es como corren los comandos.
+export function credencialesDelEntorno(): Credenciales {
+  const json = process.env.GOOGLE_CREDENCIALES_JSON;
+  if (json) return JSON.parse(json) as Credenciales;
+
+  const ruta = process.env.GOOGLE_CREDENCIALES;
+  if (!ruta) throw new Error('Falta GOOGLE_CREDENCIALES_JSON o GOOGLE_CREDENCIALES');
+  return credenciales(ruta);
+}
+
 async function token(cred: Credenciales, alcance: string): Promise<string> {
   const ahora = Math.floor(Date.now() / 1000);
   const cabecera = enBase64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));

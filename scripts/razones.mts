@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { razonesParaElDocumento } from '@matriz/dominio';
-import { credenciales, crearPestanaSiFalta, escribirFilas, limpiarRango } from './hoja.mts';
+import { credenciales, crearPestanaSiFalta, escribirFilas, limpiarRango } from '../apps/web/src/lib/hoja.ts';
 
 const confirmar = process.argv.includes('--confirmar');
 const PESTANA = 'RAZONES';

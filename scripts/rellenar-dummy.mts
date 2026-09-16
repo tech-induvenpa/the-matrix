@@ -8,7 +8,7 @@
 // PONDERACION, MONTO ni ASIGNACION. Esto no es parte del producto: es un andamio
 // para la demo, y se borra cuando el documento tenga sus propios valores.
 import { readFileSync } from 'node:fs';
-import { credenciales, escribirCeldas, leerPestana, letraDeColumna, pestanas, type Celda } from './hoja.mts';
+import { credenciales, escribirCeldas, leerPestana, letraDeColumna, pestanas, type Celda } from '../apps/web/src/lib/hoja.ts';
 
 const confirmar = process.argv.includes('--confirmar');
 

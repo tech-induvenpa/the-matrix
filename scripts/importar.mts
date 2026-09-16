@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { identidadDe, interpretar, leerBloques, normalizar, reconciliar } from '@matriz/dominio';
 import type { FilaDelDocumento, FuncionExistente } from '@matriz/dominio';
-import { credenciales, leerPestana, pestanas } from './hoja.mts';
+import { credenciales, leerPestana, pestanas } from '../apps/web/src/lib/hoja.ts';
 import { tipificadorRemoto } from './tipificador.mts';
 
 const argumentos = process.argv.slice(2);
