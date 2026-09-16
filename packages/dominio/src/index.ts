@@ -1,6 +1,12 @@
 export { Calendario } from './calendario';
 export type { Fecha, RangoNoHabil } from './calendario';
 export { ocurrenciasEntre } from './ocurrencias';
-export type { FuncionMensual, Ocurrencia, Periodo } from './ocurrencias';
+export type { Funcion, Ocurrencia, Periodicidad, Periodo } from './ocurrencias';
 export { emojiDe, urgenciaDe } from './urgencia';
 export { proximas, unaPorFuncion } from './plan';
+export { cuadranteDe, importanciaEfectiva, ordenarPlan } from './cuadrante';
+export type { Cuadrante } from './cuadrante';
+export { pendientes } from './marcas';
+export type { Marca } from './marcas';
+export { estadosVigentes } from './flujos';
+export type { Estado, EventoFlujo } from './flujos';

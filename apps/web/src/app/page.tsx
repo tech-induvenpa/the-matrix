@@ -1,18 +1,26 @@
 import {
   Calendario,
+  cuadranteDe,
   emojiDe,
+  importanciaEfectiva,
   ocurrenciasEntre,
+  ordenarPlan,
+  pendientes,
   proximas,
   unaPorFuncion,
   urgenciaDe,
+  type Cuadrante,
+  type Periodicidad,
 } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
+import { marcarHecho, marcarNoPude } from './acciones';
 
 type FilaFuncion = {
   id: string;
   texto: string;
   importancia: number;
-  periodicidad: string;
+  periodicidad: Periodicidad;
+  ponderacion: number;
   tipo_generado: string | null;
   tipo_corregido: string | null;
   dia_tope_generado: number | null;
@@ -29,37 +37,51 @@ export default async function Semana() {
   const hoy = new Date().toISOString().slice(0, 10);
 
   // La seguridad por fila filtra por empleado: aqui no se filtra a mano.
-  const [{ data: funciones }, { data: noHabiles }] = await Promise.all([
+  const [{ data: funciones }, { data: noHabiles }, { data: marcas }] = await Promise.all([
     supabase
       .from('funcion')
       .select(
-        'id, texto, importancia, periodicidad, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido, fecha_alta',
+        'id, texto, importancia, ponderacion, periodicidad, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido, fecha_alta',
       )
       .eq('activa', true),
     supabase.from('dia_no_habil').select('desde, hasta'),
+    supabase.from('marca').select('funcion_id, periodo'),
   ]);
+
+  const cerradas = (marcas ?? []).map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
 
   const calendario = Calendario.con(noHabiles ?? []);
   const hasta = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const plan = ((funciones ?? []) as FilaFuncion[])
-    // ponytail: solo mensuales y solo entregables. Las otras cuatro
-    // periodicidades son CEB-109; los flujos, CEB-110.
-    .filter((f) => f.periodicidad === 'mensual')
+    // Solo entregables: los flujos tienen estado, no ocurrencias (CEB-110).
     .filter((f) => (f.tipo_corregido ?? f.tipo_generado) === 'entregable')
     .flatMap((f) => {
       const diaTope = f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined;
       return ocurrenciasEntre(
-        { periodicidad: 'mensual', diaTope, fechaAlta: f.fecha_alta },
+        { periodicidad: f.periodicidad, diaTope, fechaAlta: f.fecha_alta },
         calendario,
         hoy,
         hasta,
-      ).map((o) => ({ ...o, funcionId: f.id, texto: f.texto, importancia: f.importancia }));
+      ).map((o) => ({
+        ...o,
+        funcionId: f.id,
+        texto: f.texto,
+        importancia: f.importancia,
+        ponderacion: f.ponderacion,
+        periodicidad: f.periodicidad,
+      }));
     })
     .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
 
   // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
-  const lista = proximas(unaPorFuncion(plan), CUANTAS);
+  const lista = ordenarPlan(
+    proximas(unaPorFuncion(pendientes(plan, cerradas)), CUANTAS).map((o) => {
+      const urgencia = urgenciaDe(o.faltan);
+      const efectiva = importanciaEfectiva(o.importancia, o.faltan, o.periodicidad);
+      return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva) };
+    }),
+  );
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 16px' }}>
@@ -67,7 +89,8 @@ export default async function Semana() {
         Lo que tenemos esta semana
       </h1>
       <p style={{ color: 'var(--gris)', fontSize: 14, marginTop: 0 }}>
-        Lo más próximo primero. Si algo vence más adelante, igual aparece.
+        Lo más próximo primero. Si algo vence más adelante, igual aparece. JFS lee lo que
+        escribas al marcar que no pudiste.
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
@@ -84,9 +107,8 @@ export default async function Semana() {
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              /* ponytail: un solo color. El cuadrante que decide el color es CEB-109. */
-              background: 'var(--hacer)',
-              color: '#fff4f0',
+              background: COLOR[o.cuadrante].fondo,
+              color: COLOR[o.cuadrante].tinta,
               borderRadius: 20,
               padding: '12px 16px',
               minHeight: 66,
@@ -101,7 +123,7 @@ export default async function Semana() {
                 width: 46,
                 height: 46,
                 borderRadius: 999,
-                background: 'rgba(255,244,240,0.18)',
+                background: COLOR[o.cuadrante].velo,
                 fontSize: 23,
                 flexShrink: 0,
               }}
@@ -114,8 +136,35 @@ export default async function Semana() {
             </span>
 
             <span style={{ display: 'flex', gap: 6, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-              <Numero etiqueta="IMP" valor={o.importancia} />
-              <Numero etiqueta="URG" valor={urgenciaDe(o.faltan)} />
+              <Numero etiqueta="IMP" valor={o.importancia} tinta={COLOR[o.cuadrante].velo} />
+              <Numero etiqueta="URG" valor={o.urgencia} tinta={COLOR[o.cuadrante].velo} />
+            </span>
+
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <form action={marcarHecho.bind(null, o.funcionId, o.periodo)}>
+                <button style={BOTON}>¡Hecho!</button>
+              </form>
+
+              <details>
+                <summary
+                  title="No pude"
+                  style={{ ...BOTON, width: 40, justifyContent: 'center', color: '#c62828', listStyle: 'none' }}
+                >
+                  ✕
+                </summary>
+                <form
+                  action={marcarNoPude.bind(null, o.funcionId, o.periodo)}
+                  style={{ position: 'absolute', marginTop: 8, display: 'flex', gap: 6, zIndex: 1 }}
+                >
+                  <input
+                    name="razon"
+                    required
+                    placeholder="¿Qué pasó? JFS lo lee"
+                    style={{ height: 40, borderRadius: 999, border: 'none', padding: '0 16px', fontSize: 14, width: 260 }}
+                  />
+                  <button style={BOTON}>Guardar</button>
+                </form>
+              </details>
             </span>
           </article>
         ))}
@@ -124,7 +173,27 @@ export default async function Semana() {
   );
 }
 
-function Numero({ etiqueta, valor }: { etiqueta: string; valor: number }) {
+const BOTON = {
+  display: 'flex',
+  alignItems: 'center',
+  height: 40,
+  padding: '0 16px',
+  borderRadius: 999,
+  background: '#ffffff',
+  color: 'var(--tinta)',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+} as const;
+
+// El color es el cuadrante; el emoji, la urgencia.
+const COLOR: Record<Cuadrante, { fondo: string; tinta: string; velo: string }> = {
+  hacer: { fondo: '#d9503a', tinta: '#fff4f0', velo: 'rgba(255,244,240,0.18)' },
+  agendar: { fondo: '#1b6e8c', tinta: '#eef8fc', velo: 'rgba(238,248,252,0.18)' },
+  mantener: { fondo: '#e8ce7a', tinta: '#2a2313', velo: 'rgba(42,35,19,0.14)' },
+};
+
+function Numero({ etiqueta, valor, tinta }: { etiqueta: string; valor: number; tinta: string }) {
   return (
     <span
       style={{
@@ -133,7 +202,7 @@ function Numero({ etiqueta, valor }: { etiqueta: string; valor: number }) {
         gap: 5,
         padding: '5px 10px',
         borderRadius: 999,
-        background: 'rgba(255,244,240,0.18)',
+        background: tinta,
         fontSize: 13,
         fontWeight: 700,
       }}

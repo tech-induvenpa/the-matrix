@@ -4,7 +4,7 @@ import ts from 'typescript-eslint';
 // La frontera que sostiene la arquitectura (ADR 0005): el dominio no conoce
 // infraestructura, y los componentes no tocan adaptadores.
 export default ts.config(
-  { ignores: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/next-env.d.ts'] },
+  { ignores: ['**/node_modules/**', '**/.next*/**', '**/dist/**', '**/next-env.d.ts'] },
   js.configs.recommended,
   ...ts.configs.recommended,
   {

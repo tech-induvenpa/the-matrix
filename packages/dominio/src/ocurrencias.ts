@@ -1,60 +1,102 @@
 import type { Calendario, Fecha } from './calendario';
 
-// Un periodo es el tramo del calendario al que pertenece una ocurrencia.
-// Para una mensual, 'YYYY-MM'.
+export type Periodicidad = 'diaria' | 'semanal' | 'quincenal' | 'mensual' | 'trimestral';
+
+// Un periodo es el tramo del calendario al que pertenece una ocurrencia:
+// un dia habil, una semana, una quincena, un mes o un trimestre.
 export type Periodo = string;
 
 export type Ocurrencia = { periodo: Periodo; vence: Fecha };
 
-// ponytail: por ahora solo mensual. Las otras cuatro periodicidades son CEB-109.
-export type FuncionMensual = {
-  periodicidad: 'mensual';
+export type Funcion = {
+  periodicidad: Periodicidad;
   diaTope?: number;
   fechaAlta: Fecha;
 };
 
-const ultimoDiaDelMes = (periodo: Periodo): number =>
-  new Date(Date.UTC(+periodo.slice(0, 4), +periodo.slice(5, 7), 0)).getUTCDate();
-
-const mesSiguiente = (periodo: Periodo): Periodo => {
-  const anio = +periodo.slice(0, 4);
-  const mes = +periodo.slice(5, 7);
-  return mes === 12 ? `${anio + 1}-01` : `${anio}-${String(mes + 1).padStart(2, '0')}`;
+const enUTC = (f: Fecha) => new Date(Date.UTC(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10)));
+const enFecha = (d: Date): Fecha => d.toISOString().slice(0, 10);
+const sumarDias = (f: Fecha, dias: number): Fecha => {
+  const d = enUTC(f);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return enFecha(d);
 };
+const ultimoDiaDelMes = (anio: number, mes: number): Fecha => enFecha(new Date(Date.UTC(anio, mes, 0)));
 
-const mesesEntre = (desde: Fecha, hasta: Fecha): Periodo[] => {
-  const meses: Periodo[] = [];
-  let anio = +desde.slice(0, 4);
-  let mes = +desde.slice(5, 7);
-  while (`${anio}-${String(mes).padStart(2, '0')}` <= hasta.slice(0, 7)) {
-    meses.push(`${anio}-${String(mes).padStart(2, '0')}`);
-    if (mes === 12) {
-      mes = 1;
-      anio++;
-    } else {
-      mes++;
+type Tramo = { periodo: Periodo; inicio: Fecha; fin: Fecha };
+
+function tramoDe(periodicidad: Periodicidad, f: Fecha): Tramo {
+  const anio = +f.slice(0, 4);
+  const mes = +f.slice(5, 7);
+  const dia = +f.slice(8, 10);
+  const mm = String(mes).padStart(2, '0');
+
+  switch (periodicidad) {
+    case 'diaria':
+      return { periodo: f, inicio: f, fin: f };
+    case 'semanal': {
+      const diaSemana = (enUTC(f).getUTCDay() + 6) % 7; // lunes = 0
+      const lunes = sumarDias(f, -diaSemana);
+      return { periodo: lunes, inicio: lunes, fin: sumarDias(lunes, 6) };
+    }
+    case 'quincenal': {
+      const primera = dia <= 15;
+      return {
+        periodo: `${anio}-${mm}-${primera ? 'Q1' : 'Q2'}`,
+        inicio: `${anio}-${mm}-${primera ? '01' : '16'}`,
+        fin: primera ? `${anio}-${mm}-15` : ultimoDiaDelMes(anio, mes),
+      };
+    }
+    case 'mensual':
+      return { periodo: `${anio}-${mm}`, inicio: `${anio}-${mm}-01`, fin: ultimoDiaDelMes(anio, mes) };
+    case 'trimestral': {
+      const trimestre = Math.ceil(mes / 3);
+      const primerMes = (trimestre - 1) * 3 + 1;
+      return {
+        periodo: `${anio}-T${trimestre}`,
+        inicio: `${anio}-${String(primerMes).padStart(2, '0')}-01`,
+        fin: ultimoDiaDelMes(anio, primerMes + 2),
+      };
     }
   }
-  return meses;
-};
+}
 
+function venceEn(tramo: Tramo, funcion: Funcion, calendario: Calendario): Fecha | null {
+  if (funcion.periodicidad === 'diaria') {
+    return calendario.esHabil(tramo.fin) ? tramo.fin : null;
+  }
+  if (funcion.periodicidad === 'mensual' && funcion.diaTope !== undefined) {
+    const ultimo = +tramo.fin.slice(8, 10);
+    const dia = Math.min(funcion.diaTope, ultimo);
+    return calendario.habilAnterior(`${tramo.fin.slice(0, 7)}-${String(dia).padStart(2, '0')}`);
+  }
+  return calendario.habilAnterior(tramo.fin);
+}
+
+// ponytail: recorre dia a dia y agrupa por periodo. Son decenas de iteraciones,
+// no millones, y se lee de corrido.
 export function ocurrenciasEntre(
-  funcion: FuncionMensual,
+  funcion: Funcion,
   calendario: Calendario,
   desde: Fecha,
   hasta: Fecha,
 ): Ocurrencia[] {
-  // Una funcion empieza a contar en el siguiente periodo completo: si nacio a
-  // mitad de mes, ese mes no cuenta, para que nunca tenga un vencimiento imposible.
-  const alta = funcion.fechaAlta;
-  const primerPeriodo = alta.slice(8, 10) === '01' ? alta.slice(0, 7) : mesSiguiente(alta.slice(0, 7));
+  const ocurrencias: Ocurrencia[] = [];
+  const vistos = new Set<Periodo>();
 
-  return mesesEntre(desde, hasta)
-    .filter((periodo) => periodo >= primerPeriodo)
-    .map((periodo) => {
-      const dia = Math.min(funcion.diaTope ?? 31, ultimoDiaDelMes(periodo));
-      const vence = calendario.habilAnterior(`${periodo}-${String(dia).padStart(2, '0')}`);
-      return { periodo, vence };
-    })
-    .filter((o) => o.vence >= desde && o.vence <= hasta);
+  for (let f = tramoDe(funcion.periodicidad, desde).inicio; f <= hasta; f = sumarDias(f, 1)) {
+    const tramo = tramoDe(funcion.periodicidad, f);
+    if (vistos.has(tramo.periodo)) continue;
+    vistos.add(tramo.periodo);
+
+    // Una funcion cuenta desde el siguiente periodo completo tras su alta.
+    if (tramo.inicio < funcion.fechaAlta) continue;
+
+    const vence = venceEn(tramo, funcion, calendario);
+    if (vence !== null && vence >= desde && vence <= hasta) {
+      ocurrencias.push({ periodo: tramo.periodo, vence });
+    }
+  }
+
+  return ocurrencias;
 }
