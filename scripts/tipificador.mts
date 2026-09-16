@@ -1,0 +1,64 @@
+// Agente de tipificacion (CEB-114). Implementa el puerto Tipificador contra
+// Kimi, que habla el mismo dialecto que OpenAI.
+//
+// El agente PROPONE: escribe tipo_generado y dia_tope_generado y nada mas. Lo
+// que una persona corrija vive en las columnas _corregido y siempre gana. Una
+// propuesta que no pase interpretar() deja la fila sin tipo, fuera del plan y
+// a la vista de quien importa.
+import type { Propuesta, Tipificador } from '@matriz/dominio';
+
+const INSTRUCCIONES = `Clasificas funciones de trabajo de un grupo de empresas venezolano.
+Cada función viene escrita por su gerencia, en mayúsculas y con la cadencia metida en la propia frase.
+
+Devuelve JSON: {"tipo": string, "diaTope": number|null, "confianza": number}
+
+tipo, exactamente uno de:
+- "entregable": produce algo concreto con fecha. Se termina. Ej: "CIERRE FINANCIERO AUTO BENGALA (ANTES DEL 3 DE CADA MES)", "DECLARACIONES AL SENIAT".
+- "flujo": trabajo continuo que se sostiene, no se termina. Ej: "CUENTAS POR PAGAR MDV", "REGISTRO DE FACTURAS", "RECEPCION DE VEHICULOS".
+- "area": una responsabilidad amplia del cargo, no una tarea. Ej: "ASISTENCIA A LA GERENCIA", "TESORERIA".
+- "holgura": espacio para lo imprevisto. Ej: "URGENTES", "URGENTES (SOLICITAR REINTEGROS, REVISAR CORREOS ETC)".
+
+diaTope: si la frase dice un día del mes ("ANTES DEL 3", "FECHA TOPE 02 DE CADA MES"), ese número. Si no, null.
+Las áreas y las holguras nunca llevan diaTope: no se agendan.
+
+confianza: 0 a 1. Si la frase es ambigua, baja de 0.6 y que lo revise una persona.
+Responde solo el JSON.`;
+
+type Ajustes = { clave: string; modelo: string; url: string };
+
+export function tipificadorKimi({ clave, modelo, url }: Ajustes): Tipificador {
+  return {
+    async proponer(texto: string): Promise<Propuesta> {
+      const respuesta = await fetch(`${url}/chat/completions`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${clave}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: modelo,
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: INSTRUCCIONES },
+            { role: 'user', content: texto },
+          ],
+        }),
+      });
+
+      if (!respuesta.ok) {
+        const detalle = await respuesta.text();
+        throw new Error(`Kimi respondió ${respuesta.status}: ${detalle.slice(0, 300)}`);
+      }
+
+      const datos = (await respuesta.json()) as { choices?: { message?: { content?: string } }[] };
+      const contenido = datos.choices?.[0]?.message?.content;
+      if (!contenido) throw new Error('Kimi respondió sin contenido');
+
+      // Lo que venga se valida con interpretar(): aqui solo se parsea.
+      const crudo = JSON.parse(contenido) as { tipo?: string; diaTope?: number | null; confianza?: number };
+      return {
+        tipo: String(crudo.tipo ?? ''),
+        diaTope: crudo.diaTope ?? undefined,
+        confianza: Number(crudo.confianza ?? 0),
+      };
+    },
+  };
+}

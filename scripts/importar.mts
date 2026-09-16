@@ -5,6 +5,10 @@
 //   pnpm importar --hoja "FUNCIONES" --confirmar  -> los aplica
 //   pnpm importar funciones.tsv                   -> lo mismo desde un TSV exportado
 //
+// Banderas: --tipificar pide el tipo al agente (CEB-114), --crear-empleados
+// siembra los bloques que no existen con un correo inventado, y
+// --tipos-de-prueba deduce el tipo del texto sin llamar a ningun modelo.
+//
 // El lector se encarga de los bloques y las celdas combinadas. Las columnas
 // MONTO, ASIGNACION y CLASIFICACION no se importan (ADR 0001): el sueldo nunca
 // sale del documento.
@@ -13,11 +17,13 @@ import { createClient } from '@supabase/supabase-js';
 import { identidadDe, interpretar, leerBloques, normalizar, reconciliar } from '@matriz/dominio';
 import type { FilaDelDocumento, FuncionExistente } from '@matriz/dominio';
 import { credenciales, leerPestana, pestanas } from './hoja.mts';
+import { tipificadorKimi } from './tipificador.mts';
 
 const argumentos = process.argv.slice(2);
 const confirmar = argumentos.includes('--confirmar');
 const crearEmpleados = argumentos.includes('--crear-empleados');
 const tiposDePrueba = argumentos.includes('--tipos-de-prueba');
+const tipificar = argumentos.includes('--tipificar');
 
 const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
 
@@ -69,6 +75,7 @@ if (soloPestanas) {
 if (!pestana && !archivo) {
   console.error('Uso: pnpm importar --hoja "<pestaña>" | <archivo.tsv> [--confirmar]');
   console.error('     pnpm importar --pestanas');
+  console.error('Banderas: --tipificar, --crear-empleados, --tipos-de-prueba');
   process.exit(1);
 }
 
@@ -166,10 +173,33 @@ if (!confirmar) {
   process.exit(0);
 }
 
-// El tipo lo propone el agente (CEB-114); sin el, la fila queda sin tipo,
-// fuera del plan y a la vista de quien importa.
+// El tipo lo propone el agente (CEB-114). Solo corre sobre filas nuevas, solo
+// escribe los campos _generado, y una falla deja la fila sin tipo: fuera del
+// plan y a la vista de quien importa.
+const propuestas = new Map<string, ReturnType<typeof interpretar>>();
+
+if (tipificar && altas.length) {
+  const agente = tipificadorKimi({
+    clave: entorno('KIMI_API_KEY'),
+    modelo: entorno('KIMI_MODELO'),
+    url: entorno('KIMI_URL'),
+  });
+
+  console.log(`\nTipificando ${altas.length} funciones nuevas...`);
+  for (const f of altas) {
+    try {
+      propuestas.set(f.nombre, interpretar(await agente.proponer(f.nombre)));
+    } catch (fallo) {
+      console.log(`    ! ${f.nombre.slice(0, 50)} — ${(fallo as Error).message.slice(0, 80)}`);
+    }
+  }
+
+  const sinTipo = altas.length - [...propuestas.values()].filter((p) => p.acepta).length;
+  if (sinTipo) console.log(`  ${sinTipo} quedan sin tipo y fuera del plan hasta que alguien las revise.`);
+}
+
 const paraInsertar = altas.map((f: FilaDelDocumento) => {
-  const propuesta = tiposDePrueba ? propuestaDePrueba(f.nombre) : undefined;
+  const propuesta = propuestas.get(f.nombre) ?? (tiposDePrueba ? propuestaDePrueba(f.nombre) : undefined);
   return {
     empleado_id: f.empleadoId,
     hash_identidad: identidadDe(f),

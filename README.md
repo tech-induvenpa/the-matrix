@@ -84,10 +84,16 @@ Lo que hace y lo que no:
 - Lo que desaparece del documento se archiva (`activa = false`), nunca se borra:
   sus marcas siguen siendo ciertas.
 - Un renombre se ve como un alta y una baja. Lo confirma una persona.
-- El tipo y el día tope los propone el agente (CEB-114). Sin él, la fila entra
-  sin tipo: queda fuera del plan y a la vista de quien importa.
+- El tipo y el día tope los propone el agente con `--tipificar` (CEB-114, Kimi).
+  Sin él, la fila entra sin tipo: queda fuera del plan y a la vista de quien
+  importa. El agente solo escribe `tipo_generado` y `dia_tope_generado`; lo que
+  corrija una persona va en las columnas `_corregido` y siempre gana.
 
-En `apps/web/.env.local` necesita tres cosas: `SUPABASE_SERVICE_ROLE_KEY`,
+Para el agente hacen falta `KIMI_API_KEY`, `KIMI_MODELO` y `KIMI_URL`. Esa
+clave nunca va en una variable `NEXT_PUBLIC_`: el agente corre en la
+importación, a mano, nunca en el navegador.
+
+En `apps/web/.env.local` necesita tres cosas más: `SUPABASE_SERVICE_ROLE_KEY`,
 `GOOGLE_CREDENCIALES` (ruta al JSON de la cuenta de servicio, que vive **fuera
 del repo**) y `DOCUMENTO_ID`. El rol `service_role` se salta la seguridad por
 fila, así que esto corre a mano y solo aquí, nunca desde el servidor web.
