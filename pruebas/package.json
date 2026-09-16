@@ -1,0 +1,16 @@
+{
+  "name": "@matriz/pruebas",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "invariantes": "vitest run"
+  },
+  "dependencies": {
+    "@matriz/dominio": "workspace:*",
+    "@supabase/supabase-js": "^2.47.10"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}
