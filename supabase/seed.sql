@@ -19,3 +19,11 @@ insert into funcion (empleado_id, hash_identidad, texto, ponderacion, importanci
   ('11111111-1111-1111-1111-111111111111', 'siembra-004', 'Pago de impuestos y servicios públicos', 5, 7, 'mensual', 'entregable',
    least(extract(day from current_date)::int + 2, extract(day from (date_trunc('month', current_date) + interval '1 month - 1 day'))::int),
    '2026-08-01');
+
+
+-- Flujos: no producen ocurrencias, tienen estado. La periodicidad no se usa en
+-- ellos, pero la columna es obligatoria.
+insert into funcion (empleado_id, hash_identidad, texto, ponderacion, importancia, periodicidad, tipo_generado, fecha_alta) values
+  ('11111111-1111-1111-1111-111111111111', 'siembra-005', 'Cuentas por pagar MDV', 5, 5, 'diaria', 'flujo', '2026-08-01'),
+  ('11111111-1111-1111-1111-111111111111', 'siembra-006', 'Pagos en bolívares a proveedores', 7, 8, 'diaria', 'flujo', '2026-08-01'),
+  ('11111111-1111-1111-1111-111111111111', 'siembra-007', 'Revisar y validar pagos y expedientes de venta', 10, 7, 'diaria', 'flujo', '2026-08-01');

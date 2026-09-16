@@ -20,3 +20,19 @@ export async function marcarNoPude(funcionId: string, periodo: string, formulari
   if (!razon) return; // No se puede decir "no pude" sin decir por que.
   await marcar(funcionId, periodo, 'no_pude', razon);
 }
+
+// Un flujo no se marca: cambia de estado cuando el empleado dice que cambio.
+export async function cambiarEstadoFlujo(
+  funcionId: string,
+  estado: 'al_dia' | 'atrasado',
+  formulario: FormData,
+) {
+  const razon = String(formulario.get('razon') ?? '').trim();
+  if (estado === 'atrasado' && !razon) return; // nadie se atrasa sin decir por que
+
+  const supabase = await clienteDelServidor();
+  await supabase
+    .from('evento_flujo')
+    .insert({ funcion_id: funcionId, estado, razon: estado === 'atrasado' ? razon : null });
+  revalidatePath('/');
+}
