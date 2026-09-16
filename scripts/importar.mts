@@ -1,24 +1,25 @@
 // Importar el documento (CEB-111). A demanda, sin scheduler:
 //
-//   pnpm importar funciones.tsv            -> muestra los cambios, no toca nada
-//   pnpm importar funciones.tsv --confirmar -> los aplica
+//   pnpm importar --pestanas                      -> que hojas tiene el documento
+//   pnpm importar --hoja "FUNCIONES"              -> muestra los cambios, no toca nada
+//   pnpm importar --hoja "FUNCIONES" --confirmar  -> los aplica
+//   pnpm importar funciones.tsv                   -> lo mismo desde un TSV exportado
 //
-// El TSV sale de exportar la hoja de funciones tal cual, con sus bloques y sus
-// celdas combinadas: el lector se encarga de esa forma. Las columnas MONTO,
-// ASIGNACION y CLASIFICACION no se importan (ADR 0001) y el sueldo nunca sale
-// del documento.
+// El lector se encarga de los bloques y las celdas combinadas. Las columnas
+// MONTO, ASIGNACION y CLASIFICACION no se importan (ADR 0001): el sueldo nunca
+// sale del documento.
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { identidadDe, leerBloques, reconciliar } from '@matriz/dominio';
 import type { FilaDelDocumento, FuncionExistente } from '@matriz/dominio';
+import { credenciales, leerPestana, pestanas } from './hoja.mts';
 
-const [archivo, ...banderas] = process.argv.slice(2);
-const confirmar = banderas.includes('--confirmar');
-
-if (!archivo) {
-  console.error('Uso: pnpm importar <archivo.tsv> [--confirmar]');
-  process.exit(1);
-}
+const argumentos = process.argv.slice(2);
+const confirmar = argumentos.includes('--confirmar');
+const soloPestanas = argumentos.includes('--pestanas');
+const dondeHoja = argumentos.indexOf('--hoja');
+const pestana = dondeHoja >= 0 ? argumentos[dondeHoja + 1] : undefined;
+const archivo = argumentos.find((a) => !a.startsWith('--') && a !== pestana);
 
 // Las credenciales se leen, nunca se imprimen.
 function entorno(clave: string): string {
@@ -31,6 +32,32 @@ function entorno(clave: string): string {
   return linea.slice(clave.length + 1).trim();
 }
 
+const documento = () => ({
+  id: entorno('DOCUMENTO_ID'),
+  cuenta: credenciales(entorno('GOOGLE_CREDENCIALES')),
+});
+
+if (soloPestanas) {
+  const { id, cuenta } = documento();
+  for (const nombre of await pestanas(id, cuenta)) console.log(`  · ${nombre}`);
+  process.exit(0);
+}
+
+if (!pestana && !archivo) {
+  console.error('Uso: pnpm importar --hoja "<pestaña>" | <archivo.tsv> [--confirmar]');
+  console.error('     pnpm importar --pestanas');
+  process.exit(1);
+}
+
+const cuadricula = pestana
+  ? await (async () => {
+      const { id, cuenta } = documento();
+      return leerPestana(id, pestana, cuenta);
+    })()
+  : readFileSync(archivo!, 'utf8')
+      .split('\n')
+      .map((linea) => linea.split('\t'));
+
 // service_role se salta la seguridad por fila: esto no corre en el servidor web,
 // corre a mano y solo aqui (ADR 0004).
 const supabase = createClient(
@@ -39,10 +66,6 @@ const supabase = createClient(
   { auth: { persistSession: false } },
 );
 
-const cuadricula = readFileSync(archivo, 'utf8')
-  .split('\n')
-  .map((linea) => linea.split('\t'));
-
 const { data: empleados } = await supabase.from('empleado').select('id, nombre_bloque');
 const porBloque = Object.fromEntries((empleados ?? []).map((e) => [e.nombre_bloque, e.id]));
 
@@ -50,7 +73,7 @@ const { filas, bloquesDesconocidos, bloquesAmbiguos } = leerBloques(cuadricula, 
 
 const { data: actuales } = await supabase
   .from('funcion')
-  .select('id, hash_identidad, periodicidad, ponderacion, importancia, dia_tope_generado, dia_tope_corregido')
+  .select('id, hash_identidad, texto, periodicidad, ponderacion, importancia, dia_tope_generado, dia_tope_corregido')
   .eq('activa', true);
 
 const existentes: FuncionExistente[] = (actuales ?? []).map((f) => ({
@@ -61,6 +84,7 @@ const existentes: FuncionExistente[] = (actuales ?? []).map((f) => ({
   diaTope: f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined,
 }));
 
+const textoDe = new Map((actuales ?? []).map((f) => [f.hash_identidad, f.texto]));
 const { altas, cambios, bajas } = reconciliar(existentes, filas);
 
 console.log(`\nLeídas ${filas.length} funciones de ${Object.keys(porBloque).length} bloques conocidos.`);
@@ -72,7 +96,7 @@ for (const f of altas) console.log(`    + ${f.nombre}`);
 console.log(`  ${cambios.length} cambiadas`);
 for (const c of cambios) console.log(`    ~ ${c.fila.nombre}`);
 console.log(`  ${bajas.length} desaparecidas`);
-for (const id of bajas) console.log(`    - ${id}`);
+for (const id of bajas) console.log(`    - ${textoDe.get(id) ?? id}`);
 
 // Un renombre se ve como una baja y un alta; confirmarlo es de una persona, y
 // no hay heuristica de similitud que lo adivine.

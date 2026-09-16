@@ -64,9 +64,12 @@ El documento de JFS es el formulario de entrada, no la base de datos (ADR 0001).
 Se importa a mano, cuando alguien lo pide:
 
 ```bash
-# Exporta la hoja de funciones como TSV, con sus bloques tal cual.
-pnpm importar funciones.tsv              # muestra los cambios, no guarda nada
-pnpm importar funciones.tsv --confirmar  # los aplica
+pnpm importar --pestanas                      # qué hojas tiene el documento
+pnpm importar --hoja "FUNCIONES"              # muestra los cambios, no guarda nada
+pnpm importar --hoja "FUNCIONES" --confirmar  # los aplica
+
+# Sin acceso a Google, la salida de emergencia: exporta la hoja como TSV.
+pnpm importar funciones.tsv
 ```
 
 Lo que hace y lo que no:
@@ -84,6 +87,11 @@ Lo que hace y lo que no:
 - El tipo y el día tope los propone el agente (CEB-114). Sin él, la fila entra
   sin tipo: queda fuera del plan y a la vista de quien importa.
 
-Necesita `SUPABASE_SERVICE_ROLE_KEY` en `apps/web/.env.local`. Ese rol se salta
-la seguridad por fila, así que solo corre aquí, a mano, nunca desde el servidor
-web.
+En `apps/web/.env.local` necesita tres cosas: `SUPABASE_SERVICE_ROLE_KEY`,
+`GOOGLE_CREDENCIALES` (ruta al JSON de la cuenta de servicio, que vive **fuera
+del repo**) y `DOCUMENTO_ID`. El rol `service_role` se salta la seguridad por
+fila, así que esto corre a mano y solo aquí, nunca desde el servidor web.
+
+La cuenta de servicio entra al documento como una persona más: hay que
+compartirle la copia. Solo pide `spreadsheets.readonly`; escribir la pestaña de
+razones es otro alcance y otro ticket (CEB-116).
