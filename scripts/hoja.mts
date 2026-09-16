@@ -57,9 +57,10 @@ async function pedir<T>(
   cred: Credenciales,
   alcance = SOLO_LECTURA,
   cuerpo?: unknown,
+  metodo?: 'POST' | 'PUT',
 ): Promise<T> {
   const respuesta = await fetch(url, {
-    method: cuerpo ? 'POST' : 'GET',
+    method: metodo ?? (cuerpo ? 'POST' : 'GET'),
     headers: {
       authorization: `Bearer ${await token(cred, alcance)}`,
       ...(cuerpo ? { 'content-type': 'application/json' } : {}),
@@ -138,3 +139,48 @@ export const letraDeColumna = (indice: number): string => {
   } while (n >= 0);
   return letra;
 };
+
+// Crea la pestana solo si no existe. Devuelve true si la creo.
+export async function crearPestanaSiFalta(
+  documentoId: string,
+  titulo: string,
+  cred: Credenciales,
+): Promise<boolean> {
+  if ((await pestanas(documentoId, cred)).includes(titulo)) return false;
+
+  await pedir(
+    `https://sheets.googleapis.com/v4/spreadsheets/${documentoId}:batchUpdate`,
+    cred,
+    CON_ESCRITURA,
+    { requests: [{ addSheet: { properties: { title: titulo } } }] },
+  );
+  return true;
+}
+
+// Escribe un bloque rectangular de una vez. El rango manda: nada fuera de el
+// se toca, y lo que sobraba de una proyeccion anterior se limpia aparte.
+export async function escribirFilas(
+  documentoId: string,
+  rango: string,
+  filas: readonly (readonly string[])[],
+  cred: Credenciales,
+): Promise<number> {
+  const datos = await pedir<{ updatedCells?: number }>(
+    `https://sheets.googleapis.com/v4/spreadsheets/${documentoId}/values/${encodeURIComponent(rango)}?valueInputOption=RAW`,
+    cred,
+    CON_ESCRITURA,
+    { values: filas },
+    'PUT',
+  );
+  return datos.updatedCells ?? 0;
+}
+
+// Deja en blanco un rango: lo que quedo de una proyeccion mas larga.
+export async function limpiarRango(documentoId: string, rango: string, cred: Credenciales): Promise<void> {
+  await pedir(
+    `https://sheets.googleapis.com/v4/spreadsheets/${documentoId}/values/${encodeURIComponent(rango)}:clear`,
+    cred,
+    CON_ESCRITURA,
+    {},
+  );
+}

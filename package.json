@@ -10,7 +10,8 @@
     "db:reset": "supabase db reset --linked",
     "importar": "tsx scripts/importar.mts",
     "dummy": "tsx scripts/rellenar-dummy.mts",
-    "retipificar": "tsx scripts/retipificar.mts"
+    "retipificar": "tsx scripts/retipificar.mts",
+    "razones": "tsx scripts/razones.mts"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
