@@ -39,12 +39,13 @@ function periodicidadDe(texto: string, ponderacion: number): string {
   if (/CADA MES|MENSUAL|VEZ AL MES|FECHA TOPE/.test(t)) return 'mensual';
   if (/SEMANAL|CADA SEMANA/.test(t)) return 'semanal';
   if (/URGENTES|DIARI|CAJA CHICA|RECEPCION/.test(t)) return 'diaria';
-  // Sin pista en el texto, pesa mas lo que pesa: lo grande suele ser mensual y
-  // lo pequeño, del dia a dia. Asi la demo no sale llena de diarias.
+  // Sin pista en el texto, nunca "diaria": este documento es de pagos,
+  // declaraciones y cierres, y una funcion de verdad diaria casi siempre es un
+  // flujo, no un entregable. Ponerla diaria convertia un pago de condominio en
+  // una tarea de todos los dias.
   if (ponderacion >= 20) return 'mensual';
   if (ponderacion >= 10) return 'semanal';
-  if (ponderacion >= 5) return 'quincenal';
-  return 'diaria';
+  return 'mensual';
 }
 
 // La ponderacion es lo unico real que hay, asi que hace de sombra de la
