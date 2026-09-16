@@ -23,7 +23,8 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data } = await supabase.auth.getUser();
-  const publica = request.nextUrl.pathname.startsWith('/entrar');
+  const ruta = request.nextUrl.pathname;
+  const publica = ruta.startsWith('/entrar') || ruta.startsWith('/auth');
 
   if (!data.user && !publica) {
     const destino = request.nextUrl.clone();
