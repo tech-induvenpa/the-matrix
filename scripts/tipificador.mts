@@ -1,5 +1,8 @@
 // Agente de tipificacion (CEB-114). Implementa el puerto Tipificador contra
-// Kimi, que habla el mismo dialecto que OpenAI.
+// cualquier API que hable el dialecto de OpenAI: Kimi, DeepSeek, Groq, la
+// propia OpenAI. El proveedor no aparece en el codigo, solo en el entorno
+// (AGENTE_URL, AGENTE_MODELO, AGENTE_API_KEY), asi que cambiarlo no es un
+// cambio de programa sino de configuracion.
 //
 // El agente PROPONE: escribe tipo_generado y dia_tope_generado y nada mas. Lo
 // que una persona corrija vive en las columnas _corregido y siempre gana. Una
@@ -26,7 +29,7 @@ Responde solo el JSON.`;
 
 type Ajustes = { clave: string; modelo: string; url: string };
 
-export function tipificadorKimi({ clave, modelo, url }: Ajustes): Tipificador {
+export function tipificadorRemoto({ clave, modelo, url }: Ajustes): Tipificador {
   return {
     async proponer(texto: string): Promise<Propuesta> {
       const respuesta = await fetch(`${url}/chat/completions`, {
@@ -45,12 +48,12 @@ export function tipificadorKimi({ clave, modelo, url }: Ajustes): Tipificador {
 
       if (!respuesta.ok) {
         const detalle = await respuesta.text();
-        throw new Error(`Kimi respondió ${respuesta.status}: ${detalle.slice(0, 300)}`);
+        throw new Error(`${modelo} respondió ${respuesta.status}: ${detalle.slice(0, 300)}`);
       }
 
       const datos = (await respuesta.json()) as { choices?: { message?: { content?: string } }[] };
       const contenido = datos.choices?.[0]?.message?.content;
-      if (!contenido) throw new Error('Kimi respondió sin contenido');
+      if (!contenido) throw new Error(`${modelo} respondió sin contenido`);
 
       // Lo que venga se valida con interpretar(): aqui solo se parsea.
       const crudo = JSON.parse(contenido) as { tipo?: string; diaTope?: number | null; confianza?: number };

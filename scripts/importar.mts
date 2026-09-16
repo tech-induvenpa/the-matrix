@@ -17,7 +17,7 @@ import { createClient } from '@supabase/supabase-js';
 import { identidadDe, interpretar, leerBloques, normalizar, reconciliar } from '@matriz/dominio';
 import type { FilaDelDocumento, FuncionExistente } from '@matriz/dominio';
 import { credenciales, leerPestana, pestanas } from './hoja.mts';
-import { tipificadorKimi } from './tipificador.mts';
+import { tipificadorRemoto } from './tipificador.mts';
 
 const argumentos = process.argv.slice(2);
 const confirmar = argumentos.includes('--confirmar');
@@ -179,10 +179,10 @@ if (!confirmar) {
 const propuestas = new Map<string, ReturnType<typeof interpretar>>();
 
 if (tipificar && altas.length) {
-  const agente = tipificadorKimi({
-    clave: entorno('KIMI_API_KEY'),
-    modelo: entorno('KIMI_MODELO'),
-    url: entorno('KIMI_URL'),
+  const agente = tipificadorRemoto({
+    clave: entorno('AGENTE_API_KEY'),
+    modelo: entorno('AGENTE_MODELO'),
+    url: entorno('AGENTE_URL'),
   });
 
   console.log(`\nTipificando ${altas.length} funciones nuevas...`);

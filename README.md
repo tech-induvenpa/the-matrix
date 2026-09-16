@@ -89,8 +89,18 @@ Lo que hace y lo que no:
   importa. El agente solo escribe `tipo_generado` y `dia_tope_generado`; lo que
   corrija una persona va en las columnas `_corregido` y siempre gana.
 
-Para el agente hacen falta `KIMI_API_KEY`, `KIMI_MODELO` y `KIMI_URL`. Esa
-clave nunca va en una variable `NEXT_PUBLIC_`: el agente corre en la
+Para el agente hacen falta `AGENTE_API_KEY`, `AGENTE_MODELO` y `AGENTE_URL`.
+Sirve cualquier API que hable el dialecto de OpenAI, así que **cambiar de
+modelo o de proveedor es cambiar esas tres variables**, sin tocar código:
+
+| Proveedor | `AGENTE_URL` | `AGENTE_MODELO` |
+|---|---|---|
+| Kimi (Moonshot) | `https://api.moonshot.ai/v1` | `kimi-k3` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| Groq | `https://api.groq.com/openai/v1` | el que toque |
+| OpenAI | `https://api.openai.com/v1` | el que toque |
+
+Esa clave nunca va en una variable `NEXT_PUBLIC_`: el agente corre en la
 importación, a mano, nunca en el navegador.
 
 En `apps/web/.env.local` necesita tres cosas más: `SUPABASE_SERVICE_ROLE_KEY`,
