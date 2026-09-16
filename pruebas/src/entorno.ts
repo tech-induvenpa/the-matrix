@@ -43,14 +43,26 @@ export async function comoEmpleado(correo: string): Promise<SupabaseClient> {
   });
   if (error && !error.message.includes('already been registered')) throw error;
 
+  // vaciar() limpia las tablas pero no los usuarios de auth, asi que en la
+  // segunda corrida createUser no devuelve nada: hay que ir a buscarlo. Sin
+  // esto el empleado se queda sin auth_user_id y no ve ni lo suyo.
+  let usuario = creado?.user ?? null;
+  if (!usuario) {
+    const { data } = await servicio.auth.admin.listUsers();
+    usuario = data.users.find((u) => u.email === correo) ?? null;
+  }
+  if (!usuario) throw new Error(`No se pudo resolver el usuario de ${correo}`);
+
+  // El vinculo se rehace siempre: la fila del empleado es nueva en cada prueba.
+  const { error: sinVinculo } = await servicio
+    .from('empleado')
+    .update({ auth_user_id: usuario.id })
+    .eq('correo', correo);
+  if (sinVinculo) throw sinVinculo;
+
   const cliente = createClient(URL_LOCAL, ANON, { auth: { persistSession: false } });
   const { error: fallo } = await cliente.auth.signInWithPassword({ email: correo, password: clave });
   if (fallo) throw fallo;
-
-  // El empleado ya existe en la tabla; se le ata su usuario.
-  if (creado?.user) {
-    await servicio.from('empleado').update({ auth_user_id: creado.user.id }).eq('correo', correo);
-  }
 
   return cliente;
 }
