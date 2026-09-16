@@ -99,8 +99,9 @@ _Avoid_: fecha tope (el documento la usa en este sentido, pero una fecha es un d
 concreto y esto se repite cada mes).
 
 **Ventana de la semana**:
-Los proximos cinco dias habiles. Todo lo que vence dentro de ella es el plan, sea
-mucho o poco.
+Los proximos cinco dias habiles. Delimita la meta, o sea lo que cuenta como
+cumplido esta semana, y no lo que se muestra: la lista siempre trae lo mas proximo,
+aunque venza despues.
 _Avoid_: sprint, meta semanal como numero fijo.
 
 **Dia habil**:

@@ -191,8 +191,8 @@ Prueba: con los rangos protegidos reales, una escritura de la cuenta de la aplic
 - Emoji: 🔥 hasta 1 día hábil, 💣 hasta 3, 🧠 hasta 7, 🍃 8 o más.
 - Importancia efectiva: a 3 días hábiles o menos del vencimiento sube a un mínimo de 5, excepto en diarias y semanales. Si urgencia e importancia quedan ambas por debajo de 4,5, la importancia sube a 5: no existe el cuarto cuadrante.
 - Cuadrante, con corte en 4,5: urgencia e importancia altas → hacer ya; urgencia alta e importancia baja → mantener al día; urgencia baja → ponle fecha.
-- Ventana: los próximos cinco días hábiles. Solo entran entregables.
-- Selección por vencimiento más cercano y luego por ponderación. Si faltan para cinco, se completa con ponle fecha fuera de la ventana. La presentación ordena por cuadrante (hacer ya, ponle fecha, mantener al día), luego por ponderación y luego por días restantes.
+- La lista nunca queda vacía: muestra siempre las cinco ocurrencias más próximas, aunque venzan después de la ventana. La ventana de cinco días hábiles delimita la **meta** de la semana, no lo que se muestra. Solo entran entregables.
+- Selección por vencimiento más cercano y luego por ponderación. La presentación ordena por cuadrante (hacer ya, ponle fecha, mantener al día), luego por ponderación y luego por días restantes.
 - Columna de flujos: todas las funciones de tipo flujo, sin paginar, con su estado vigente y, si están atrasadas, la razón.
 - Áreas y holgura no entran a la pantalla de trabajo; aparecen solo en el listado del mes.
 - Banner, primera condición que se cumpla. Registro de alerta: (1) días no hábiles dentro de la ventana; (2) algo vence hoy o mañana; (3) un flujo lleva N días hábiles atrasado. Registro tranquilo: (4) recordatorio de dejar constancia de un atraso; (5) avance del mes. El umbral N se fija con uso real.
@@ -233,7 +233,7 @@ Prueba: con los rangos protegidos reales, una escritura de la cuenta de la aplic
 - **Qué es un buen test:** ejercita el comportamiento a través de la interfaz del módulo, con entradas reales (fechas del calendario de 2026, cuadrículas con la forma del documento) y aserciones sobre la salida. No verifica detalles internos ni usa dobles de colaboradores del propio dominio.
 - **Módulos con tests:**
   - *Calendario hábil y motor de ocurrencias.* Casos mínimos: el 3 de octubre de 2026 cae sábado y vence el viernes 2; día tope 31 en un mes de 30; alta a mitad de período; quincenal con el 15 en fin de semana; trimestral; feriado y colectivas dentro de la ventana; aviso de cobertura a 60 y 30.
-  - *Plan y cierre de mes.* Casos mínimos: excepción de la regla de proximidad para diarias y semanales; piso de importancia 5; relleno hasta cinco; orden de presentación; banner en cada una de sus cinco condiciones; flujo atrasado dos veces; lo vencido sin marcar cuenta en el patrón; primer mes sin comparación.
+  - *Plan y cierre de mes.* Casos mínimos: excepción de la regla de proximidad para diarias y semanales; piso de importancia 5; la lista trae cinco aunque la semana no traiga ningún vencimiento; orden de presentación; banner en cada una de sus cinco condiciones; flujo atrasado dos veces; lo vencido sin marcar cuenta en el patrón; primer mes sin comparación.
   - *Lector del documento y reconciliación.* Una cuadrícula de prueba que copia la estructura real: nombres combinados, encabezados, fila de totales, bloques pegados sin fila en blanco, bloque plantilla vacío, espacios finales, dos Marías, montos inventados. Renombre de función, renombre de bloque, bloque desconocido, fila sin tipo, conflicto de día tope.
   - *Privacidad de punta a punta.* Las pruebas de trazador de INV-1, INV-2 e INV-3 sobre cableado real.
 - **Pruebas de trazador:** una por invariante, sobre Supabase local, la copia del documento con sus rangos protegidos y el agente real.

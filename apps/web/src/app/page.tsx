@@ -1,4 +1,4 @@
-import { Calendario, emojiDe, ocurrenciasEntre, urgenciaDe } from '@matriz/dominio';
+import { Calendario, emojiDe, ocurrenciasEntre, proximas, urgenciaDe } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 
 type FilaFuncion = {
@@ -13,7 +13,9 @@ type FilaFuncion = {
   fecha_alta: string;
 };
 
-const VENTANA = 5; // dias habiles
+// La ventana de cinco dias habiles es la meta de la semana; la lista siempre
+// trae lo mas proximo, aunque venza despues.
+const CUANTAS = 5;
 
 export default async function Semana() {
   const supabase = await clienteDelServidor();
@@ -47,9 +49,9 @@ export default async function Semana() {
         hasta,
       ).map((o) => ({ ...o, texto: f.texto, importancia: f.importancia }));
     })
-    .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }))
-    .filter((o) => o.faltan <= VENTANA)
-    .sort((a, b) => a.vence.localeCompare(b.vence));
+    .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
+
+  const lista = proximas(plan, CUANTAS);
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 16px' }}>
@@ -57,17 +59,17 @@ export default async function Semana() {
         Lo que tenemos esta semana
       </h1>
       <p style={{ color: 'var(--gris)', fontSize: 14, marginTop: 0 }}>
-        Lo que vence en los próximos cinco días hábiles.
+        Lo más próximo primero. Si algo vence más adelante, igual aparece.
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
-        {plan.length === 0 && (
+        {lista.length === 0 && (
           <p style={{ color: 'var(--gris)', fontSize: 15 }}>
-            Esta semana no vence nada tuyo. Vuelve mañana.
+            Todavía no tienes funciones asignadas.
           </p>
         )}
 
-        {plan.map((o) => (
+        {lista.map((o) => (
           <article
             key={`${o.texto}-${o.periodo}`}
             style={{
