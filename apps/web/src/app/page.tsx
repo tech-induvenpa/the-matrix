@@ -1,4 +1,11 @@
-import { Calendario, emojiDe, ocurrenciasEntre, proximas, urgenciaDe } from '@matriz/dominio';
+import {
+  Calendario,
+  emojiDe,
+  ocurrenciasEntre,
+  proximas,
+  unaPorFuncion,
+  urgenciaDe,
+} from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 
 type FilaFuncion = {
@@ -47,11 +54,12 @@ export default async function Semana() {
         calendario,
         hoy,
         hasta,
-      ).map((o) => ({ ...o, texto: f.texto, importancia: f.importancia }));
+      ).map((o) => ({ ...o, funcionId: f.id, texto: f.texto, importancia: f.importancia }));
     })
     .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
 
-  const lista = proximas(plan, CUANTAS);
+  // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
+  const lista = proximas(unaPorFuncion(plan), CUANTAS);
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 16px' }}>
@@ -71,7 +79,7 @@ export default async function Semana() {
 
         {lista.map((o) => (
           <article
-            key={`${o.texto}-${o.periodo}`}
+            key={o.funcionId}
             style={{
               display: 'flex',
               alignItems: 'center',
