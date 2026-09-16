@@ -45,7 +45,10 @@ function periodicidadDe(texto: string, ponderacion: number): string {
   // una tarea de todos los dias.
   if (ponderacion >= 20) return 'mensual';
   if (ponderacion >= 10) return 'semanal';
-  return 'mensual';
+  // Las pequeñas se reparten de forma estable. Si todas fueran mensuales no
+  // venceria nada entre el 1 y el 30, y media semana saldria vacia.
+  const varianza = [...texto].reduce((t, c) => t + c.charCodeAt(0), 0) % 3;
+  return (['semanal', 'quincenal', 'mensual'] as const)[varianza]!;
 }
 
 // La ponderacion es lo unico real que hay, asi que hace de sombra de la
