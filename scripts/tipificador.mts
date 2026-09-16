@@ -37,7 +37,9 @@ export function tipificadorRemoto({ clave, modelo, url }: Ajustes): Tipificador 
         headers: { authorization: `Bearer ${clave}`, 'content-type': 'application/json' },
         body: JSON.stringify({
           model: modelo,
-          temperature: 0,
+          // ponytail: sin temperature. Cada proveedor tiene sus manias (kimi-k3
+          // solo admite 1) y su valor por defecto sirve: lo que importa es que
+          // el JSON sea valido, y de eso se encarga response_format.
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: INSTRUCCIONES },
