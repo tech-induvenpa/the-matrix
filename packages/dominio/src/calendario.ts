@@ -27,6 +27,14 @@ export class Calendario {
     return f;
   }
 
+  // ponytail: avanza de dia en dia. Con un bloque de colectivas son unas
+  // treinta vueltas, no millones.
+  habilSiguiente(fecha: Fecha): Fecha {
+    let f = fecha;
+    while (!this.esHabil(f)) f = sumarDias(f, 1);
+    return f;
+  }
+
   // Cuantos dias habiles hay despues de 'desde' y hasta 'hasta', inclusive.
   habilesEntre(desde: Fecha, hasta: Fecha): number {
     let dias = 0;

@@ -61,6 +61,19 @@ function tramoDe(periodicidad: Periodicidad, f: Fecha): Tramo {
   }
 }
 
+// El vencimiento se adelanta al habil anterior, pero nunca se sale de su propio
+// periodo: con un bloque largo de colectivas, adelantar sin mas pedia el
+// trabajo de enero el 18 de diciembre, y amontonaba cinco semanas en un dia.
+// Si no cabe hacia atras, se pospone al primer habil del periodo; si el periodo
+// no tiene ni un dia habil, no hay ocurrencia: esa semana nadie trabajo.
+function dentroDelTramo(objetivo: Fecha, tramo: Tramo, calendario: Calendario): Fecha | null {
+  const anterior = calendario.habilAnterior(objetivo);
+  if (anterior >= tramo.inicio) return anterior;
+
+  const siguiente = calendario.habilSiguiente(objetivo);
+  return siguiente <= tramo.fin ? siguiente : null;
+}
+
 function venceEn(tramo: Tramo, funcion: Funcion, calendario: Calendario): Fecha | null {
   if (funcion.periodicidad === 'diaria') {
     return calendario.esHabil(tramo.fin) ? tramo.fin : null;
@@ -68,9 +81,9 @@ function venceEn(tramo: Tramo, funcion: Funcion, calendario: Calendario): Fecha 
   if (funcion.periodicidad === 'mensual' && funcion.diaTope !== undefined) {
     const ultimo = +tramo.fin.slice(8, 10);
     const dia = Math.min(funcion.diaTope, ultimo);
-    return calendario.habilAnterior(`${tramo.fin.slice(0, 7)}-${String(dia).padStart(2, '0')}`);
+    return dentroDelTramo(`${tramo.fin.slice(0, 7)}-${String(dia).padStart(2, '0')}`, tramo, calendario);
   }
-  return calendario.habilAnterior(tramo.fin);
+  return dentroDelTramo(tramo.fin, tramo, calendario);
 }
 
 // ponytail: recorre dia a dia y agrupa por periodo. Son decenas de iteraciones,

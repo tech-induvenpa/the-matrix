@@ -20,3 +20,12 @@ describe('habil anterior', () => {
     expect(calendario.habilAnterior('2026-09-07')).toBe('2026-09-07'); // ya es habil
   });
 });
+
+describe('mirar hacia adelante', () => {
+  it('encuentra el primer dia habil desde una fecha, ella incluida', () => {
+    const calendario = Calendario.con([{ desde: '2026-12-21', hasta: '2027-01-18' }]);
+
+    expect(calendario.habilSiguiente('2027-01-04')).toBe('2027-01-19');
+    expect(calendario.habilSiguiente('2026-12-18')).toBe('2026-12-18');
+  });
+});
