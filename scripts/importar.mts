@@ -10,13 +10,35 @@
 // sale del documento.
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
-import { identidadDe, leerBloques, normalizar, reconciliar } from '@matriz/dominio';
+import { identidadDe, interpretar, leerBloques, normalizar, reconciliar } from '@matriz/dominio';
 import type { FilaDelDocumento, FuncionExistente } from '@matriz/dominio';
 import { credenciales, leerPestana, pestanas } from './hoja.mts';
 
 const argumentos = process.argv.slice(2);
 const confirmar = argumentos.includes('--confirmar');
 const crearEmpleados = argumentos.includes('--crear-empleados');
+const tiposDePrueba = argumentos.includes('--tipos-de-prueba');
+
+const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
+
+// Andamio de demo: el tipo lo propone el agente (CEB-114). Mientras no haya
+// clave, se deduce del texto para poder ver la aplicacion llena. La propuesta
+// pasa por interpretar(), la misma puerta que usara el agente de verdad.
+function propuestaDePrueba(texto: string) {
+  const t = texto.toUpperCase();
+  const tipo = /URGENTES|IMPREVISTO/.test(t)
+    ? 'holgura'
+    : /ASISTENCIA A LA GERENCIA|GESTION ADMINISTRATIVA|LOGISTICA|VALIDACION DE LOS PROCESOS|ESTUDIO DE MERCADO/.test(t)
+      ? 'area'
+      : /CUENTAS POR (PAGAR|COBRAR)|CONCILIACI|REGISTRO DE FACTURAS|DIGITALIZAR|SEGUIMIENTO|CONTROL DE|RECEPCION|FACTURACION|TESORERIA|CAJA CHICA|REVISAR|REVISION DE|COMPRAS DE/.test(t)
+        ? 'flujo'
+        : 'entregable';
+
+  // La fecha tope tambien esta escrita en prosa dentro del nombre.
+  const dia = t.match(/(?:ANTES DEL|FECHA TOPE(?: DE ENTREGA)?|ENTREGA EL)\s*(\d{1,2})/)?.[1];
+
+  return interpretar({ tipo, diaTope: dia ? Number(dia) : undefined, confianza: 0.7 });
+}
 const soloPestanas = argumentos.includes('--pestanas');
 const dondeHoja = argumentos.indexOf('--hoja');
 const pestana = dondeHoja >= 0 ? argumentos[dondeHoja + 1] : undefined;
@@ -110,11 +132,21 @@ const existentes: FuncionExistente[] = (actuales ?? []).map((f) => ({
 }));
 
 const textoDe = new Map((actuales ?? []).map((f) => [f.hash_identidad, f.texto]));
+
+// Una periodicidad que no existe no se corrige a ojo: la fila se queda fuera y
+// se lista, para que se arregle donde se escribio.
+const sinPeriodicidad = filas.filter((f) => !PERIODICIDADES.includes(f.periodicidad ?? ''));
+filas = filas.filter((f) => PERIODICIDADES.includes(f.periodicidad ?? ''));
+
 const { altas, cambios, bajas } = reconciliar(existentes, filas);
 
 console.log(`\nLeídas ${filas.length} funciones de ${Object.keys(porBloque).length} bloques conocidos.`);
 if (bloquesDesconocidos.length) console.log(`  Bloques que no existen en la base: ${bloquesDesconocidos.join(', ')}`);
 if (bloquesAmbiguos.length) console.log(`  Bloques con el nombre repetido, sin importar: ${bloquesAmbiguos.join(', ')}`);
+if (sinPeriodicidad.length) {
+  console.log(`  ${sinPeriodicidad.length} filas sin periodicidad, fuera de la importación:`);
+  for (const f of sinPeriodicidad.slice(0, 8)) console.log(`    ? ${f.nombre}`);
+}
 
 console.log(`\n  ${altas.length} nuevas`);
 for (const f of altas) console.log(`    + ${f.nombre}`);
@@ -136,14 +168,19 @@ if (!confirmar) {
 
 // El tipo lo propone el agente (CEB-114); sin el, la fila queda sin tipo,
 // fuera del plan y a la vista de quien importa.
-const paraInsertar = altas.map((f: FilaDelDocumento) => ({
-  empleado_id: f.empleadoId,
-  hash_identidad: identidadDe(f),
-  texto: f.nombre,
-  ponderacion: f.ponderacion ?? 0,
-  importancia: f.importancia ?? 0,
-  periodicidad: f.periodicidad ?? 'mensual',
-}));
+const paraInsertar = altas.map((f: FilaDelDocumento) => {
+  const propuesta = tiposDePrueba ? propuestaDePrueba(f.nombre) : undefined;
+  return {
+    empleado_id: f.empleadoId,
+    hash_identidad: identidadDe(f),
+    texto: f.nombre,
+    ponderacion: f.ponderacion ?? 0,
+    importancia: f.importancia ?? 0,
+    periodicidad: f.periodicidad!,
+    tipo_generado: propuesta?.acepta ? propuesta.tipo : null,
+    dia_tope_generado: propuesta?.acepta ? (propuesta.diaTope ?? null) : null,
+  };
+});
 
 if (paraInsertar.length) {
   const { error } = await supabase.from('funcion').insert(paraInsertar);
@@ -156,7 +193,7 @@ for (const c of cambios) {
     .update({
       ponderacion: c.fila.ponderacion ?? 0,
       importancia: c.fila.importancia ?? 0,
-      periodicidad: c.fila.periodicidad ?? 'mensual',
+      periodicidad: c.fila.periodicidad!,
     })
     .eq('hash_identidad', c.identidad);
   if (error) throw error;
