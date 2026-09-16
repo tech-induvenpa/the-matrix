@@ -29,9 +29,29 @@ Responde solo el JSON.`;
 
 type Ajustes = { clave: string; modelo: string; url: string };
 
+// Un fallo de red no es una duda del modelo, pero acaba igual: la funcion se
+// queda sin tipo. Dos reintentos cortos separan una cosa de la otra.
+const INTENTOS = 3;
+const espera = (ms: number) => new Promise((sigue) => setTimeout(sigue, ms));
+
 export function tipificadorRemoto({ clave, modelo, url }: Ajustes): Tipificador {
   return {
     async proponer(texto: string): Promise<Propuesta> {
+      let ultimoFallo: unknown;
+
+      for (let intento = 1; intento <= INTENTOS; intento++) {
+        try {
+          return await preguntar(texto);
+        } catch (fallo) {
+          ultimoFallo = fallo;
+          if (intento < INTENTOS) await espera(intento * 500);
+        }
+      }
+      throw ultimoFallo;
+    },
+  };
+
+  async function preguntar(texto: string): Promise<Propuesta> {
       const respuesta = await fetch(`${url}/chat/completions`, {
         method: 'POST',
         headers: { authorization: `Bearer ${clave}`, 'content-type': 'application/json' },
@@ -64,6 +84,5 @@ export function tipificadorRemoto({ clave, modelo, url }: Ajustes): Tipificador 
         diaTope: crudo.diaTope ?? undefined,
         confianza: Number(crudo.confianza ?? 0),
       };
-    },
-  };
+  }
 }
