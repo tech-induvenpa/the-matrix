@@ -47,9 +47,15 @@ function periodicidadDe(texto: string, ponderacion: number): string {
   return 'diaria';
 }
 
-// La ponderacion es lo unico real que hay: se usa como sombra de la importancia.
-const importanciaDe = (ponderacion: number) =>
-  ponderacion >= 25 ? 9 : ponderacion >= 15 ? 8 : ponderacion >= 10 ? 7 : ponderacion >= 5 ? 6 : 4;
+// La ponderacion es lo unico real que hay, asi que hace de sombra de la
+// importancia. Con un poco de varianza estable por el texto: si la importancia
+// fuera una funcion exacta del peso, todo caeria en el mismo cuadrante y la
+// pantalla no mostraria lo que sabe hacer.
+const importanciaDe = (ponderacion: number, texto: string) => {
+  const base = ponderacion >= 25 ? 7 : ponderacion >= 15 ? 6 : ponderacion >= 10 ? 5 : ponderacion >= 5 ? 4 : 3;
+  const varianza = [...texto].reduce((t, c) => t + c.charCodeAt(0), 0) % 4;
+  return Math.min(9, base + varianza);
+};
 
 const celdas: Celda[] = [];
 const resumen: Record<string, number> = {};
@@ -77,7 +83,7 @@ for (const hoja of await pestanas(documentoId, cuenta)) {
     const periodicidad = periodicidadDe(texto, ponderacion);
     resumen[periodicidad] = (resumen[periodicidad] ?? 0) + 1;
 
-    celdas.push({ rango: rango(COL_IMPORTANTE, n), valor: String(importanciaDe(ponderacion)) });
+    celdas.push({ rango: rango(COL_IMPORTANTE, n), valor: String(importanciaDe(ponderacion, texto)) });
     celdas.push({ rango: rango(COL_URGENTE, n), valor: periodicidad });
   }
 }
