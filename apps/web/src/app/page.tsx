@@ -1,73 +1,50 @@
 import {
-  Calendario,
+  avisoDe,
   cuadranteDe,
   emojiDe,
   estadosVigentes,
   importanciaEfectiva,
+  mostrarResueltas,
   ocurrenciasEntre,
   ordenarPlan,
   pendientes,
   proximas,
+  tramosLlenos,
+  TRAMOS,
   unaPorFuncion,
   urgenciaDe,
+  type Aviso,
   type Cuadrante,
-  type Periodicidad,
 } from '@matriz/dominio';
-import { clienteDelServidor } from '@/lib/supabase/servidor';
+import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '@/lib/datos';
 import { cambiarEstadoFlujo, marcarHecho, marcarNoPude } from './acciones';
-
-type FilaFuncion = {
-  id: string;
-  texto: string;
-  importancia: number;
-  ponderacion: number;
-  periodicidad: Periodicidad;
-  tipo_generado: string | null;
-  tipo_corregido: string | null;
-  dia_tope_generado: number | null;
-  dia_tope_corregido: number | null;
-  fecha_alta: string;
-};
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
 const CUANTAS = 5;
 
+// ponytail: lo vencido sin marcar se rescata solo diez dias hacia atras. Mas
+// atras no se arrastra: eso lo recoge el cierre del mes, no la lista del dia.
+const RESCATE = 10;
+
 export default async function Semana() {
-  const supabase = await clienteDelServidor();
-  const hoy = new Date().toISOString().slice(0, 10);
-  const hasta = new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10);
+  const { hoy, calendario, funciones, marcas, eventos } = await panorama();
 
-  // La seguridad por fila filtra por empleado: aqui no se filtra a mano.
-  const [{ data: funciones }, { data: noHabiles }, { data: marcas }, { data: eventos }] =
-    await Promise.all([
-      supabase
-        .from('funcion')
-        .select(
-          'id, texto, importancia, ponderacion, periodicidad, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido, fecha_alta',
-        )
-        .eq('activa', true),
-      supabase.from('dia_no_habil').select('desde, hasta'),
-      supabase.from('marca').select('funcion_id, periodo'),
-      supabase.from('evento_flujo').select('funcion_id, estado, razon, en'),
-    ]);
+  const desde = sumarDias(hoy, -RESCATE);
+  const hasta = sumarDias(hoy, 120);
+  const lunes = lunesDe(hoy);
+  const domingo = sumarDias(lunes, 6);
 
-  const calendario = Calendario.con(noHabiles ?? []);
-  const todas = (funciones ?? []) as FilaFuncion[];
-  const tipoDe = (f: FilaFuncion) => f.tipo_corregido ?? f.tipo_generado;
-  const cerradas = (marcas ?? []).map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
+  const cerradas = marcas.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
+  const resultadoDe = new Map(marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m.resultado]));
 
-  const ocurrencias = todas
+  const ocurrencias = funciones
     .filter((f) => tipoDe(f) === 'entregable')
     .flatMap((f) =>
       ocurrenciasEntre(
-        {
-          periodicidad: f.periodicidad,
-          diaTope: f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined,
-          fechaAlta: f.fecha_alta,
-        },
+        { periodicidad: f.periodicidad, diaTope: diaTopeDe(f), fechaAlta: f.fecha_alta },
         calendario,
-        hoy,
+        desde,
         hasta,
       ).map((o) => ({
         ...o,
@@ -80,9 +57,11 @@ export default async function Semana() {
     )
     .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
 
+  const abiertas = pendientes(ocurrencias, cerradas);
+
   // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
   const plan = ordenarPlan(
-    proximas(unaPorFuncion(pendientes(ocurrencias, cerradas)), CUANTAS).map((o) => {
+    proximas(unaPorFuncion(abiertas), CUANTAS).map((o) => {
       const urgencia = urgenciaDe(o.faltan);
       const efectiva = importanciaEfectiva(o.importancia, o.faltan, o.periodicidad);
       return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva) };
@@ -91,7 +70,7 @@ export default async function Semana() {
 
   const vigentes = new Map(
     estadosVigentes(
-      (eventos ?? []).map((e) => ({
+      eventos.map((e) => ({
         funcionId: e.funcion_id,
         estado: e.estado as 'al_dia' | 'atrasado',
         razon: e.razon ?? undefined,
@@ -100,13 +79,57 @@ export default async function Semana() {
     ).map((e) => [e.funcionId, e]),
   );
 
-  const flujos = todas
+  const flujos = funciones
     .filter((f) => tipoDe(f) === 'flujo')
     .map((f) => ({ ...f, vigente: vigentes.get(f.id) }))
     .sort((a, b) => b.importancia - a.importancia);
 
+  // --- La semana: cuanto vencia, cuanto quedo cerrado, que hay que avisar ---
+  const deLaSemana = ocurrencias.filter((o) => o.vence >= lunes && o.vence <= domingo);
+  const abiertasDeLaSemana = new Set(
+    pendientes(deLaSemana, cerradas).map((o) => `${o.funcionId}|${o.periodo}`),
+  );
+  const cerradasDeLaSemana = deLaSemana.filter(
+    (o) => !abiertasDeLaSemana.has(`${o.funcionId}|${o.periodo}`),
+  );
+
+  const noHabilesDeLaSemana = diasDelRango(hoy, domingo).filter(
+    (d) => !esFinDeSemana(d) && !calendario.esHabil(d),
+  ).length;
+
+  const aviso = avisoDe({
+    noHabilesEnLaVentana: noHabilesDeLaSemana,
+    venceHoyOManana: plan.some((o) => o.faltan <= 1),
+    diasDelFlujoMasAtrasado: Math.max(
+      0,
+      ...flujos
+        .filter((f) => f.vigente?.estado === 'atrasado')
+        .map((f) => calendario.habilesEntre(f.vigente!.en.slice(0, 10), hoy)),
+    ),
+    hayAtrasoSinConstancia: abiertas.some((o) => o.vence < hoy),
+  });
+
+  const llenos = tramosLlenos(cerradasDeLaSemana.length, deLaSemana.length);
+
   return (
-    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 16px' }}>
+    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '20px 16px 32px' }}>
+      <section style={{ ...BANNER, ...(aviso.registro === 'alerta' ? BANNER_ALERTA : BANNER_TRANQUILO) }}>
+        <Arco llenos={llenos} />
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 600, lineHeight: 1.25 }}>
+            {titular(aviso, {
+              noHabiles: noHabilesDeLaSemana,
+              vencidas: abiertas.filter((o) => o.vence < hoy).length,
+            })}
+          </p>
+          <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--gris)' }}>
+            {deLaSemana.length === 0
+              ? 'Esta semana no vence nada tuyo. Abajo está lo que viene.'
+              : `${cerradasDeLaSemana.length} de ${deLaSemana.length} de esta semana.`}
+          </p>
+        </div>
+      </section>
+
       <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}>
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
           <div>
@@ -162,6 +185,28 @@ export default async function Semana() {
               </span>
             </article>
           ))}
+
+          {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
+          {mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) && (
+            <div style={{ marginTop: 6 }}>
+              <h2 style={{ fontSize: 14, color: 'var(--gris)', margin: '0 0 8px', fontWeight: 600 }}>
+                Ya resueltas esta semana
+              </h2>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {cerradasDeLaSemana.map((o) => {
+                  const pudo = resultadoDe.get(`${o.funcionId}|${o.periodo}`) === 'hecho';
+                  return (
+                    <li key={`${o.funcionId}|${o.periodo}`} style={RESUELTA}>
+                      <span style={{ opacity: 0.7 }}>{pudo ? '✓' : '✕'}</span>
+                      <span style={{ textDecoration: pudo ? 'line-through' : 'none', opacity: 0.8 }}>
+                        {o.texto}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </section>
 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
@@ -241,6 +286,79 @@ export default async function Semana() {
     </main>
   );
 }
+
+function diasDelRango(desde: string, hasta: string): string[] {
+  const dias: string[] = [];
+  for (let d = desde; d <= hasta; d = sumarDias(d, 1)) dias.push(d);
+  return dias;
+}
+
+// El banner siempre dice algo; el color se reserva para lo excepcional.
+function titular(aviso: Aviso, datos: { noHabiles: number; vencidas: number }): string {
+  switch (aviso.clave) {
+    case 'dias_no_habiles':
+      return datos.noHabiles === 1
+        ? 'Esta semana hay un día no laborable: tus fechas ya están corridas.'
+        : `Esta semana hay ${datos.noHabiles} días no laborables: tus fechas ya están corridas.`;
+    case 'vence_pronto':
+      return 'Tienes algo que vence hoy o mañana.';
+    case 'flujo_atrasado':
+      return 'Un flujo lleva días esperando. Cuando lo retomes, avísanos.';
+    case 'recordatorio':
+      return datos.vencidas === 1
+        ? 'Quedó una sin marcar. Ciérrala cuando puedas.'
+        : `Quedaron ${datos.vencidas} sin marcar. Ciérralas cuando puedas.`;
+    case 'avance':
+      return 'Vas al día.';
+  }
+}
+
+// Veinte tramos fijos: es progreso, no un contador.
+function Arco({ llenos }: { llenos: number }) {
+  const r = 52;
+  const cx = 60;
+  const cy = 58;
+  const punto = (grados: number) => {
+    const a = (grados * Math.PI) / 180;
+    return `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  };
+
+  return (
+    <svg viewBox="0 0 120 68" width={108} height={61} aria-hidden style={{ flexShrink: 0 }}>
+      {Array.from({ length: TRAMOS }, (_, i) => (
+        <path
+          key={i}
+          d={`M ${punto(180 + i * 9 + 1)} A ${r} ${r} 0 0 1 ${punto(180 + i * 9 + 8)}`}
+          stroke={i < llenos ? '#1b6e8c' : 'rgba(26,23,19,0.12)'}
+          strokeWidth={8}
+          strokeLinecap="round"
+          fill="none"
+        />
+      ))}
+    </svg>
+  );
+}
+
+const BANNER = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 18,
+  borderRadius: 24,
+  padding: '14px 20px',
+  marginBottom: 24,
+} as const;
+
+const BANNER_ALERTA = { background: '#fdf0e6', color: 'var(--tinta)' } as const;
+const BANNER_TRANQUILO = { background: 'var(--suave)', color: 'var(--tinta)' } as const;
+
+const RESUELTA = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: 15,
+  color: 'var(--gris)',
+  padding: '2px 4px',
+} as const;
 
 const TARJETA = {
   display: 'flex',
