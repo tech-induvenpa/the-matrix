@@ -2,10 +2,11 @@
 // mas, tildes puestas a veces y mayusculas a capricho. Todo eso se normaliza
 // antes de decidir si dos filas son la misma funcion.
 export type FilaDelDocumento = {
-  empleado: string;
+  empleadoId: string;
   nombre: string;
   periodicidad?: string;
   ponderacion?: number;
+  importancia?: number;
   diaTope?: number;
 };
 
@@ -15,6 +16,7 @@ export function normalizar(texto: string): string {
     .replace(/[̀-ͯ]/g, '')
     .trim()
     .replace(/\s+/g, ' ')
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
     .toUpperCase();
 }
 
@@ -29,13 +31,20 @@ function huella(texto: string): string {
   return h.toString(16).padStart(8, '0');
 }
 
-// La identidad sale del empleado y del nombre, no de la posicion en la hoja:
-// insertar una fila arriba no puede reescribir el historial de nadie.
-export function identidadDe(fila: Pick<FilaDelDocumento, 'empleado' | 'nombre'>): string {
-  return huella(`${normalizar(fila.empleado)}|${normalizar(fila.nombre)}`);
+// La identidad sale del id del empleado y del texto, no de la posicion en la
+// hoja ni del nombre de la persona: insertar una fila arriba no reescribe el
+// historial de nadie, y dos Marias distintas nunca se mezclan.
+export function identidadDe(fila: Pick<FilaDelDocumento, 'empleadoId' | 'nombre'>): string {
+  return huella(`${fila.empleadoId}|${normalizar(fila.nombre)}`);
 }
 
-export type FuncionExistente = { identidad: string; periodicidad?: string; ponderacion?: number; diaTope?: number };
+export type FuncionExistente = {
+  identidad: string;
+  periodicidad?: string;
+  ponderacion?: number;
+  importancia?: number;
+  diaTope?: number;
+};
 
 export type Cambio = { identidad: string; fila: FilaDelDocumento; antes: FuncionExistente };
 
@@ -46,7 +55,10 @@ export type Reconciliacion = {
 };
 
 const MISMOS_DATOS = (a: FuncionExistente, b: FilaDelDocumento) =>
-  a.periodicidad === b.periodicidad && a.ponderacion === b.ponderacion && a.diaTope === b.diaTope;
+  a.periodicidad === b.periodicidad &&
+  a.ponderacion === b.ponderacion &&
+  a.importancia === b.importancia &&
+  a.diaTope === b.diaTope;
 
 export function reconciliar(
   existentes: readonly FuncionExistente[],

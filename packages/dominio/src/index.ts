@@ -24,3 +24,5 @@ export { interpretar } from './tipificacion';
 export type { Motivo, Propuesta, Tipificador, Veredicto } from './tipificacion';
 export { razonesParaElDocumento } from './razones';
 export type { EventoConRazon, LibretaDeRazones, MarcaConRazon, RazonEnElDocumento } from './razones';
+export { leerBloques } from './cuadricula';
+export type { Cuadricula, Lectura } from './cuadricula';

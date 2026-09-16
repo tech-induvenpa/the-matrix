@@ -1,5 +1,6 @@
 import {
   avisoDe,
+  coberturaDe,
   cuadranteDe,
   emojiDe,
   estadosVigentes,
@@ -28,7 +29,8 @@ const CUANTAS = 5;
 const RESCATE = 10;
 
 export default async function Semana() {
-  const { hoy, calendario, funciones, marcas, eventos } = await panorama();
+  const { hoy, calendario, cargadoHasta, funciones, marcas, eventos } = await panorama();
+  const cobertura = coberturaDe(calendario, hoy, cargadoHasta);
 
   const desde = sumarDias(hoy, -RESCATE);
   const hasta = sumarDias(hoy, 120);
@@ -98,6 +100,7 @@ export default async function Semana() {
   ).length;
 
   const aviso = avisoDe({
+    sinCobertura: cobertura.estado === 'sin_cobertura',
     noHabilesEnLaVentana: noHabilesDeLaSemana,
     venceHoyOManana: plan.some((o) => o.faltan <= 1),
     diasDelFlujoMasAtrasado: Math.max(
@@ -296,6 +299,8 @@ function diasDelRango(desde: string, hasta: string): string[] {
 // El banner siempre dice algo; el color se reserva para lo excepcional.
 function titular(aviso: Aviso, datos: { noHabiles: number; vencidas: number }): string {
   switch (aviso.clave) {
+    case 'sin_cobertura':
+      return 'Faltan feriados por cargar: avísale a JFS antes de fiarte de estas fechas.';
     case 'dias_no_habiles':
       return datos.noHabiles === 1
         ? 'Esta semana hay un día no laborable: tus fechas ya están corridas.'

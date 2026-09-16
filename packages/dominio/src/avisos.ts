@@ -3,6 +3,7 @@
 export type Registro = 'alerta' | 'tranquilo';
 
 export type ClaveDeAviso =
+  | 'sin_cobertura'
   | 'dias_no_habiles'
   | 'vence_pronto'
   | 'flujo_atrasado'
@@ -12,6 +13,7 @@ export type ClaveDeAviso =
 export type Aviso = { clave: ClaveDeAviso; registro: Registro };
 
 export type EstadoDeLaSemana = {
+  sinCobertura: boolean;
   noHabilesEnLaVentana: number;
   venceHoyOManana: boolean;
   diasDelFlujoMasAtrasado: number;
@@ -22,6 +24,7 @@ export type EstadoDeLaSemana = {
 export const UMBRAL_DE_ATRASO = 3;
 
 export function avisoDe(estado: EstadoDeLaSemana, umbral = UMBRAL_DE_ATRASO): Aviso {
+  if (estado.sinCobertura) return { clave: 'sin_cobertura', registro: 'alerta' };
   if (estado.noHabilesEnLaVentana > 0) return { clave: 'dias_no_habiles', registro: 'alerta' };
   if (estado.venceHoyOManana) return { clave: 'vence_pronto', registro: 'alerta' };
   if (estado.diasDelFlujoMasAtrasado >= umbral) return { clave: 'flujo_atrasado', registro: 'alerta' };

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { avisoDe, mostrarResueltas, tramosLlenos } from '../src/avisos';
 
 const nada = {
+  sinCobertura: false,
   noHabilesEnLaVentana: 0,
   venceHoyOManana: false,
   diasDelFlujoMasAtrasado: 0,
@@ -10,6 +11,9 @@ const nada = {
 
 describe('el banner dice lo mas relevante', () => {
   it('elige la primera condicion que se cumple, en orden', () => {
+    // Sin calendario cargado las fechas de abajo pueden estar corridas: eso
+    // gana a cualquier otra cosa, porque pone en duda todo lo demas.
+    expect(avisoDe({ ...nada, sinCobertura: true, noHabilesEnLaVentana: 1 }).clave).toBe('sin_cobertura');
     expect(avisoDe({ ...nada, noHabilesEnLaVentana: 1, venceHoyOManana: true }).clave).toBe('dias_no_habiles');
     expect(avisoDe({ ...nada, venceHoyOManana: true, diasDelFlujoMasAtrasado: 9 }).clave).toBe('vence_pronto');
     expect(avisoDe({ ...nada, diasDelFlujoMasAtrasado: 4, hayAtrasoSinConstancia: true }).clave).toBe('flujo_atrasado');

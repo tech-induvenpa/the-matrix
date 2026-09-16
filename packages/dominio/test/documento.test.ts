@@ -6,34 +6,39 @@ describe('lo que se escribe a mano en el documento', () => {
     expect(normalizar('  Nómina   QUINCENAL ')).toBe('NOMINA QUINCENAL');
   });
 
+  it('la puntuacion de los bordes no distingue nada', () => {
+    expect(normalizar('¡Nómina, quincenal!')).toBe('NOMINA, QUINCENAL');
+    expect(normalizar('(Cierre financiero) ')).toBe('CIERRE FINANCIERO');
+  });
+
   it('la misma funcion escrita distinto sigue siendo la misma', () => {
-    const a = identidadDe({ empleado: 'ana@jfs.com', nombre: 'Nómina  quincenal' });
-    const b = identidadDe({ empleado: 'ANA@jfs.com', nombre: 'Nomina quincenal ' });
+    const a = identidadDe({ empleadoId: 'e-ana', nombre: 'Nómina  quincenal' });
+    const b = identidadDe({ empleadoId: 'e-ana', nombre: 'Nomina quincenal ' });
     expect(a).toBe(b);
   });
 
-  it('la de otro empleado nunca coincide, aunque la funcion se llame igual', () => {
-    expect(identidadDe({ empleado: 'ana@jfs.com', nombre: 'Nómina' })).not.toBe(
-      identidadDe({ empleado: 'luis@jfs.com', nombre: 'Nómina' }),
+  it('dos empleados distintos con el mismo nombre no se mezclan', () => {
+    expect(identidadDe({ empleadoId: 'e-ana', nombre: 'Nómina' })).not.toBe(
+      identidadDe({ empleadoId: 'e-luis', nombre: 'Nómina' }),
     );
   });
 });
 
 describe('reconciliar el documento con lo que ya existe', () => {
-  const nomina = { empleado: 'ana@jfs.com', nombre: 'Nómina quincenal', periodicidad: 'quincenal', ponderacion: 9 };
-  const cxp = { empleado: 'ana@jfs.com', nombre: 'Cuentas por pagar', periodicidad: 'diaria', ponderacion: 6 };
+  const nomina = { empleadoId: 'e-ana', nombre: 'Nómina quincenal', periodicidad: 'quincenal', ponderacion: 9 };
+  const cxp = { empleadoId: 'e-ana', nombre: 'Cuentas por pagar', periodicidad: 'diaria', ponderacion: 6 };
 
   it('separa lo nuevo, lo que cambio y lo que desaparecio', () => {
     const existentes = [
       { identidad: identidadDe(nomina), periodicidad: 'mensual', ponderacion: 9 },
-      { identidad: identidadDe({ empleado: 'ana@jfs.com', nombre: 'Archivo' }), periodicidad: 'diaria', ponderacion: 2 },
+      { identidad: identidadDe({ empleadoId: 'e-ana', nombre: 'Archivo' }), periodicidad: 'diaria', ponderacion: 2 },
     ];
 
     const cambio = reconciliar(existentes, [nomina, cxp]);
 
     expect(cambio.altas.map((f) => f.nombre)).toEqual(['Cuentas por pagar']);
     expect(cambio.cambios.map((c) => c.fila.nombre)).toEqual(['Nómina quincenal']);
-    expect(cambio.bajas).toEqual([identidadDe({ empleado: 'ana@jfs.com', nombre: 'Archivo' })]);
+    expect(cambio.bajas).toEqual([identidadDe({ empleadoId: 'e-ana', nombre: 'Archivo' })]);
   });
 
   it('una fila identica no toca nada: importar dos veces no cambia nada', () => {

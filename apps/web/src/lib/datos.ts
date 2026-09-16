@@ -43,8 +43,13 @@ export const esFinDeSemana = (fecha: string) => {
 export async function panorama() {
   const supabase = await clienteDelServidor();
 
-  const [{ data: funciones }, { data: noHabiles }, { data: marcas }, { data: eventos }] =
-    await Promise.all([
+  const [
+    { data: funciones },
+    { data: noHabiles },
+    { data: marcas },
+    { data: eventos },
+    { data: calendario },
+  ] = await Promise.all([
       supabase
         .from('funcion')
         .select(
@@ -54,11 +59,14 @@ export async function panorama() {
       supabase.from('dia_no_habil').select('desde, hasta'),
       supabase.from('marca').select('funcion_id, periodo, resultado, razon'),
       supabase.from('evento_flujo').select('funcion_id, estado, razon, en'),
+      supabase.from('calendario').select('cargado_hasta').maybeSingle(),
     ]);
 
   return {
     hoy: hoyISO(),
     calendario: Calendario.con(noHabiles ?? []),
+    // Sin fila de cobertura, el calendario no cubre nada: fallar cerrado.
+    cargadoHasta: (calendario?.cargado_hasta as string | undefined) ?? hoyISO(),
     funciones: (funciones ?? []) as FilaFuncion[],
     marcas: (marcas ?? []) as FilaMarca[],
     eventos: (eventos ?? []) as FilaEvento[],

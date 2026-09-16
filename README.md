@@ -57,3 +57,33 @@ Las cinco periodicidades y el orden del plan (CEB-109), marcar (CEB-108), los fl
 (CEB-110), importar el documento (CEB-111) y la prueba de los doce invariantes
 (CEB-118). Hasta entonces los datos se siembran a mano y solo se muestran funciones
 mensuales de tipo entregable.
+
+## Importar el documento
+
+El documento de JFS es el formulario de entrada, no la base de datos (ADR 0001).
+Se importa a mano, cuando alguien lo pide:
+
+```bash
+# Exporta la hoja de funciones como TSV, con sus bloques tal cual.
+pnpm importar funciones.tsv              # muestra los cambios, no guarda nada
+pnpm importar funciones.tsv --confirmar  # los aplica
+```
+
+Lo que hace y lo que no:
+
+- Lee bloques con celdas combinadas: el nombre del empleado es la fila
+  combinada encima de cada encabezado `INDICADORES`. El bloque plantilla, sin
+  nombre encima, se descarta; la fila de totales se salta sola.
+- `MONTO`, `ASIGNACION` y `CLASIFICACION` **no se importan**: el sueldo nunca
+  sale del documento.
+- Un bloque que no existe en `empleado` no crea a nadie: se lista y se deja.
+- Dos bloques con el mismo nombre no se importan: no se sabe de quién son.
+- Lo que desaparece del documento se archiva (`activa = false`), nunca se borra:
+  sus marcas siguen siendo ciertas.
+- Un renombre se ve como un alta y una baja. Lo confirma una persona.
+- El tipo y el día tope los propone el agente (CEB-114). Sin él, la fila entra
+  sin tipo: queda fuera del plan y a la vista de quien importa.
+
+Necesita `SUPABASE_SERVICE_ROLE_KEY` en `apps/web/.env.local`. Ese rol se salta
+la seguridad por fila, así que solo corre aquí, a mano, nunca desde el servidor
+web.
