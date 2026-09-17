@@ -1,5 +1,7 @@
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { Enviar } from '../boton';
 
 // Sin contraseñas: llega un enlace al correo. Quien no este dado de alta no
 // recibe nada, porque el registro publico esta deshabilitado (ADR 0004).
@@ -16,15 +18,39 @@ async function pedirEnlace(formulario: FormData) {
     email: correo,
     options: { shouldCreateUser: false, emailRedirectTo: `${origen}/auth/confirmar` },
   });
+
+  // Sin esto la pagina se quedaba igual y nadie sabia si el enlace habia salido.
+  redirect('/entrar?enviado=1');
 }
 
-export default function Entrar() {
+export default async function Entrar({ searchParams }: { searchParams: Promise<{ enviado?: string }> }) {
+  const { enviado } = await searchParams;
+
   return (
     <main style={{ maxWidth: 380, margin: '0 auto', padding: '64px 20px' }}>
       <h1 style={{ fontSize: 26, letterSpacing: '-0.02em' }}>Tu semana, en un enlace</h1>
       <p style={{ color: 'var(--gris)', fontSize: 15, lineHeight: 1.5 }}>
         Escribe tu correo y te mandamos el acceso. No hay contraseña que recordar.
       </p>
+
+      {/* No dice si el correo existe: eso le contaria a cualquiera quien trabaja aqui. */}
+      {enviado && (
+        <p
+          role="status"
+          style={{
+            background: 'var(--suave)',
+            borderRadius: 16,
+            padding: '12px 16px',
+            fontSize: 15,
+            lineHeight: 1.45,
+            margin: '0 0 16px',
+          }}
+        >
+          <strong>Listo.</strong> Si tu correo está dado de alta, el enlace ya va en camino. Revisa también la
+          carpeta de spam.
+        </p>
+      )}
+
       <form action={pedirEnlace} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <input
           id="correo"
@@ -40,9 +66,12 @@ export default function Entrar() {
             fontSize: 15,
           }}
         />
-        <button
-          type="submit"
+        <Enviar
+          enviando="Enviando…"
           style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             height: 48,
             borderRadius: 999,
             background: 'var(--tinta)',
@@ -50,12 +79,14 @@ export default function Entrar() {
             fontWeight: 700,
           }}
         >
-          Mándame el enlace
-        </button>
+          {enviado ? 'Mandar otro enlace' : 'Mándame el enlace'}
+        </Enviar>
       </form>
-      <p style={{ color: 'var(--gris)', fontSize: 13, marginTop: 16 }}>
-        Si tu correo está dado de alta, el enlace llega en un minuto.
-      </p>
+      {!enviado && (
+        <p style={{ color: 'var(--gris)', fontSize: 13, marginTop: 16 }}>
+          Si tu correo está dado de alta, el enlace llega en un minuto.
+        </p>
+      )}
     </main>
   );
 }

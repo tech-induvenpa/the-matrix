@@ -20,3 +20,27 @@ body {
 }
 
 button { font: inherit; cursor: pointer; border: none; }
+
+/* El indicador de espera de los botones. */
+.girando {
+  /* Un span es en linea e ignora ancho y alto: sin esto, en un boton que no
+     sea flex el indicador no se veria. */
+  display: inline-block;
+  vertical-align: middle;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: girar 0.7s linear infinite;
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+/* Sin giro para quien lo pidio: el texto "Guardando…" ya dice lo que pasa. */
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation: none; opacity: 0.5; }
+}

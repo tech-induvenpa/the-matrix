@@ -19,6 +19,7 @@ import {
 } from '@matriz/dominio';
 import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '@/lib/datos';
 import { cambiarEstadoFlujo, marcarHecho, marcarNoPude } from './acciones';
+import { Enviar } from './boton';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -170,7 +171,7 @@ export default async function Semana() {
 
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                 <form action={marcarHecho.bind(null, o.funcionId, o.periodo)}>
-                  <button style={BOTON}>¡Hecho!</button>
+                  <Enviar style={BOTON} enviando="Marcando…">¡Hecho!</Enviar>
                 </form>
 
                 <details>
@@ -182,7 +183,7 @@ export default async function Semana() {
                   </summary>
                   <form action={marcarNoPude.bind(null, o.funcionId, o.periodo)} style={DESPLEGABLE}>
                     <input name="razon" required placeholder="¿Qué pasó? JFS lo lee" style={CAMPO} />
-                    <button style={BOTON}>Guardar</button>
+                    <Enviar style={BOTON}>Guardar</Enviar>
                   </form>
                 </details>
               </span>
@@ -263,14 +264,14 @@ export default async function Semana() {
 
                   {atrasado ? (
                     <form action={cambiarEstadoFlujo.bind(null, f.id, 'al_dia')}>
-                      <button style={BOTON}>Ya me puse al día</button>
+                      <Enviar style={BOTON}>Ya me puse al día</Enviar>
                     </form>
                   ) : (
                     <details>
                       <summary style={{ ...BOTON, listStyle: 'none' }}>Me atrasé</summary>
                       <form action={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')} style={DESPLEGABLE}>
                         <input name="razon" required placeholder="¿Qué te frenó? JFS lo lee" style={CAMPO} />
-                        <button style={BOTON}>Guardar</button>
+                        <Enviar style={BOTON}>Guardar</Enviar>
                       </form>
                     </details>
                   )}
