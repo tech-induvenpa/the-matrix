@@ -190,3 +190,10 @@ _Avoid_: problema, falla (senalan a la persona).
 - La columna `CLASIFICACION` del Excel (`IMPORTANTE` / `URGENTE`) es el modelo
   binario anterior y contradice a los dos ejes numericos. Resuelto: la importacion
   la ignora; que JFS la borre o no, no cambia nada.
+- El documento tiene una hoja por area y una importacion lee una sola hoja.
+  Resuelto: **una hoja solo da de baja lo de sus empleados**. Comparar contra
+  todas las funciones activas archivaba el trabajo de las demas areas.
+- El dia tope no esta en el documento: va escrito en prosa dentro del nombre y lo
+  deduce el agente. Resuelto: **la reconciliacion solo compara lo que JFS escribe
+  en la hoja**; lo que el documento no trae no puede marcar una fila como
+  cambiada.
