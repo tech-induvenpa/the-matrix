@@ -44,3 +44,19 @@ export function tramosLlenos(cerradas: number, asignadas: number, tramos = TRAMO
 export function mostrarResueltas(atendidas: number, meta: number): boolean {
   return meta > 0 && atendidas * 2 >= meta;
 }
+
+// Como se siente el mes avanzando. La pantalla pone las palabras; aqui solo
+// esta el corte de cada etapa.
+export type Etapa = 'arranque' | 'hielo' | 'ritmo' | 'mitad' | 'casi' | 'completo';
+
+export function etapaDe(cerradas: number, asignadas: number): Etapa {
+  // Cero de cero daria 100%: celebrar ahi es celebrar la nada.
+  if (asignadas <= 0 || cerradas <= 0) return 'arranque';
+
+  const parte = cerradas / asignadas;
+  if (parte >= 1) return 'completo';
+  if (parte >= 0.8) return 'casi';
+  if (parte >= 0.5) return 'mitad';
+  if (parte >= 1 / 3) return 'ritmo';
+  return 'hielo';
+}

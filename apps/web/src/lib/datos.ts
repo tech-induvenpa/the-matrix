@@ -49,6 +49,7 @@ export async function panorama() {
     { data: marcas },
     { data: eventos },
     { data: calendario },
+    { data: empleado },
   ] = await Promise.all([
       supabase
         .from('funcion')
@@ -60,10 +61,16 @@ export async function panorama() {
       supabase.from('marca').select('funcion_id, periodo, resultado, razon'),
       supabase.from('evento_flujo').select('funcion_id, estado, razon, en'),
       supabase.from('calendario').select('cargado_hasta').maybeSingle(),
+      supabase.from('empleado').select('nombre_bloque').maybeSingle(),
     ]);
+
+  // La seguridad por fila hace que solo llegue el suyo.
+  const nombreBloque = (empleado?.nombre_bloque as string | undefined) ?? '';
 
   return {
     hoy: hoyISO(),
+    // "DOUGLENIS" es como esta en el documento; saludar asi es gritar.
+    nombre: nombreBloque.split(' ')[0]?.toLowerCase().replace(/^./, (l) => l.toUpperCase()) ?? '',
     calendario: Calendario.con(noHabiles ?? []),
     // Sin fila de cobertura, el calendario no cubre nada: fallar cerrado.
     cargadoHasta: (calendario?.cargado_hasta as string | undefined) ?? hoyISO(),

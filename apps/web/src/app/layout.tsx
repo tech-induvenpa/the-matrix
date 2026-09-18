@@ -30,6 +30,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <Link href="/mes" style={{ color: 'var(--gris)', textDecoration: 'none' }}>
             El mes
           </Link>
+          <Link href="/cierre" style={{ color: 'var(--gris)', textDecoration: 'none' }}>
+            El cierre
+          </Link>
         </nav>
         {children}
         <Avisos />

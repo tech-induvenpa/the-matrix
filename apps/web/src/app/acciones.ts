@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { proyectarRazones } from '@/lib/razones';
@@ -82,4 +83,21 @@ export async function cambiarEstadoFlujo(
   return estado === 'al_dia'
     ? { mensaje: '¡Al día otra vez! Se nota.', celebra: true }
     : { mensaje: 'Anotado. Avisar a tiempo también cuenta.', celebra: false };
+}
+
+// Deshacer borra la marca: la ocurrencia vuelve a estar pendiente. La
+// seguridad por fila ya decide que solo se puede deshacer lo propio.
+export async function deshacerMarca(funcionId: string, periodo: string): Promise<Aviso> {
+  const supabase = await clienteDelServidor();
+  await supabase.from('marca').delete().eq('funcion_id', funcionId).eq('periodo', periodo);
+  revalidatePath('/');
+  llevarRazonesAlDocumento();
+
+  return { mensaje: 'Deshecho. Vuelve a tu lista.', celebra: false };
+}
+
+export async function salir() {
+  const supabase = await clienteDelServidor();
+  await supabase.auth.signOut();
+  redirect('/entrar');
 }

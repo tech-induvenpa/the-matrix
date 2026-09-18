@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avisoDe, mostrarResueltas, tramosLlenos } from '../src/avisos';
+import { avisoDe, etapaDe, mostrarResueltas, tramosLlenos } from '../src/avisos';
 
 const nada = {
   sinCobertura: false,
@@ -49,5 +49,21 @@ describe('lo ya resuelto', () => {
     expect(mostrarResueltas(1, 4)).toBe(false);
     expect(mostrarResueltas(2, 4)).toBe(true);
     expect(mostrarResueltas(0, 0)).toBe(false);
+  });
+});
+
+describe('la etapa del mes', () => {
+  it('va del arranque al mes completo, y no se salta ninguna', () => {
+    expect(etapaDe(0, 20)).toBe('arranque');
+    expect(etapaDe(1, 20)).toBe('hielo');
+    expect(etapaDe(7, 20)).toBe('ritmo');
+    expect(etapaDe(12, 20)).toBe('mitad');
+    expect(etapaDe(17, 20)).toBe('casi');
+    expect(etapaDe(20, 20)).toBe('completo');
+  });
+
+  it('sin nada asignado es arranque, no mes completo', () => {
+    // Cero de cero seria 100%: celebrar ahi es celebrar la nada.
+    expect(etapaDe(0, 0)).toBe('arranque');
   });
 });
