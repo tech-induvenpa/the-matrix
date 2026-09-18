@@ -26,3 +26,5 @@ export { razonesParaElDocumento } from './razones';
 export type { EventoConRazon, LibretaDeRazones, MarcaConRazon, RazonEnElDocumento } from './razones';
 export { leerBloques } from './cuadricula';
 export type { Cuadricula, Lectura } from './cuadricula';
+export { diasSeguidosCerrando } from './racha';
+export type { DiaDeTrabajo } from './racha';

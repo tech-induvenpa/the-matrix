@@ -58,3 +58,17 @@ button { font: inherit; cursor: pointer; border: none; }
 @media (prefers-reduced-motion: reduce) {
   .asomando { animation: none; }
 }
+
+/* El cierre de la semana baja desde arriba, una sola vez. */
+.bajando {
+  animation: bajar 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes bajar {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bajando { animation: none; }
+}

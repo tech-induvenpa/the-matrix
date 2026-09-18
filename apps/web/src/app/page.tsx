@@ -3,6 +3,7 @@ import {
   avisoDe,
   coberturaDe,
   cuadranteDe,
+  diasSeguidosCerrando,
   emojiDe,
   estadosVigentes,
   etapaDe,
@@ -24,6 +25,7 @@ import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '
 import { cambiarEstadoFlujo, deshacerMarca, marcarHecho, marcarNoPude, salir } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
+import { Adelantar, CierreDeSemana } from './celebracion';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -69,12 +71,18 @@ export default async function Semana() {
   const abiertas = pendientes(ocurrencias, cerradas);
 
   // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
-  const plan = ordenarPlan(
-    seleccionarPlan(unaPorFuncion(abiertas), CUANTAS).map((o) => {
-      const urgencia = urgenciaDe(o.faltan);
-      const efectiva = importanciaEfectiva(o.importancia, o.faltan, o.periodicidad);
-      return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva) };
-    }),
+  const conCuadrante = (o: (typeof ocurrencias)[number]) => {
+    const urgencia = urgenciaDe(o.faltan);
+    const efectiva = importanciaEfectiva(o.importancia, o.faltan, o.periodicidad);
+    return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva) };
+  };
+
+  const elegidas = seleccionarPlan(unaPorFuncion(abiertas), CUANTAS);
+  const plan = ordenarPlan(elegidas.map(conCuadrante));
+
+  // Lo que viene despues, por si alguien quiere adelantar trabajo.
+  const siguientes = ordenarPlan(
+    seleccionarPlan(unaPorFuncion(abiertas), CUANTAS * 2).slice(CUANTAS).map(conCuadrante),
   );
 
   const vigentes = new Map(
@@ -103,6 +111,22 @@ export default async function Semana() {
   const deLaSemana = ocurrencias.filter((o) => o.vence >= lunes && o.vence <= domingo);
   const abiertasDeLaSemana = new Set(pendientes(deLaSemana, cerradas).map((o) => `${o.funcionId}|${o.periodo}`));
   const cerradasDeLaSemana = deLaSemana.filter((o) => !abiertasDeLaSemana.has(`${o.funcionId}|${o.periodo}`));
+
+  // La meta de la semana: todo lo que vencia entre lunes y domingo, cerrado.
+  const metaCumplida = deLaSemana.length > 0 && abiertasDeLaSemana.size === 0;
+
+  // Dias habiles seguidos, hacia atras, con todo lo que vencia cerrado.
+  const cerradaLaOcurrencia = (o: { funcionId: string; periodo: string }) =>
+    !abiertasDelMes.has(`${o.funcionId}|${o.periodo}`);
+
+  const racha = diasSeguidosCerrando(
+    diasDelRango(sumarDias(hoy, -40), hoy)
+      .filter((d) => calendario.esHabil(d))
+      .map((fecha) => {
+        const delDia = ocurrencias.filter((o) => o.vence === fecha);
+        return { fecha, total: delDia.length, cerradas: delDia.filter(cerradaLaOcurrencia).length };
+      }),
+  );
 
   const noHabilesDeLaSemana = diasDelRango(hoy, domingo).filter(
     (d) => !esFinDeSemana(d) && !calendario.esHabil(d),
@@ -145,9 +169,12 @@ export default async function Semana() {
     solaEnLaSemana: abiertasDeLaSemana.size === 1,
   });
 
-  return (
-    <main style={{ display: 'flex', flexDirection: 'column', maxWidth: 1440, margin: '0 auto' }}>
-      <div style={{ display: 'flex', gap: 11, padding: '11px 11px 0', flexWrap: 'wrap' }}>
+  const diaDeHoy = new Intl.DateTimeFormat('es', { weekday: 'long', timeZone: 'UTC' }).format(
+    new Date(`${hoy}T00:00:00Z`),
+  );
+
+  const cabecera = (
+    <div style={{ display: 'flex', gap: 11, padding: '11px 11px 0', flexWrap: 'wrap' }}>
         <section style={PANEL}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>¡Buenos días, {nombre}! 👋</h1>
@@ -197,7 +224,19 @@ export default async function Semana() {
             {nota}
           </p>
         </section>
-      </div>
+    </div>
+  );
+
+  return (
+    <main style={{ display: 'flex', flexDirection: 'column', maxWidth: 1440, margin: '0 auto' }}>
+      {metaCumplida ? (
+        <CierreDeSemana
+          cabecera={cabecera}
+          nota={`Todo lo que vencía esta semana, resuelto. Y estamos a ${diaDeHoy}.`}
+        />
+      ) : (
+        cabecera
+      )}
 
       <div
         style={{
@@ -210,7 +249,9 @@ export default async function Semana() {
       >
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Lo que tenemos esta semana</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
+              {metaCumplida ? 'Si te provoca seguir, esto es lo que viene' : 'Lo que tenemos esta semana'}
+            </h2>
             <Link href="/mes" style={{ color: 'var(--gris)', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
               Ver todo tu mes →
             </Link>
@@ -222,43 +263,49 @@ export default async function Semana() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             {plan.map((o) => (
-              <article key={o.funcionId} style={{ ...TARJETA, ...COLOR[o.cuadrante] }}>
-                <span title={`Vence en ${o.faltan} días hábiles`} style={{ ...CIRCULO, background: COLOR[o.cuadrante].velo }}>
-                  {emojiDe(o.faltan)}
-                </span>
-
-                <span style={{ flexGrow: 1, minWidth: 0, fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-                  {o.texto}
-                </span>
-
-                <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <Numero etiqueta="IMP" valor={o.importancia} velo={COLOR[o.cuadrante].velo} />
-                  <Numero etiqueta="URG" valor={o.urgencia} velo={COLOR[o.cuadrante].velo} />
-                </span>
-
-                <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                  <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
-                    <Enviar style={HECHO} enviando="Marcando…">
-                      <span style={{ color: '#2E7D32', display: 'flex' }}>
-                        <Check />
-                      </span>
-                      ¡Hecho!
-                    </Enviar>
-                  </Accion>
-
-                  <details style={{ flexShrink: 0 }}>
-                    <summary title="No pude" aria-label="No pude" style={{ ...REDONDO, color: '#C62828', listStyle: 'none' }}>
-                      <Equis />
-                    </summary>
-                    <Accion accion={marcarNoPude.bind(null, o.funcionId, o.periodo)} style={DESPLEGABLE}>
-                      <input name="razon" required placeholder="¿Qué pasó? JFS lo lee" style={CAMPO} />
-                      <Enviar style={HECHO}>Guardar</Enviar>
-                    </Accion>
-                  </details>
-                </span>
-              </article>
+              <Tarjeta key={o.funcionId} o={o} />
             ))}
           </div>
+
+          {metaCumplida && (
+            <>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {racha > 1 && (
+                  <div style={LOGRO}>
+                    <span style={{ fontSize: 28 }}>🔥</span>
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>{racha} días seguidos</div>
+                      <div style={{ fontSize: 13, color: 'var(--gris)' }}>
+                        cerrando lo que vence. Vuelve mañana para no perderla.
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div style={LOGRO}>
+                  <span style={{ fontSize: 28 }}>📅</span>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>
+                      {cerradasDelMes.length} de {delMes.length}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--gris)' }}>de este mes, ya resueltas.</div>
+                  </div>
+                </div>
+              </div>
+
+              {siguientes.length > 0 && (
+                <Adelantar
+                  cuantas={siguientes.length}
+                  extras={
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {siguientes.map((o) => (
+                        <Tarjeta key={o.funcionId} o={o} />
+                      ))}
+                    </div>
+                  }
+                />
+              )}
+            </>
+          )}
 
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
           {mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) && (
@@ -362,6 +409,57 @@ export default async function Semana() {
         </section>
       </div>
     </main>
+  );
+}
+
+type Fila = {
+  funcionId: string;
+  periodo: string;
+  texto: string;
+  importancia: number;
+  urgencia: number;
+  faltan: number;
+  cuadrante: Cuadrante;
+};
+
+// La misma tarjeta para el plan de la semana y para lo que viene despues.
+function Tarjeta({ o }: { o: Fila }) {
+  return (
+    <article key={o.funcionId} style={{ ...TARJETA, ...COLOR[o.cuadrante] }}>
+            <span title={`Vence en ${o.faltan} días hábiles`} style={{ ...CIRCULO, background: COLOR[o.cuadrante].velo }}>
+              {emojiDe(o.faltan)}
+            </span>
+    
+            <span style={{ flexGrow: 1, minWidth: 0, fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+              {o.texto}
+            </span>
+    
+            <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <Numero etiqueta="IMP" valor={o.importancia} velo={COLOR[o.cuadrante].velo} />
+              <Numero etiqueta="URG" valor={o.urgencia} velo={COLOR[o.cuadrante].velo} />
+            </span>
+    
+            <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+              <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
+                <Enviar style={HECHO} enviando="Marcando…">
+                  <span style={{ color: '#2E7D32', display: 'flex' }}>
+            <Check />
+                  </span>
+                  ¡Hecho!
+                </Enviar>
+              </Accion>
+    
+              <details style={{ flexShrink: 0 }}>
+                <summary title="No pude" aria-label="No pude" style={{ ...REDONDO, color: '#C62828', listStyle: 'none' }}>
+                  <Equis />
+                </summary>
+                <Accion accion={marcarNoPude.bind(null, o.funcionId, o.periodo)} style={DESPLEGABLE}>
+                  <input name="razon" required placeholder="¿Qué pasó? JFS lo lee" style={CAMPO} />
+                  <Enviar style={HECHO}>Guardar</Enviar>
+                </Accion>
+              </details>
+            </span>
+          </article>
   );
 }
 
@@ -580,6 +678,18 @@ const RESUELTA = {
   minHeight: 40,
   borderRadius: 13,
   padding: '0 12px',
+  boxSizing: 'border-box',
+} as const;
+
+const LOGRO = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 14,
+  background: 'var(--suave)',
+  borderRadius: 20,
+  padding: '12px 18px',
+  flex: '1 1 240px',
+  minWidth: 0,
   boxSizing: 'border-box',
 } as const;
 
