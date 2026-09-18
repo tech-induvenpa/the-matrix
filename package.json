@@ -13,7 +13,8 @@
     "retipificar": "tsx scripts/retipificar.mts",
     "razones": "tsx scripts/razones.mts",
     "proteger": "tsx scripts/proteger.mts",
-    "invariantes": "pnpm --filter @matriz/pruebas invariantes"
+    "invariantes": "pnpm --filter @matriz/pruebas invariantes",
+    "start": "pnpm --filter web start"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
