@@ -26,6 +26,7 @@ import { cambiarEstadoFlujo, deshacerMarca, marcarHecho, marcarNoPude, salir } f
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { Adelantar, CierreDeSemana } from './celebracion';
+import { PorQue } from './porque';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -268,43 +269,40 @@ export default async function Semana() {
           </div>
 
           {metaCumplida && (
-            <>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {racha > 1 && (
-                  <div style={LOGRO}>
-                    <span style={{ fontSize: 28 }}>🔥</span>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 700 }}>{racha} días seguidos</div>
-                      <div style={{ fontSize: 13, color: 'var(--gris)' }}>
-                        cerrando lo que vence. Vuelve mañana para no perderla.
+            <Adelantar
+              cuantas={siguientes.length}
+              logros={
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {racha > 1 && (
+                    <div style={LOGRO}>
+                      <span style={{ fontSize: 28 }}>🔥</span>
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>{racha} días seguidos</div>
+                        <div style={{ fontSize: 13, color: 'var(--gris)' }}>
+                          cerrando lo que vence. Vuelve mañana para no perderla.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <div style={LOGRO}>
-                  <span style={{ fontSize: 28 }}>📅</span>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700 }}>
-                      {cerradasDelMes.length} de {delMes.length}
+                  )}
+                  <div style={LOGRO}>
+                    <span style={{ fontSize: 28 }}>📅</span>
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>
+                        {cerradasDelMes.length} de {delMes.length}
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--gris)' }}>de este mes, ya resueltas.</div>
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--gris)' }}>de este mes, ya resueltas.</div>
                   </div>
                 </div>
-              </div>
-
-              {siguientes.length > 0 && (
-                <Adelantar
-                  cuantas={siguientes.length}
-                  extras={
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                      {siguientes.map((o) => (
-                        <Tarjeta key={o.funcionId} o={o} />
-                      ))}
-                    </div>
-                  }
-                />
-              )}
-            </>
+              }
+              extras={
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {siguientes.map((o) => (
+                    <Tarjeta key={o.funcionId} o={o} />
+                  ))}
+                </div>
+              }
+            />
           )}
 
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
@@ -386,13 +384,14 @@ export default async function Semana() {
                           <Enviar style={FLUJO}>Ya me puse al día</Enviar>
                         </Accion>
                       ) : (
-                        <details style={{ flexShrink: 0 }}>
-                          <summary style={{ ...FLUJO, listStyle: 'none' }}>Me atrasé</summary>
-                          <Accion accion={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')} style={DESPLEGABLE}>
-                            <input name="razon" required placeholder="¿Qué te frenó? JFS lo lee" style={CAMPO} />
-                            <Enviar style={FLUJO}>Guardar</Enviar>
-                          </Accion>
-                        </details>
+                        <PorQue
+                          accion={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')}
+                          titulo="Me atrasé"
+                          placeholder="¿Qué te frenó? JFS lo lee"
+                          estilo={FLUJO}
+                        >
+                          Me atrasé
+                        </PorQue>
                       )}
                     </div>
 
@@ -449,15 +448,14 @@ function Tarjeta({ o }: { o: Fila }) {
                 </Enviar>
               </Accion>
     
-              <details style={{ flexShrink: 0 }}>
-                <summary title="No pude" aria-label="No pude" style={{ ...REDONDO, color: '#C62828', listStyle: 'none' }}>
-                  <Equis />
-                </summary>
-                <Accion accion={marcarNoPude.bind(null, o.funcionId, o.periodo)} style={DESPLEGABLE}>
-                  <input name="razon" required placeholder="¿Qué pasó? JFS lo lee" style={CAMPO} />
-                  <Enviar style={HECHO}>Guardar</Enviar>
-                </Accion>
-              </details>
+              <PorQue
+                accion={marcarNoPude.bind(null, o.funcionId, o.periodo)}
+                titulo="No pude"
+                placeholder="¿Qué pasó? JFS lo lee"
+                estilo={{ ...REDONDO, color: '#C62828' }}
+              >
+                <Equis />
+              </PorQue>
             </span>
           </article>
   );
@@ -706,9 +704,7 @@ const DESHACER = {
   cursor: 'pointer',
 } as const;
 
-const DESPLEGABLE = { position: 'absolute', marginTop: 8, display: 'flex', gap: 6, zIndex: 1 } as const;
 
-const CAMPO = { height: 38, borderRadius: 999, border: 'none', padding: '0 16px', fontSize: 14, width: 240 } as const;
 
 // El color es el cuadrante; el emoji, la urgencia.
 const COLOR: Record<Cuadrante, { background: string; color: string; velo: string }> = {

@@ -15,6 +15,7 @@ import { diaTopeDe, panorama, tipoDe } from '@/lib/datos';
 import { marcarHecho, marcarNoPude } from '../acciones';
 import { Accion } from '../accion';
 import { Redondo } from '../boton';
+import { PorQue } from '../porque';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
@@ -146,17 +147,14 @@ export default async function Mes() {
                           </Redondo>
                         </Accion>
 
-                        <details style={{ flexShrink: 0 }}>
-                          <summary title="No pude" style={{ ...REDONDO, color: '#C62828', listStyle: 'none' }}>
-                            <Equis />
-                          </summary>
-                          <Accion accion={marcarNoPude.bind(null, o.funcionId, o.periodo)} style={DESPLEGABLE}>
-                            <input name="razon" required placeholder="¿Qué pasó? JFS lo lee" style={CAMPO} />
-                            <Redondo titulo="Guardar" color="#2E7D32">
-                              <Check />
-                            </Redondo>
-                          </Accion>
-                        </details>
+                        <PorQue
+                          accion={marcarNoPude.bind(null, o.funcionId, o.periodo)}
+                          titulo="No pude"
+                          placeholder="¿Qué pasó? JFS lo lee"
+                          estilo={{ ...REDONDO, color: '#C62828' }}
+                        >
+                          <Equis />
+                        </PorQue>
                       </span>
                     </article>
                   ))}
@@ -288,9 +286,7 @@ const REDONDO = {
   cursor: 'pointer',
 } as const;
 
-const DESPLEGABLE = { position: 'absolute', marginTop: 8, display: 'flex', gap: 6, zIndex: 1 } as const;
 
-const CAMPO = { height: 30, borderRadius: 999, border: 'none', padding: '0 14px', fontSize: 13, width: 220 } as const;
 
 // El orden del reparto: las cinco porciones con nombre y el resto en gris.
 const COLOR_PORCION = ['#D9503A', '#E8A33F', '#1B6E8C', '#E8CE7A', '#E37B3C'];

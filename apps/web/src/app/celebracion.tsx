@@ -28,31 +28,46 @@ export function CierreDeSemana({ cabecera, nota }: { cabecera: ReactNode; nota: 
 }
 
 // Las dos salidas, y las dos estan bien: seguir o parar. Parar no se disculpa.
-export function Adelantar({ extras, cuantas }: { extras: ReactNode; cuantas: number }) {
+export function Adelantar({
+  logros,
+  extras,
+  cuantas,
+}: {
+  logros: ReactNode;
+  extras: ReactNode;
+  cuantas: number;
+}) {
   const [estado, setEstado] = useState<'preguntando' | 'siguiendo' | 'parado'>('preguntando');
 
+  // Al seguir trabajando se van las dos cosas: los logros y la pregunta. Dejar
+  // las estadisticas entre las tarjetas parte la lista por la mitad.
   if (estado === 'siguiendo') return <>{extras}</>;
-  if (estado === 'parado') {
-    return (
-      <p style={{ fontSize: 14, color: 'var(--gris)', margin: '4px 0 0' }}>
-        Perfecto. Lo de la semana está cerrado; el resto puede esperar.
-      </p>
-    );
-  }
 
   return (
-    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-      <button onClick={() => setEstado('siguiendo')} style={SEGUIR}>
-        Me provoca adelantar, tráeme {cuantas} más
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12" />
-          <polyline points="12 5 19 12 12 19" />
-        </svg>
-      </button>
-      <button onClick={() => setEstado('parado')} style={PARAR}>
-        Por hoy está bien 🙂
-      </button>
-    </div>
+    <>
+      {logros}
+
+      {estado === 'parado' ? (
+        <p style={{ fontSize: 14, color: 'var(--gris)', margin: '4px 0 0' }}>
+          Perfecto. Lo de la semana está cerrado; el resto puede esperar.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {cuantas > 0 && (
+            <button onClick={() => setEstado('siguiendo')} style={SEGUIR}>
+              Me provoca adelantar, tráeme {cuantas} más
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          )}
+          <button onClick={() => setEstado('parado')} style={PARAR}>
+            Por hoy está bien 🙂
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -59,7 +59,7 @@ export async function marcarNoPude(
   if (!razon) return; // No se puede decir "no pude" sin decir por que.
   await marcar(funcionId, periodo, 'no_pude', razon);
   llevarRazonesAlDocumento();
-  return { mensaje: 'Anotado. JFS lee lo que escribiste.', celebra: false };
+  return { mensaje: 'Anotado. ¡Solo si sabemos qué pasó, podemos mejorar!', celebra: false };
 }
 
 // Un flujo no se marca: cambia de estado cuando el empleado dice que cambio.
