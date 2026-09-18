@@ -79,3 +79,24 @@ export async function panorama() {
     eventos: (eventos ?? []) as FilaEvento[],
   };
 }
+
+const mesDe = (fecha: string) =>
+  new Intl.DateTimeFormat('es', { month: 'long', timeZone: 'UTC' }).format(new Date(`${fecha}T00:00:00Z`));
+
+const mesCortoDe = (fecha: string) =>
+  new Intl.DateTimeFormat('es', { month: 'short', timeZone: 'UTC' })
+    .format(new Date(`${fecha}T00:00:00Z`))
+    .replace('.', '');
+
+// Sin esto, una tarjeta de octubre aparece junto a un mes dado por cerrado y
+// parece que el sistema se contradice.
+export function comoVence(vence: string, hoy: string): string {
+  if (vence === hoy) return 'vence hoy';
+  if (vence === sumarDias(hoy, 1)) return 'vence mañana';
+
+  const dia = +vence.slice(8, 10);
+  return vence < hoy ? `venció el ${dia} de ${mesDe(vence)}` : `vence el ${dia} de ${mesDe(vence)}`;
+}
+
+// La version corta, para las filas del mes.
+export const fechaCorta = (fecha: string) => `${+fecha.slice(8, 10)} ${mesCortoDe(fecha)}`;

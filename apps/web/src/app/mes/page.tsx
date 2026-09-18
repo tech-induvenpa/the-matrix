@@ -11,7 +11,7 @@ import {
   type Cuadrante,
   type TipoDeFuncion,
 } from '@matriz/dominio';
-import { diaTopeDe, panorama, tipoDe } from '@/lib/datos';
+import { diaTopeDe, fechaCorta, panorama, tipoDe } from '@/lib/datos';
 import { marcarHecho, marcarNoPude } from '../acciones';
 import { Accion } from '../accion';
 import { Redondo } from '../boton';
@@ -137,7 +137,7 @@ export default async function Mes() {
                         {o.texto}
                       </span>
                       <span style={{ fontSize: 11.5, fontWeight: 600, opacity: 0.82, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                        IMP {o.importancia} · URG {o.urgencia}
+                        {fechaCorta(o.vence)} · IMP {o.importancia} · URG {o.urgencia}
                       </span>
 
                       <span style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
@@ -150,7 +150,7 @@ export default async function Mes() {
                         <PorQue
                           accion={marcarNoPude.bind(null, o.funcionId, o.periodo)}
                           titulo="No pude"
-                          placeholder="¿Qué pasó? JFS lo lee"
+                          placeholder="¿Qué pasó? Así lo entendemos luego"
                           estilo={{ ...REDONDO, color: '#C62828' }}
                         >
                           <Equis />

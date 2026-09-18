@@ -21,7 +21,7 @@ import {
   type Cuadrante,
   type Etapa,
 } from '@matriz/dominio';
-import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '@/lib/datos';
+import { comoVence, diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '@/lib/datos';
 import { cambiarEstadoFlujo, deshacerMarca, marcarHecho, marcarNoPude, salir } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
@@ -264,7 +264,7 @@ export default async function Semana() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             {plan.map((o) => (
-              <Tarjeta key={o.funcionId} o={o} />
+              <Tarjeta key={o.funcionId} o={o} hoy={hoy} />
             ))}
           </div>
 
@@ -298,7 +298,7 @@ export default async function Semana() {
               extras={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {siguientes.map((o) => (
-                    <Tarjeta key={o.funcionId} o={o} />
+                    <Tarjeta key={o.funcionId} o={o} hoy={hoy} />
                   ))}
                 </div>
               }
@@ -387,7 +387,7 @@ export default async function Semana() {
                         <PorQue
                           accion={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')}
                           titulo="Me atrasé"
-                          placeholder="¿Qué te frenó? JFS lo lee"
+                          placeholder="¿Qué te frenó? Así lo entendemos luego"
                           estilo={FLUJO}
                         >
                           Me atrasé
@@ -415,6 +415,7 @@ type Fila = {
   funcionId: string;
   periodo: string;
   texto: string;
+  vence: string;
   importancia: number;
   urgencia: number;
   faltan: number;
@@ -422,42 +423,43 @@ type Fila = {
 };
 
 // La misma tarjeta para el plan de la semana y para lo que viene despues.
-function Tarjeta({ o }: { o: Fila }) {
+function Tarjeta({ o, hoy }: { o: Fila; hoy: string }) {
   return (
-    <article key={o.funcionId} style={{ ...TARJETA, ...COLOR[o.cuadrante] }}>
-            <span title={`Vence en ${o.faltan} días hábiles`} style={{ ...CIRCULO, background: COLOR[o.cuadrante].velo }}>
-              {emojiDe(o.faltan)}
+    <article style={{ ...TARJETA, ...COLOR[o.cuadrante] }}>
+      <span title={`Vence en ${o.faltan} días hábiles`} style={{ ...CIRCULO, background: COLOR[o.cuadrante].velo }}>
+        {emojiDe(o.faltan)}
+      </span>
+
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{o.texto}</span>
+        <span style={{ fontSize: 13, opacity: 0.78 }}>{comoVence(o.vence, hoy)}</span>
+      </span>
+
+      <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <Numero etiqueta="IMP" valor={o.importancia} velo={COLOR[o.cuadrante].velo} />
+        <Numero etiqueta="URG" valor={o.urgencia} velo={COLOR[o.cuadrante].velo} />
+      </span>
+
+      <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+        <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
+          <Enviar style={HECHO} enviando="Marcando…">
+            <span style={{ color: '#2E7D32', display: 'flex' }}>
+              <Check />
             </span>
-    
-            <span style={{ flexGrow: 1, minWidth: 0, fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-              {o.texto}
-            </span>
-    
-            <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <Numero etiqueta="IMP" valor={o.importancia} velo={COLOR[o.cuadrante].velo} />
-              <Numero etiqueta="URG" valor={o.urgencia} velo={COLOR[o.cuadrante].velo} />
-            </span>
-    
-            <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-              <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
-                <Enviar style={HECHO} enviando="Marcando…">
-                  <span style={{ color: '#2E7D32', display: 'flex' }}>
-            <Check />
-                  </span>
-                  ¡Hecho!
-                </Enviar>
-              </Accion>
-    
-              <PorQue
-                accion={marcarNoPude.bind(null, o.funcionId, o.periodo)}
-                titulo="No pude"
-                placeholder="¿Qué pasó? JFS lo lee"
-                estilo={{ ...REDONDO, color: '#C62828' }}
-              >
-                <Equis />
-              </PorQue>
-            </span>
-          </article>
+            ¡Hecho!
+          </Enviar>
+        </Accion>
+
+        <PorQue
+          accion={marcarNoPude.bind(null, o.funcionId, o.periodo)}
+          titulo="No pude"
+          placeholder="¿Qué pasó? Así lo entendemos luego"
+          estilo={{ ...REDONDO, color: '#C62828' }}
+        >
+          <Equis />
+        </PorQue>
+      </span>
+    </article>
   );
 }
 
