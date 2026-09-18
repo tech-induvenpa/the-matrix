@@ -1,6 +1,5 @@
 import {
   cuadranteDe,
-  emojiDe,
   estadosVigentes,
   importanciaEfectiva,
   ocurrenciasEntre,
@@ -11,11 +10,8 @@ import {
   type Cuadrante,
   type TipoDeFuncion,
 } from '@matriz/dominio';
-import { diaTopeDe, fechaCorta, panorama, tipoDe } from '@/lib/datos';
-import { marcarHecho, marcarNoPude } from '../acciones';
-import { Accion } from '../accion';
-import { Redondo } from '../boton';
-import { PorQue } from '../porque';
+import { diaTopeDe, panorama, tipoDe } from '@/lib/datos';
+import { Tarjeta } from '../tarjeta';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
@@ -127,36 +123,9 @@ export default async function Mes() {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {suyas.map((o) => (
-                    <article key={`${o.funcionId}|${o.periodo}`} style={{ ...FILA, ...COLOR[o.cuadrante] }}>
-                      <span title={`Vence en ${o.faltan} días hábiles`} style={{ fontSize: 16, flexShrink: 0, cursor: 'default' }}>
-                        {emojiDe(o.faltan)}
-                      </span>
-                      <span style={{ flexGrow: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, lineHeight: 1.25 }}>
-                        {o.texto}
-                      </span>
-                      <span style={{ fontSize: 11.5, fontWeight: 600, opacity: 0.82, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                        {fechaCorta(o.vence)} · IMP {o.importancia} · URG {o.urgencia}
-                      </span>
-
-                      <span style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
-                        <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
-                          <Redondo titulo="¡Hecho!" color="#2E7D32">
-                            <Check />
-                          </Redondo>
-                        </Accion>
-
-                        <PorQue
-                          accion={marcarNoPude.bind(null, o.funcionId, o.periodo)}
-                          titulo="No pude"
-                          placeholder="¿Qué pasó? Así lo entendemos luego"
-                          estilo={{ ...REDONDO, color: '#C62828' }}
-                        >
-                          <Equis />
-                        </PorQue>
-                      </span>
-                    </article>
+                    <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} />
                   ))}
                 </div>
               </div>
@@ -258,33 +227,8 @@ const ROTULO: Record<Cuadrante, { emoji: string; texto: string; color: string }>
   mantener: { emoji: '🔁', texto: 'Mantener al día', color: '#8A7A3E' },
 };
 
-const FILA = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  minHeight: 42,
-  borderRadius: 12,
-  padding: '6px 8px 6px 12px',
-  boxSizing: 'border-box',
-} as const;
 
-const COLOR: Record<Cuadrante, { background: string; color: string }> = {
-  hacer: { background: '#D9503A', color: '#FFF4F0' },
-  agendar: { background: '#1B6E8C', color: '#EEF8FC' },
-  mantener: { background: '#E8CE7A', color: '#2A2313' },
-};
 
-const REDONDO = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 30,
-  height: 30,
-  borderRadius: 999,
-  background: '#FFFFFF',
-  flexShrink: 0,
-  cursor: 'pointer',
-} as const;
 
 
 
@@ -299,19 +243,4 @@ const ETIQUETA: Record<TipoDeFuncion, string> = {
   holgura: 'holgura',
 };
 
-function Check() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
-function Equis() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
