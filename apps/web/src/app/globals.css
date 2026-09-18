@@ -44,3 +44,17 @@ button { font: inherit; cursor: pointer; border: none; }
 @media (prefers-reduced-motion: reduce) {
   .girando { animation: none; opacity: 0.5; }
 }
+
+/* El aviso entra desde la derecha, donde no tapa el trabajo. */
+.asomando {
+  animation: asomar 0.22s ease-out;
+}
+
+@keyframes asomar {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .asomando { animation: none; }
+}

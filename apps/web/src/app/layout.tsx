@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
+import { Avisos } from './avisos';
 
 export const metadata: Metadata = {
   title: 'Matriz JFS',
@@ -31,6 +32,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         </nav>
         {children}
+        <Avisos />
       </body>
     </html>
   );

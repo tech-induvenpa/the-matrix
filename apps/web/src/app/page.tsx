@@ -20,6 +20,7 @@ import {
 import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '@/lib/datos';
 import { cambiarEstadoFlujo, marcarHecho, marcarNoPude } from './acciones';
 import { Enviar } from './boton';
+import { Accion } from './accion';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -170,21 +171,21 @@ export default async function Semana() {
               </span>
 
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                <form action={marcarHecho.bind(null, o.funcionId, o.periodo)}>
+                <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
                   <Enviar style={BOTON} enviando="Marcando…">¡Hecho!</Enviar>
-                </form>
+                </Accion>
 
-                <details>
+                <details style={{ flexShrink: 0 }}>
                   <summary
                     title="No pude"
                     style={{ ...BOTON, width: 40, justifyContent: 'center', color: '#c62828', listStyle: 'none' }}
                   >
                     ✕
                   </summary>
-                  <form action={marcarNoPude.bind(null, o.funcionId, o.periodo)} style={DESPLEGABLE}>
+                  <Accion accion={marcarNoPude.bind(null, o.funcionId, o.periodo)} style={DESPLEGABLE}>
                     <input name="razon" required placeholder="¿Qué pasó? JFS lo lee" style={CAMPO} />
                     <Enviar style={BOTON}>Guardar</Enviar>
-                  </form>
+                  </Accion>
                 </details>
               </span>
             </article>
@@ -263,16 +264,16 @@ export default async function Semana() {
                   <Numero etiqueta="IMP" valor={f.importancia} velo={COLOR.mantener.velo} />
 
                   {atrasado ? (
-                    <form action={cambiarEstadoFlujo.bind(null, f.id, 'al_dia')}>
+                    <Accion accion={cambiarEstadoFlujo.bind(null, f.id, 'al_dia')}>
                       <Enviar style={BOTON}>Ya me puse al día</Enviar>
-                    </form>
+                    </Accion>
                   ) : (
-                    <details>
+                    <details style={{ flexShrink: 0 }}>
                       <summary style={{ ...BOTON, listStyle: 'none' }}>Me atrasé</summary>
-                      <form action={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')} style={DESPLEGABLE}>
+                      <Accion accion={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')} style={DESPLEGABLE}>
                         <input name="razon" required placeholder="¿Qué te frenó? JFS lo lee" style={CAMPO} />
                         <Enviar style={BOTON}>Guardar</Enviar>
-                      </form>
+                      </Accion>
                     </details>
                   )}
                 </div>
@@ -392,6 +393,7 @@ const RIEL = { width: 6, alignSelf: 'stretch', borderRadius: 999, background: '#
 const BOTON = {
   display: 'flex',
   alignItems: 'center',
+  justifyContent: 'center',
   height: 40,
   padding: '0 16px',
   borderRadius: 999,
@@ -400,6 +402,9 @@ const BOTON = {
   fontSize: 14,
   fontWeight: 600,
   cursor: 'pointer',
+  // Un boton no se parte en varias lineas ni se deja encoger por el flex.
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
 } as const;
 
 const DESPLEGABLE = { position: 'absolute', marginTop: 8, display: 'flex', gap: 6, zIndex: 1 } as const;
