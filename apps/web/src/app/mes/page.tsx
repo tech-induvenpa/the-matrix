@@ -11,7 +11,7 @@ import {
   type TipoDeFuncion,
 } from '@matriz/dominio';
 import { diaTopeDe, panorama, tipoDe } from '@/lib/datos';
-import { Tarjeta } from '../tarjeta';
+import { Tarjeta, YaResueltas } from '../tarjeta';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
@@ -23,6 +23,7 @@ export default async function Mes() {
   const mes = new Intl.DateTimeFormat('es', { month: 'long', timeZone: 'UTC' }).format(new Date(`${hoy}T00:00:00Z`));
 
   const cerradas = marcas.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
+  const marcaDe = new Map(marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m]));
 
   const ocurrencias = funciones
     .filter((f) => tipoDe(f) === 'entregable')
@@ -42,6 +43,9 @@ export default async function Mes() {
       })),
     )
     .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
+
+  const abiertas = new Set(pendientes(ocurrencias, cerradas).map((o) => `${o.funcionId}|${o.periodo}`));
+  const yaResueltas = ocurrencias.filter((o) => !abiertas.has(`${o.funcionId}|${o.periodo}`));
 
   const todo = ordenarPlan(
     pendientes(ocurrencias, cerradas).map((o) => {
@@ -132,8 +136,10 @@ export default async function Mes() {
             );
           })}
 
-          {todo.length === 0 && (
-            <p style={{ color: 'var(--gris)', fontSize: 14 }}>Este mes no te queda nada por cerrar.</p>
+          {yaResueltas.length > 0 && <YaResueltas cerradas={yaResueltas} marcaDe={marcaDe} />}
+
+          {todo.length === 0 && yaResueltas.length === 0 && (
+            <p style={{ color: 'var(--gris)', fontSize: 14 }}>Este mes no tienes nada asignado.</p>
           )}
         </section>
 

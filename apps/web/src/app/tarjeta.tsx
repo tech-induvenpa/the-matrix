@@ -1,6 +1,6 @@
 import { emojiDe, type Cuadrante } from '@matriz/dominio';
 import { comoVence } from '@/lib/datos';
-import { marcarHecho, marcarNoPude } from './acciones';
+import { deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
@@ -149,6 +149,89 @@ export const REDONDO = {
   height: 40,
   borderRadius: 999,
   background: '#ffffff',
+  flexShrink: 0,
+  cursor: 'pointer',
+} as const;
+
+type Resuelta = { funcionId: string; periodo: string; texto: string };
+type Marca = { resultado: string; razon?: string | null };
+
+// Lo ya cerrado, igual en la semana y en el mes: tachado, con lo que se dijo si
+// no se pudo, y con Deshacer al lado porque marcar de mas es el error facil.
+export function YaResueltas({
+  cerradas,
+  marcaDe,
+}: {
+  cerradas: readonly Resuelta[];
+  marcaDe: Map<string, Marca>;
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gris)' }}>
+          Ya resueltas
+        </span>
+        <span style={{ flexGrow: 1, height: 1, background: 'rgba(26,23,19,0.10)' }} />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {cerradas.map((o) => {
+          const marca = marcaDe.get(`${o.funcionId}|${o.periodo}`);
+          const pudo = marca?.resultado === 'hecho';
+
+          return (
+            <div key={`${o.funcionId}|${o.periodo}`} style={RESUELTA}>
+              <span style={{ color: pudo ? '#5E9E62' : '#C97B72', flexShrink: 0, display: 'flex' }}>
+                {pudo ? <Check /> : <Equis />}
+              </span>
+              <span
+                style={{
+                  flexGrow: 1,
+                  minWidth: 0,
+                  fontSize: 14,
+                  textDecoration: pudo ? 'line-through' : 'none',
+                  textDecorationColor: 'rgba(110,101,90,0.55)',
+                }}
+              >
+                {o.texto}
+              </span>
+              <span style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>
+                {pudo ? 'lista' : `no pude: ${marca?.razon ?? ''}`}
+              </span>
+              <Accion accion={deshacerMarca.bind(null, o.funcionId, o.periodo)}>
+                <Enviar style={DESHACER} enviando="…">
+                  Deshacer
+                </Enviar>
+              </Accion>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+const RESUELTA = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  background: 'var(--suave)',
+  color: 'var(--gris)',
+  minHeight: 40,
+  borderRadius: 13,
+  padding: '0 12px',
+  boxSizing: 'border-box',
+} as const;
+
+const DESHACER = {
+  display: 'flex',
+  alignItems: 'center',
+  background: 'rgba(26,23,19,0.06)',
+  color: 'var(--gris)',
+  padding: '5px 12px',
+  borderRadius: 999,
+  fontSize: 12.5,
+  fontWeight: 600,
   flexShrink: 0,
   cursor: 'pointer',
 } as const;
