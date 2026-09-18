@@ -25,8 +25,28 @@ importan adaptadores; eso lo hacen las rutas de servidor (ADR 0005).
 ```bash
 pnpm install
 cp .env.example apps/web/.env.local   # completar con el proyecto de Supabase
+supabase start                        # la base local, en Docker, con volumen persistente
 pnpm --filter @matriz/web dev
 ```
+
+El desarrollo va contra la base local, no contra producción: en `.env.local` van
+las claves que imprime `supabase start`. Los scripts leen primero las variables
+del proceso, así que apuntar a producción es un gesto deliberado y no el descuido
+de no mirar qué hay en el archivo:
+
+```bash
+env $(grep -v '^#' apps/web/.env.produccion.local | xargs) pnpm razones
+```
+
+Para tener datos con los que ver la aplicación:
+
+```bash
+pnpm importar --hoja "ADMINISTRACION " --crear-empleados --tipos-de-prueba --confirmar
+pnpm acceso --confirmar   # sin esto los empleados existen en la base pero no ven nada
+```
+
+`pnpm invariantes` vacía las tablas locales. Si se lleva por delante los datos de
+desarrollo, esos dos comandos los devuelven.
 
 El correo de acceso tiene que apuntar a nuestro callback con el token en la
 consulta, no en el fragmento: en **Authentication → Email Templates → Magic Link**,
