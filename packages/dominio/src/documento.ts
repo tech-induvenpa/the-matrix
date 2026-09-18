@@ -7,7 +7,6 @@ export type FilaDelDocumento = {
   periodicidad?: string;
   ponderacion?: number;
   importancia?: number;
-  diaTope?: number;
 };
 
 export function normalizar(texto: string): string {
@@ -43,7 +42,6 @@ export type FuncionExistente = {
   periodicidad?: string;
   ponderacion?: number;
   importancia?: number;
-  diaTope?: number;
 };
 
 export type Cambio = { identidad: string; fila: FilaDelDocumento; antes: FuncionExistente };
@@ -54,11 +52,13 @@ export type Reconciliacion = {
   bajas: string[];
 };
 
+// Solo se compara lo que JFS escribe en la hoja. El dia tope no esta ahi: lo
+// deduce el agente del texto, asi que compararlo daba por "cambiada" cada
+// funcion con fecha tope, en cada importacion y para siempre.
 const MISMOS_DATOS = (a: FuncionExistente, b: FilaDelDocumento) =>
   a.periodicidad === b.periodicidad &&
   a.ponderacion === b.ponderacion &&
-  a.importancia === b.importancia &&
-  a.diaTope === b.diaTope;
+  a.importancia === b.importancia;
 
 export function reconciliar(
   existentes: readonly FuncionExistente[],

@@ -56,7 +56,7 @@ describe('INV-5: el historial sigue a la funcion, no a su posicion', () => {
   });
 
   it('reimportarla sin cambios no la da de baja ni toca su historial', async () => {
-    const existentes = [{ identidad: identidadDe({ empleadoId, nombre: 'Cierre financiero Auto Bengala' }), periodicidad: 'mensual', ponderacion: 25, importancia: 9, diaTope: undefined }];
+    const existentes = [{ identidad: identidadDe({ empleadoId, nombre: 'Cierre financiero Auto Bengala' }), periodicidad: 'mensual', ponderacion: 25, importancia: 9 }];
     const leidas = [{ empleadoId, nombre: 'Cierre financiero Auto Bengala', periodicidad: 'mensual', ponderacion: 25, importancia: 9 }];
 
     const { altas, bajas, cambios } = reconciliar(existentes, leidas);
@@ -77,7 +77,7 @@ describe('INV-5: el historial sigue a la funcion, no a su posicion', () => {
   });
 
   it('re-redactarla se ve como un alta y una baja, que es lo que una persona tiene que confirmar', () => {
-    const existentes = [{ identidad: identidadDe({ empleadoId, nombre: 'Cierre financiero Auto Bengala' }), periodicidad: 'mensual', ponderacion: 25, importancia: 9, diaTope: undefined }];
+    const existentes = [{ identidad: identidadDe({ empleadoId, nombre: 'Cierre financiero Auto Bengala' }), periodicidad: 'mensual', ponderacion: 25, importancia: 9 }];
     const leidas = [{ empleadoId, nombre: 'Cierre financiero de Auto Bengala (mensual)', periodicidad: 'mensual', ponderacion: 25, importancia: 9 }];
 
     const { altas, bajas } = reconciliar(existentes, leidas);

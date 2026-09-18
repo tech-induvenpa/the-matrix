@@ -18,6 +18,7 @@ import { identidadDe, interpretar, leerBloques, normalizar, reconciliar } from '
 import type { FilaDelDocumento, FuncionExistente } from '@matriz/dominio';
 import { credenciales, leerPestana, pestanas } from '../apps/web/src/lib/hoja.ts';
 import { tipificadorRemoto } from './tipificador.mts';
+import { entorno } from './entorno.mts';
 
 const argumentos = process.argv.slice(2);
 const confirmar = argumentos.includes('--confirmar');
@@ -50,16 +51,6 @@ const dondeHoja = argumentos.indexOf('--hoja');
 const pestana = dondeHoja >= 0 ? argumentos[dondeHoja + 1] : undefined;
 const archivo = argumentos.find((a) => !a.startsWith('--') && a !== pestana);
 
-// Las credenciales se leen, nunca se imprimen.
-function entorno(clave: string): string {
-  const desdeElProceso = process.env[clave];
-  if (desdeElProceso) return desdeElProceso;
-
-  const secretos = readFileSync(new URL('../apps/web/.env.local', import.meta.url), 'utf8');
-  const linea = secretos.split('\n').find((l) => l.startsWith(`${clave}=`));
-  if (!linea) throw new Error(`Falta ${clave} en apps/web/.env.local`);
-  return linea.slice(clave.length + 1).trim();
-}
 
 const documento = () => ({
   id: entorno('DOCUMENTO_ID'),
@@ -125,17 +116,26 @@ Creando ${nuevos.length} empleados de prueba:`);
   }
 }
 
+// Una hoja solo da de baja lo suyo. Comparar contra TODAS las funciones
+// activas archivaba las de ADMINISTRACION al importar VENTAS: cada hoja veia
+// al resto del documento como desaparecido.
+// ponytail: el universo son los empleados con filas en esta hoja. Si a alguien
+// le vacian todas sus filas, las suyas siguen activas hasta que su hoja lo
+// vuelva a traer; archivarlas pediria saber que bloques trae la hoja aunque
+// vengan vacios, y eso todavia no ha hecho falta.
+const deEstaHoja = [...new Set(filas.map((f) => f.empleadoId))];
+
 const { data: actuales } = await supabase
   .from('funcion')
   .select('id, hash_identidad, texto, periodicidad, ponderacion, importancia, dia_tope_generado, dia_tope_corregido')
-  .eq('activa', true);
+  .eq('activa', true)
+  .in('empleado_id', deEstaHoja);
 
 const existentes: FuncionExistente[] = (actuales ?? []).map((f) => ({
   identidad: f.hash_identidad,
   periodicidad: f.periodicidad,
   ponderacion: f.ponderacion,
   importancia: f.importancia,
-  diaTope: f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined,
 }));
 
 const textoDe = new Map((actuales ?? []).map((f) => [f.hash_identidad, f.texto]));

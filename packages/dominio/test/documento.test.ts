@@ -47,6 +47,15 @@ describe('reconciliar el documento con lo que ya existe', () => {
     expect(cambio).toEqual({ altas: [], cambios: [], bajas: [] });
   });
 
+  // El dia tope lo deduce el agente del texto, no lo escribe JFS en la hoja.
+  // Cuando entraba en la comparacion, las funciones con "FECHA TOPE 02 DE CADA
+  // MES" salian cambiadas en cada importacion, para siempre.
+  it('lo que el documento no trae no puede hacer que una fila cambie', () => {
+    const existentes = [{ identidad: identidadDe(nomina), periodicidad: 'quincenal', ponderacion: 9 }];
+    expect(reconciliar(existentes, [nomina]).cambios).toEqual([]);
+    expect(reconciliar(existentes, [nomina]).cambios).toEqual([]);
+  });
+
   it('renombrar una funcion la da de baja y crea otra: el nombre es su identidad', () => {
     const existentes = [{ identidad: identidadDe(nomina), periodicidad: 'quincenal', ponderacion: 9 }];
     const cambio = reconciliar(existentes, [{ ...nomina, nombre: 'Nómina de la quincena' }]);
