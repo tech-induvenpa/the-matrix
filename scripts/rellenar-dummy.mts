@@ -7,17 +7,11 @@
 // Escribe DOS columnas y nada mas: Importante y Urgente. No toca INDICADORES,
 // PONDERACION, MONTO ni ASIGNACION. Esto no es parte del producto: es un andamio
 // para la demo, y se borra cuando el documento tenga sus propios valores.
-import { readFileSync } from 'node:fs';
 import { credenciales, escribirCeldas, leerPestana, letraDeColumna, pestanas, type Celda } from '../apps/web/src/lib/hoja.ts';
+import { entorno } from './entorno.mts';
 
 const confirmar = process.argv.includes('--confirmar');
 
-function entorno(clave: string): string {
-  const secretos = readFileSync(new URL('../apps/web/.env.local', import.meta.url), 'utf8');
-  const linea = secretos.split('\n').find((l) => l.startsWith(`${clave}=`));
-  if (!linea) throw new Error(`Falta ${clave} en apps/web/.env.local`);
-  return linea.slice(clave.length + 1).trim();
-}
 
 const documentoId = entorno('DOCUMENTO_ID');
 const cuenta = credenciales(entorno('GOOGLE_CREDENCIALES'));

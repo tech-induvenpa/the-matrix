@@ -8,20 +8,14 @@
 // empleado escribio con sus palabras: ningun numero calculado vuelve a la
 // hoja, porque entonces el documento dejaria de ser el formulario de entrada
 // y pasaria a ser una pantalla del sistema (ADR 0001).
-import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { razonesParaElDocumento } from '@matriz/dominio';
 import { credenciales, crearPestanaSiFalta, escribirFilas, limpiarRango } from '../apps/web/src/lib/hoja.ts';
+import { entorno } from './entorno.mts';
 
 const confirmar = process.argv.includes('--confirmar');
 const PESTANA = 'RAZONES';
 
-function entorno(clave: string): string {
-  const secretos = readFileSync(new URL('../apps/web/.env.local', import.meta.url), 'utf8');
-  const linea = secretos.split('\n').find((l) => l.startsWith(`${clave}=`));
-  if (!linea) throw new Error(`Falta ${clave} en apps/web/.env.local`);
-  return linea.slice(clave.length + 1).trim();
-}
 
 const supabase = createClient(entorno('NEXT_PUBLIC_SUPABASE_URL'), entorno('SUPABASE_SERVICE_ROLE_KEY'), {
   auth: { persistSession: false },

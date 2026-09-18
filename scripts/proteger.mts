@@ -14,18 +14,12 @@
 // la aplicacion intenta crear una proteccion que la excluye. Si pudiera
 // excluirse tambien podria incluirse, y entonces la proteccion no protegeria de
 // nada. La barrera contra la aplicacion tiene que ponerla una persona.
-import { readFileSync } from 'node:fs';
 import { credenciales, hojas, protegerHoja } from '../apps/web/src/lib/hoja.ts';
+import { entorno } from './entorno.mts';
 
 const confirmar = process.argv.includes('--confirmar');
 const RAZONES = 'RAZONES';
 
-function entorno(clave: string): string {
-  const secretos = readFileSync(new URL('../apps/web/.env.local', import.meta.url), 'utf8');
-  const linea = secretos.split('\n').find((l) => l.startsWith(`${clave}=`));
-  if (!linea) throw new Error(`Falta ${clave} en apps/web/.env.local`);
-  return linea.slice(clave.length + 1).trim();
-}
 
 const documentoId = entorno('DOCUMENTO_ID');
 const dueno = entorno('DUENO_DEL_DOCUMENTO');
