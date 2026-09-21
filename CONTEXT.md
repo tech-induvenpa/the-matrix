@@ -9,15 +9,31 @@ el marco de clasificacion detras del orden, nunca una pantalla.
 ### Lo que se asigna
 
 **Empleado**:
-Una persona de JFS con funciones asignadas en el documento y acceso propio a la
-aplicacion.
+Una persona de JFS con funciones asignadas y acceso propio a la aplicacion.
 _Avoid_: usuario (es la cuenta, no la persona), colaborador.
 
+**Administrador**:
+Quien asigna: reparte las funciones, las pondera, las puntua y mantiene el
+calendario. Hoy es una sola persona y lo ve todo. Es el unico que ve el
+cumplimiento ponderado y las razones de todos.
+_Avoid_: JFS (es la empresa, no un rol), responsable tecnico (existia para
+revisar la traduccion del documento y desaparece con ella), supervisor.
+
 **Funcion**:
-Una responsabilidad recurrente asignada a una persona; un renglon del documento
-de JFS.
+Una responsabilidad recurrente que alguien tiene a su cargo. Existe por si misma
+y no muere al cambiar de manos: es el trabajo, no la asignacion.
 _Avoid_: indicador (significa metrica en cualquier otro contexto), tarea,
 responsabilidad como entidad.
+
+**Titular**:
+El empleado que tiene una funcion a su cargo ahora. Una funcion tiene un titular
+a la vez y guarda todos los que tuvo.
+_Avoid_: dueno, responsable (el responsable tecnico era otra cosa), asignado.
+
+**Traspaso**:
+Cambiar de titular una funcion sin partirle el historial. Lo que se traspasa es
+el trabajo; el arrastre de quien la tuvo antes se queda con quien la tuvo antes.
+_Avoid_: reasignacion, mover.
 
 **Ocurrencia**:
 Una vez que una funcion vence. Una funcion diaria produce veintidos ocurrencias
@@ -58,6 +74,20 @@ La porcion del cargo reservada a lo no planificado, presupuestada de antemano.
 El peso fijo de una funcion dentro del cargo de una persona. Suma cien por
 persona y no cambia nunca por posicion en la matriz.
 _Avoid_: peso (reservado), prioridad, porcentaje.
+
+**Reparto**:
+Las funciones de una persona con sus ponderaciones, tomadas como un todo que
+suma cien. Nadie cambia la ponderacion de una funcion suelta: se redistribuye el
+reparto de alguien. Es la unidad de edicion y la unidad de publicacion.
+_Avoid_: cargo (es el puesto, no el documento), asignacion (es del sueldo).
+
+**Publicar**:
+Hacer vigente un reparto. Lo que ve el empleado es siempre el ultimo reparto
+publicado; mientras JFS edita, nada cambia en la pantalla de nadie. Un reparto
+que no suma cien no se puede publicar, y por eso nunca hay un estado a medias
+vigente.
+_Avoid_: guardar (se guarda el borrador, se publica el reparto), importar
+(era el acto de publicar cuando la entrada era el documento).
 
 **Importancia**:
 El unico juicio que JFS escribe a mano. Cero a nueve.
@@ -141,10 +171,26 @@ declarar atrasado un flujo. JFS lo lee, y el empleado sabe que lo lee.
 Ocurrencias cerradas sobre asignadas, pesadas por ponderacion. Es peso salarial
 expresado en porcentaje, asi que lo ve JFS y no el empleado.
 
+**Arrastre**:
+Periodos seguidos en que una funcion no se cumplio, por "no pude" o por vencer
+sin marcar. Se cuenta en periodos, que es donde vive la ocurrencia, y se muestra
+en tiempo ("ocho periodos, desde el 14 de julio"): el numero compara, la fecha
+dice si ya es grave. No se compara entre cadencias distintas, porque una diaria
+acumula veintidos veces mas rapido que una mensual.
+_Avoid_: racha (es lo contrario: dias seguidos cerrando todo, y es un logro del
+empleado), retraso (es de una ocurrencia sola), deuda.
+
+**Ponderacion arrastrada**:
+Cuanto del cargo de una persona esta sin cumplirse ahora mismo: la suma de las
+ponderaciones de sus funciones con arrastre. Es lo unico comparable entre
+personas y entre cadencias, y por eso es el orden del reporte. Ordenar por
+numero de periodos pondria siempre las diarias arriba.
+
 **Patron**:
-Una funcion que quedo sin cumplir dos periodos seguidos, por "no pude" o por
-vencer sin marcar; en un flujo, un atraso declarado dos veces en el mismo mes. Se
-agrupa por funcion y nunca por el texto de la razon, que se muestra tal cual.
+Un arrastre de dos periodos o mas; en un flujo, un atraso declarado dos veces en
+el mismo mes. Es el mismo hecho que el arrastre, visto desde el cierre de mes del
+empleado y con umbral. Se agrupa por funcion y nunca por el texto de la razon,
+que se muestra tal cual.
 _Avoid_: problema, falla (senalan a la persona).
 
 ## Relationships
@@ -197,3 +243,9 @@ _Avoid_: problema, falla (senalan a la persona).
   deduce el agente. Resuelto: **la reconciliacion solo compara lo que JFS escribe
   en la hoja**; lo que el documento no trae no puede marcar una fila como
   cambiada.
+- La ponderacion se repartio **hacia atras**: se sabia lo que gana cada persona y
+  se acomodaron porcentajes sobre sus funciones hasta cuadrar cien. O sea que hoy
+  la flecha va sueldo -> ponderacion, y el peso de una funcion no es una medida
+  sino el resultado de un ajuste. Sin resolver: el sistema existe para invertir
+  esa flecha, y hasta que se invierta, los pesos con los que informa son los del
+  ajuste original.

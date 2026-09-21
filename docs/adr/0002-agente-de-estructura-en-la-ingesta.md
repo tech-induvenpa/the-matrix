@@ -1,5 +1,10 @@
 # Un agente tipifica las funciones y extrae su dia tope en la ingesta
 
+> **Retirado (21/09/2026) — lo reemplaza ADR 0006.** Sin prosa que leer, el tipo
+> no se infiere: la pantalla pregunta y la respuesta lo determina. El criterio
+> que esta decision guardaba en el agente pasa a vivir en la interfaz. El agente
+> corre una ultima vez, en la migracion.
+
 JFS escribe prosa, y el 46% del peso del documento no es agendable como tarea
 (29% flujo, 14% area, 2% holgura). El tipo decide a donde va cada funcion: al
 plan de la semana, a la columna de flujos, o solo al reparto mensual. Y las

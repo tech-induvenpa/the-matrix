@@ -1,5 +1,12 @@
 # El Excel es un formulario de entrada detras de una capa anticorrupcion
 
+> **Retirado (21/09/2026) — lo reemplaza ADR 0006.** JFS asigna, pondera y
+> mantiene el calendario en una pantalla propia; el documento deja de ser
+> entrada y no se escribe nunca. Esta decision previo su propio final: "el dia
+> que JFS acepte una pantalla, es un segundo adaptador contra el mismo modelo".
+> Resulto no ser un segundo adaptador sino el unico. Se conserva porque explica
+> por que el sistema tiene la forma que tiene, y por que la migracion es como es.
+
 El documento "Funciones cuantificadas del personal" no es un catalogo de tareas:
 es un instrumento de reparto salarial. Sus filas son unidades de sueldo, esta
 maquetado en bloques con celdas combinadas para que lo lea una persona, no tiene
