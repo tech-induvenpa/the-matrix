@@ -53,6 +53,12 @@ export async function comoEmpleado(correo: string): Promise<SupabaseClient> {
   }
   if (!usuario) throw new Error(`No se pudo resolver el usuario de ${correo}`);
 
+  // En produccion se entra por el enlace del correo, sin contrasena. Aqui hace
+  // falta una para poder abrir sesion desde una prueba, y el usuario puede
+  // haber nacido por cualquier camino -- incluido dar_de_alta, que no pone
+  // ninguna. Asi que se le pone siempre.
+  await servicio.auth.admin.updateUserById(usuario.id, { password: clave });
+
   // El vinculo se rehace siempre: la fila del empleado es nueva en cada prueba.
   const { error: sinVinculo } = await servicio
     .from('empleado')

@@ -273,3 +273,76 @@ export async function traspasar(funcionId: string, deQuien: string, formulario: 
   revalidatePath('/admin');
   return { mensaje: '¡Traspasada! Su historial se fue con ella.', celebra: true };
 }
+
+// --- La gente y el calendario (CEB-134, CEB-135) ----------------------------
+
+// Dar de alta es lo que hoy hace `pnpm acceso` por terminal. Sin esto, el
+// administrador depende de alguien tecnico para la operacion mas basica.
+//
+// Un empleado sin vinculo con su usuario de autenticacion existe en la base
+// pero no ve nada, porque la seguridad por fila cuelga de ese vinculo: el alta
+// no esta completa hasta que el vinculo existe (ADR 0004).
+export async function darDeAlta(formulario: FormData) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const nombre = String(formulario.get('nombre') ?? '').trim();
+  const correo = String(formulario.get('correo') ?? '').trim().toLowerCase();
+
+  if (!nombre) return { mensaje: 'Sin nombre no puedo darla de alta.', celebra: false };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) return { mensaje: 'Ese correo no parece un correo.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('dar_de_alta', { el_nombre: nombre, el_correo: correo });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/admin');
+  return { mensaje: `${nombre} ya puede entrar con su correo.`, celebra: true };
+}
+
+// Los dias no habiles son rangos: un feriado es un rango de un dia, las
+// colectivas son un bloque. Las vacaciones individuales no existen aqui.
+export async function cargarDiasNoHabiles(formulario: FormData) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const desde = String(formulario.get('desde') ?? '');
+  const hasta = String(formulario.get('hasta') ?? '') || desde;
+  const descripcion = String(formulario.get('descripcion') ?? '').trim();
+
+  if (!desde) return { mensaje: '¿Desde cuándo?', celebra: false };
+  if (hasta < desde) return { mensaje: 'El final va después del principio.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.from('dia_no_habil').insert({ desde, hasta, descripcion });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/admin/calendario');
+  return { mensaje: 'Cargado.', celebra: false };
+}
+
+export async function borrarDiaNoHabil(id: string) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.from('dia_no_habil').delete().eq('id', id);
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/admin/calendario');
+  return { mensaje: 'Quitado.', celebra: false };
+}
+
+// Hasta donde se reviso el calendario. Que no haya feriados cargados hacia
+// adelante no significa que el calendario cubra: significa que nadie sabe.
+export async function declararCobertura(formulario: FormData) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const hasta = String(formulario.get('cargadoHasta') ?? '');
+  if (!hasta) return { mensaje: '¿Hasta qué fecha lo revisaste?', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.from('calendario').update({ cargado_hasta: hasta }).eq('id', true);
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/admin/calendario');
+  revalidatePath('/admin');
+  return { mensaje: `Calendario revisado hasta el ${hasta}.`, celebra: true };
+}

@@ -128,4 +128,39 @@ describe('INV-2: un empleado nunca obtiene datos de otro', () => {
 
     expect(error === null && data?.ponderacion !== 99).toBe(true);
   });
+
+  // CEB-134: dar de alta tiene que dejar a la persona pudiendo entrar, no solo
+  // existiendo en la base. Un empleado sin vinculo con su usuario de
+  // autenticacion no ve ni lo suyo.
+  it('a quien el administrador da de alta puede entrar y ve lo suyo, y nada mas', async () => {
+    const jefa = await comoAdministrador('jefa@prueba.test');
+
+    const { data: nuevo, error } = await jefa.rpc('dar_de_alta', {
+      el_nombre: 'CARMEN',
+      el_correo: 'Carmen@Prueba.test',
+    });
+    expect(error).toBeNull();
+    expect(nuevo).toBeTruthy();
+
+    const { data } = await comoServicio()
+      .from('empleado')
+      .select('nombre_bloque, correo, auth_user_id')
+      .eq('correo', 'carmen@prueba.test')
+      .single();
+
+    expect(data).toEqual({ nombre_bloque: 'CARMEN', correo: 'carmen@prueba.test', auth_user_id: nuevo });
+
+    // Y entra de verdad: la prueba la firma el propio gotrue.
+    const carmen = await comoEmpleado('carmen@prueba.test');
+    const { data: suyas } = await carmen.from('funcion').select('texto');
+    expect(suyas).toEqual([]);
+  });
+
+  it('un empleado no puede dar de alta a nadie', async () => {
+    const ana = await comoEmpleado('ana@prueba.test');
+
+    const { error } = await ana.rpc('dar_de_alta', { el_nombre: 'INTRUSO', el_correo: 'intruso@prueba.test' });
+
+    expect(error).not.toBeNull();
+  });
 });

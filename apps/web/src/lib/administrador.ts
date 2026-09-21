@@ -1,4 +1,6 @@
+import { Calendario, coberturaDe } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
+import { hoyISO } from '@/lib/datos';
 import { notFound } from 'next/navigation';
 
 // Quien asigna. Lo pregunta la base, no la aplicacion: la sesion no lleva el
@@ -143,5 +145,29 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
       ponderacion: t.ponderacion as number,
     })),
     companeros: (otros ?? []).map((e) => ({ id: e.id as string, nombre: e.nombre_bloque as string })),
+  };
+}
+
+export type DiaNoHabil = { id: string; desde: string; hasta: string; descripcion: string | null };
+
+// El calendario y, sobre todo, hasta donde se reviso. Que no haya feriados
+// cargados hacia adelante no significa que el calendario cubra: significa que
+// nadie sabe.
+export async function elCalendario() {
+  const supabase = await clienteDelServidor();
+
+  const [{ data: dias }, { data: fila }] = await Promise.all([
+    supabase.from('dia_no_habil').select('id, desde, hasta, descripcion').order('desde', { ascending: false }),
+    supabase.from('calendario').select('cargado_hasta').maybeSingle(),
+  ]);
+
+  const hoy = hoyISO();
+  const cargadoHasta = (fila?.cargado_hasta as string | undefined) ?? hoy;
+
+  return {
+    hoy,
+    cargadoHasta,
+    dias: (dias ?? []) as DiaNoHabil[],
+    cobertura: coberturaDe(Calendario.con(dias ?? []), hoy, cargadoHasta),
   };
 }
