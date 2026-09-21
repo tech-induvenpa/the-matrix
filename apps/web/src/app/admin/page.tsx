@@ -72,9 +72,14 @@ export default async function Panel() {
         </p>
       </section>
 
-      <Link href="/admin/calendario" style={{ fontSize: 13.5, color: 'var(--gris)' }}>
-        El calendario →
-      </Link>
+      <div style={{ display: 'flex', gap: 18, fontSize: 13.5 }}>
+        <Link href="/admin/reporte" style={{ color: 'var(--gris)' }}>
+          Qué se arrastra →
+        </Link>
+        <Link href="/admin/calendario" style={{ color: 'var(--gris)' }}>
+          El calendario →
+        </Link>
+      </div>
     </main>
   );
 }

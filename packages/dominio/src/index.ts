@@ -12,6 +12,8 @@ export { estadosVigentes } from './flujos';
 export type { Estado, EventoFlujo } from './flujos';
 export { avisoDe, etapaDe, mostrarResueltas, tramosLlenos, TRAMOS, UMBRAL_DE_ATRASO } from './avisos';
 export type { Aviso, ClaveDeAviso, Etapa, EstadoDeLaSemana, Registro } from './avisos';
+export { arrastreDe, esPatron, ponderacionArrastrada, SIN_ARRASTRE, UMBRAL_DEL_PATRON } from './arrastre';
+export type { Arrastre, FuncionConArrastre } from './arrastre';
 export { patronesDelMes, rachaMasLarga } from './cierre';
 export type { FlujoDelMes, Patron, PeriodoCumplido } from './cierre';
 export { coberturaDe, HORIZONTE } from './cobertura';
