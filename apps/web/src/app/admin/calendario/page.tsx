@@ -1,22 +1,17 @@
-import { elCalendario, soloAdministrador } from '@/lib/administrador';
+import { elCalendario } from '@/lib/administrador';
 import { borrarDiaNoHabil, cargarDiasNoHabiles, declararCobertura } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { AvisoDeCobertura } from '../cobertura';
-import Link from 'next/link';
 
 // Los dias en que esta empresa no trabaja, y hasta donde alguien lo reviso.
 export default async function CalendarioDeJFS() {
-  await soloAdministrador();
   const { dias, cargadoHasta, cobertura } = await elCalendario();
 
   return (
     <main style={{ maxWidth: 780, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
-        <Link href="/admin" style={{ fontSize: 13, color: 'var(--gris)', textDecoration: 'none' }}>
-          ← Tu gente
-        </Link>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: '6px 0 0' }}>El calendario 📅</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El calendario 📅</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0', maxWidth: 560 }}>
           Los días en que no se trabaja, como rangos: un feriado es un rango de un día, las colectivas son un bloque.
           Los fines de semana se cuentan solos.

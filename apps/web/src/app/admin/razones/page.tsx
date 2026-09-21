@@ -1,4 +1,3 @@
-import { soloAdministrador } from '@/lib/administrador';
 import { razonesDelEquipo } from '@/lib/reporte';
 import { fechaCorta } from '@/lib/datos';
 import Link from 'next/link';
@@ -13,7 +12,6 @@ export default async function Razones({
 }: {
   searchParams: Promise<{ persona?: string; funcion?: string }>;
 }) {
-  await soloAdministrador();
   const { persona, funcion } = await searchParams;
   const todas = await razonesDelEquipo();
 
@@ -28,10 +26,7 @@ export default async function Razones({
   return (
     <main style={{ maxWidth: 940, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header>
-        <Link href="/admin" style={{ fontSize: 13, color: 'var(--gris)', textDecoration: 'none' }}>
-          ← Tu gente
-        </Link>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: '6px 0 0' }}>Qué dijeron 💬</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Qué dijeron 💬</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0', maxWidth: 620 }}>
           Cada «no pude», cada atraso y cada puesta al día, con la razón tal como se escribió. Atribuida a quien tenía
           la función ese día, no a quien la tiene hoy.

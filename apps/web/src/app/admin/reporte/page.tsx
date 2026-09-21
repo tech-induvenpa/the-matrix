@@ -1,4 +1,3 @@
-import { soloAdministrador } from '@/lib/administrador';
 import { reporte } from '@/lib/reporte';
 import { fechaCorta } from '@/lib/datos';
 import Link from 'next/link';
@@ -9,16 +8,12 @@ import Link from 'next/link';
 // falla mas veces. Eso cambia a quien señala: una diaria de tres puntos con
 // veinte incumplimientos pesa menos que una mensual de veinticinco con uno.
 export default async function Reporte() {
-  await soloAdministrador();
   const gente = await reporte();
 
   return (
     <main style={{ maxWidth: 940, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
-        <Link href="/admin" style={{ fontSize: 13, color: 'var(--gris)', textDecoration: 'none' }}>
-          ← Tu gente
-        </Link>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: '6px 0 0' }}>Qué se arrastra 🐢</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Qué se arrastra 🐢</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0', maxWidth: 620 }}>
           Períodos seguidos sin cumplirse, por «no pude» o por vencer sin marcar. Ordenado por cuánto del cargo de
           cada quien está sin cumplir, que es lo único comparable entre personas y entre cadencias.

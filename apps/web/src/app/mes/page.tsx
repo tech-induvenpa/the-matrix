@@ -14,6 +14,7 @@ import { diaTopeDe, panorama, tipoDe } from '@/lib/datos';
 import { Tarjeta, YaResueltas } from '../tarjeta';
 import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
+import { DEL_EMPLEADO, Navegacion } from '../navegacion';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
@@ -98,6 +99,8 @@ export default async function Mes() {
   });
 
   return (
+    <>
+      <Navegacion entradas={DEL_EMPLEADO} />
     <main style={{ maxWidth: 1440, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
         <div>
@@ -226,6 +229,7 @@ export default async function Mes() {
         </section>
       </div>
     </main>
+    </>
   );
 }
 

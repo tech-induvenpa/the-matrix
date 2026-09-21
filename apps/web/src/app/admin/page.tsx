@@ -1,4 +1,4 @@
-import { elCalendario, gente, soloAdministrador } from '@/lib/administrador';
+import { elCalendario, gente } from '@/lib/administrador';
 import { darDeAlta } from './acciones';
 import { Accion } from '../accion';
 import { Enviar } from '../boton';
@@ -8,7 +8,6 @@ import Link from 'next/link';
 // El trazador del backoffice: quien asigna entra y ve a su gente. Nada mas.
 // Lo que decide esta pantalla no es lo que muestra, es quien puede verla.
 export default async function Panel() {
-  await soloAdministrador();
   const [equipo, calendario] = await Promise.all([gente(), elCalendario()]);
 
   return (
@@ -72,20 +71,6 @@ export default async function Panel() {
         </p>
       </section>
 
-      <div style={{ display: 'flex', gap: 18, fontSize: 13.5 }}>
-        <Link href="/admin/reporte" style={{ color: 'var(--gris)' }}>
-          Qué se arrastra →
-        </Link>
-        <Link href="/admin/razones" style={{ color: 'var(--gris)' }}>
-          Qué dijeron →
-        </Link>
-        <a href="/admin/descarga" style={{ color: 'var(--gris)' }}>
-          Descargar el mes ↓
-        </a>
-        <Link href="/admin/calendario" style={{ color: 'var(--gris)' }}>
-          El calendario →
-        </Link>
-      </div>
     </main>
   );
 }

@@ -1,15 +1,13 @@
-import { cargoDe, soloAdministrador } from '@/lib/administrador';
+import { cargoDe } from '@/lib/administrador';
 import { archivarFuncion, crearFuncion, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
-import Link from 'next/link';
 import { Formulario } from './formulario';
 import { Reparto } from './reparto';
 
 // El cargo de una persona: sus funciones y lo que pesa cada una. Aqui se crean
 // y se editan; repartir el cien es la otra pantalla (CEB-132).
 export default async function Cargo({ params }: { params: Promise<{ empleado: string }> }) {
-  await soloAdministrador();
   const { empleado } = await params;
   const cargo = await cargoDe(empleado);
 
@@ -20,10 +18,7 @@ export default async function Cargo({ params }: { params: Promise<{ empleado: st
   return (
     <main style={{ maxWidth: 880, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
-        <Link href="/admin" style={{ fontSize: 13, color: 'var(--gris)', textDecoration: 'none' }}>
-          ← Tu gente
-        </Link>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: '6px 0 0' }}>{cargo.nombre}</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>{cargo.nombre}</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
           {cargo.funciones.length} funciones · reparte {suma} de 100
         </p>

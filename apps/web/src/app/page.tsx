@@ -28,6 +28,7 @@ import { PorQue } from './porque';
 import { CIRCULO, Numero, Tarjeta, YaResueltas } from './tarjeta';
 import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
+import { DEL_EMPLEADO, Navegacion } from './navegacion';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -233,6 +234,8 @@ export default async function Semana() {
   );
 
   return (
+    <>
+      <Navegacion entradas={DEL_EMPLEADO} />
     <main style={{ display: 'flex', flexDirection: 'column', maxWidth: 1440, margin: '0 auto' }}>
       {metaCumplida ? (
         <CierreDeSemana
@@ -371,6 +374,7 @@ export default async function Semana() {
         </section>
       </div>
     </main>
+    </>
   );
 }
 
