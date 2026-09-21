@@ -1,8 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { comoEmpleado, comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, vaciar } from './entorno';
 
-// INV-2 · Un empleado nunca obtiene datos de otro. Ni funciones, ni marcas, ni
-// estados de flujo, ni razones, aunque una ruta de servidor olvide filtrar.
+// INV-2 · Un empleado nunca obtiene datos de otro empleado, y quien no es
+// administrador no obtiene datos de nadie mas que de si mismo. Ni funciones, ni
+// marcas, ni estados de flujo, ni razones, aunque una ruta de servidor olvide
+// filtrar.
 //
 // Se prueba con dos sesiones reales contra el gotrue local. Con un cliente de
 // servicio no se probaria nada: ese se salta la seguridad por fila por diseño.
@@ -58,6 +60,48 @@ describe('INV-2: un empleado nunca obtiene datos de otro', () => {
     const ana = await comoEmpleado('ana@prueba.test');
 
     const { error } = await ana.from('marca').insert({ funcion_id: funcionDeB, periodo: '2026-10', resultado: 'hecho' });
+
+    expect(error).not.toBeNull();
+  });
+
+  it('un administrador si ve a todos: para eso existe el rol', async () => {
+    const jefa = await comoAdministrador('jefa@prueba.test');
+
+    const { data } = await jefa.from('funcion').select('texto');
+
+    expect(data?.map((f) => f.texto).sort()).toEqual(['Cierre de Ana', 'Cierre de Benito']);
+  });
+
+  it('el administrador lee las razones de todos, que es lo que vino a buscar', async () => {
+    const jefa = await comoAdministrador('jefa@prueba.test');
+
+    const { data } = await jefa.from('marca').select('razon');
+
+    expect(data?.map((m) => m.razon)).toEqual(['Secreto de Benito']);
+  });
+
+  it('que exista un administrador no le abre nada a un empleado', async () => {
+    await comoAdministrador('jefa@prueba.test');
+    const ana = await comoEmpleado('ana@prueba.test');
+
+    const { data } = await ana.from('funcion').select('texto');
+
+    expect(data?.map((f) => f.texto)).toEqual(['Cierre de Ana']);
+  });
+
+  it('un empleado no puede leer quien es administrador', async () => {
+    const ana = await comoEmpleado('ana@prueba.test');
+
+    const { data } = await ana.from('administrador').select('auth_user_id');
+
+    expect(data ?? []).toEqual([]);
+  });
+
+  it('un empleado no puede hacerse administrador', async () => {
+    const ana = await comoEmpleado('ana@prueba.test');
+    const { data: usuario } = await ana.auth.getUser();
+
+    const { error } = await ana.from('administrador').insert({ auth_user_id: usuario.user!.id });
 
     expect(error).not.toBeNull();
   });

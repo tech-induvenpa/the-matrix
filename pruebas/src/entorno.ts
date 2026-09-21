@@ -67,11 +67,44 @@ export async function comoEmpleado(correo: string): Promise<SupabaseClient> {
   return cliente;
 }
 
+// El administrador no es un empleado: es una fila en su propia tabla, atada al
+// usuario de autenticacion. Entra por el mismo sitio que todo el mundo.
+export async function comoAdministrador(correo: string): Promise<SupabaseClient> {
+  const servicio = comoServicio();
+  const clave = `prueba-${correo}`;
+
+  const { data: creado, error } = await servicio.auth.admin.createUser({
+    email: correo,
+    password: clave,
+    email_confirm: true,
+  });
+  if (error && !error.message.includes('already been registered')) throw error;
+
+  let usuario = creado?.user ?? null;
+  if (!usuario) {
+    const { data } = await servicio.auth.admin.listUsers();
+    usuario = data.users.find((u) => u.email === correo) ?? null;
+  }
+  if (!usuario) throw new Error(`No se pudo resolver el usuario de ${correo}`);
+
+  const { error: sinAlta } = await servicio
+    .from('administrador')
+    .upsert({ auth_user_id: usuario.id }, { onConflict: 'auth_user_id' });
+  if (sinAlta) throw sinAlta;
+
+  const cliente = createClient(URL_LOCAL, ANON, { auth: { persistSession: false } });
+  const { error: fallo } = await cliente.auth.signInWithPassword({ email: correo, password: clave });
+  if (fallo) throw fallo;
+
+  return cliente;
+}
+
 // Cada prueba monta su escenario desde cero: nada de datos heredados.
 export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
-  for (const tabla of ['evento_flujo', 'marca', 'funcion', 'empleado']) {
-    await servicio.from(tabla).delete().not('id', 'is', null);
+  for (const tabla of ['evento_flujo', 'marca', 'funcion', 'empleado', 'administrador']) {
+    const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
+    await servicio.from(tabla).delete().not(columna, 'is', null);
   }
 }
 

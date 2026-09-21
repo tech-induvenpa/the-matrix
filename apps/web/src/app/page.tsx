@@ -26,6 +26,8 @@ import { Enviar } from './boton';
 import { Adelantar, CierreDeSemana } from './celebracion';
 import { PorQue } from './porque';
 import { CIRCULO, Numero, Tarjeta, YaResueltas } from './tarjeta';
+import { esAdministrador } from '@/lib/administrador';
+import { redirect } from 'next/navigation';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -36,6 +38,9 @@ const CUANTAS = 5;
 const RESCATE = 10;
 
 export default async function Semana() {
+  // Quien asigna no tiene funciones: su sitio es el panel, no una pantalla vacia.
+  if (await esAdministrador()) redirect('/admin');
+
   const { hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos } = await panorama();
 
   const desde = sumarDias(hoy, -RESCATE);

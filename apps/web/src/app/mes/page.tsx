@@ -12,10 +12,14 @@ import {
 } from '@matriz/dominio';
 import { diaTopeDe, panorama, tipoDe } from '@/lib/datos';
 import { Tarjeta, YaResueltas } from '../tarjeta';
+import { esAdministrador } from '@/lib/administrador';
+import { redirect } from 'next/navigation';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
 export default async function Mes() {
+  if (await esAdministrador()) redirect('/admin');
+
   const { hoy, calendario, funciones, marcas, eventos } = await panorama();
 
   const primero = `${hoy.slice(0, 7)}-01`;
