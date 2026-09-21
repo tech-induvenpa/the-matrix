@@ -35,13 +35,21 @@ export function sePuedePublicar(pesos: readonly Peso[]): Veredicto {
 // El redondeo se cobra en la funcion que mas pesa: repartir el sobrante entre
 // todas movería pesos que nadie toco, y en la mas grande un punto se nota
 // menos que en una de dos.
-export function reescalarACien(pesos: readonly Peso[]): Peso[] {
+export const reescalarACien = (pesos: readonly Peso[]) => reescalarA(pesos, 100);
+
+// Quien recibe una funcion tambien tiene que hacerle sitio. Cuanto sitio lo
+// decide el administrador -- eso el sistema no lo puede calcular sin saber lo
+// que gana esa persona --, pero repartir lo que queda entre sus demas
+// funciones si es aritmetica: conservan sus proporciones dentro de lo que
+// sobra.
+export function reescalarA(pesos: readonly Peso[], objetivo: number): Peso[] {
   const suma = sumaDe(pesos);
-  if (suma === 0 || suma === 100) return pesos.map((p) => ({ ...p }));
+  if (pesos.length === 0) return [];
+  if (suma === 0 || suma === objetivo) return pesos.map((p) => ({ ...p }));
 
-  const escalados = pesos.map((p) => ({ ...p, ponderacion: Math.round((p.ponderacion * 100) / suma) }));
+  const escalados = pesos.map((p) => ({ ...p, ponderacion: Math.round((p.ponderacion * objetivo) / suma) }));
 
-  const sobra = 100 - sumaDe(escalados);
+  const sobra = objetivo - sumaDe(escalados);
   if (sobra !== 0) {
     const mayor = escalados.reduce((a, b) => (b.ponderacion > a.ponderacion ? b : a));
     mayor.ponderacion += sobra;

@@ -1,5 +1,5 @@
 import { cargoDe, soloAdministrador } from '@/lib/administrador';
-import { archivarFuncion, crearFuncion } from '../acciones';
+import { archivarFuncion, crearFuncion, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import Link from 'next/link';
@@ -48,6 +48,35 @@ export default async function Cargo({ params }: { params: Promise<{ empleado: st
 
             <div style={{ paddingTop: 14 }}>
               <Formulario funcionId={f.id} empleadoId={empleado} funcion={f} />
+
+              <Accion accion={traspasar.bind(null, f.id, empleado)}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(26,23,19,0.10)' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--gris)' }}>
+                    Pasársela a
+                    <select name="aQuien" style={{ height: 34, borderRadius: 8, border: '1px solid rgba(26,23,19,0.18)', padding: '0 8px', fontSize: 13.5 }}>
+                      <option value="">—</option>
+                      {cargo.companeros.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--gris)' }}>
+                    Cuánto pesa en su cargo
+                    <input name="pesoNuevo" type="number" min={0} max={100} defaultValue={f.ponderacion} style={{ width: 70, height: 34, borderRadius: 8, border: '1px solid rgba(26,23,19,0.18)', padding: '0 8px', fontSize: 13.5, textAlign: 'right' }} />
+                  </label>
+
+                  <Enviar style={{ height: 34, padding: '0 16px', borderRadius: 999, background: 'rgba(26,23,19,0.06)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }} enviando="Traspasando…">
+                    Traspasar
+                  </Enviar>
+
+                  <span style={{ fontSize: 12, color: 'var(--gris)', flexBasis: '100%' }}>
+                    Aquí pesa {f.ponderacion}%. Su historial se va con ella; el arrastre de {cargo.nombre} se queda.
+                  </span>
+                </div>
+              </Accion>
 
               <Accion accion={archivarFuncion.bind(null, f.id, empleado)}>
                 <Enviar

@@ -1,6 +1,6 @@
 'use server';
 
-import { ADMITE_DIA_TOPE, reescalarACien, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
+import { ADMITE_DIA_TOPE, reescalarA, reescalarACien, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { revalidatePath } from 'next/cache';
@@ -217,4 +217,59 @@ export async function descartarBorrador(empleadoId: string) {
 
   revalidatePath(`/admin/${empleadoId}`);
   return { mensaje: 'Borrador descartado.', celebra: false };
+}
+
+// --- El traspaso (CEB-133) --------------------------------------------------
+
+// Mover trabajo de una persona a otra sin partirle la historia. Asimetrico a
+// proposito: quien entrega se reacomoda solo, quien recibe necesita que alguien
+// escriba cuanto pesa en su cargo, porque eso el sistema no lo puede calcular
+// sin saber lo que gana (ADR 0007).
+export async function traspasar(funcionId: string, deQuien: string, formulario: FormData) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const aQuien = String(formulario.get('aQuien') ?? '');
+  const pesoNuevo = Number(formulario.get('pesoNuevo') ?? 0);
+
+  if (!aQuien) return { mensaje: '¿A quién se la pasas?', celebra: false };
+  if (aQuien === deQuien) return { mensaje: 'Esa función ya es suya.', celebra: false };
+  if (!Number.isInteger(pesoNuevo) || pesoNuevo < 0 || pesoNuevo > 100)
+    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+
+  const cargoDe = async (quien: string) => {
+    const { data } = await supabase
+      .from('titularidad')
+      .select('funcion_id, ponderacion')
+      .eq('empleado_id', quien)
+      .is('hasta', null)
+      .not('publicado_en', 'is', null);
+
+    return (data ?? []).map((t) => ({
+      funcionId: t.funcion_id as string,
+      ponderacion: t.ponderacion as number,
+    }));
+  };
+
+  const quedan = (await cargoDe(deQuien)).filter((t) => t.funcionId !== funcionId);
+  const reciben = await cargoDe(aQuien);
+
+  const enFilas = (pesos: { funcionId: string; ponderacion: number }[]) =>
+    pesos.map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion }));
+
+  const { error } = await supabase.rpc('traspasar', {
+    la_funcion: funcionId,
+    de_quien: deQuien,
+    a_quien: aQuien,
+    peso_nuevo: pesoNuevo,
+    pesos_de_quien_entrega: enFilas(reescalarACien(quedan)),
+    pesos_de_quien_recibe: enFilas(reescalarA(reciben, 100 - pesoNuevo)),
+  });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath(`/admin/${deQuien}`);
+  revalidatePath(`/admin/${aQuien}`);
+  revalidatePath('/admin');
+  return { mensaje: '¡Traspasada! Su historial se fue con ella.', celebra: true };
 }

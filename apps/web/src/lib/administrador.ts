@@ -75,12 +75,16 @@ export type FuncionDelCargo = {
   diaTope: number | null;
 };
 
+export type Companero = { id: string; nombre: string };
+
 export type Cargo = {
   id: string;
   nombre: string;
   funciones: FuncionDelCargo[];
   // Lo que el administrador dejo a medias. Vacio si no hay nada pendiente.
   borrador: { funcionId: string; ponderacion: number }[];
+  // A quien se le puede traspasar: todos menos quien ya la tiene.
+  companeros: Companero[];
 };
 
 // El cargo de una persona: lo que tiene a su nombre ahora. La ponderacion sale
@@ -102,6 +106,12 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
     .is('hasta', null)
     .not('publicado_en', 'is', null)
     .eq('funcion.activa', true);
+
+  const { data: otros } = await supabase
+    .from('empleado')
+    .select('id, nombre_bloque')
+    .neq('id', empleadoId)
+    .order('nombre_bloque');
 
   const { data: pendiente } = await supabase
     .from('titularidad')
@@ -132,5 +142,6 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
       funcionId: t.funcion_id as string,
       ponderacion: t.ponderacion as number,
     })),
+    companeros: (otros ?? []).map((e) => ({ id: e.id as string, nombre: e.nombre_bloque as string })),
   };
 }

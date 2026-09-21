@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reescalarACien, sePuedePublicar, sumaDe } from '../src/reparto-de-un-cargo';
+import { reescalarA, reescalarACien, sePuedePublicar, sumaDe } from '../src/reparto-de-un-cargo';
 
 const pesos = (...n: number[]) => n.map((ponderacion, i) => ({ funcionId: `f-${i}`, ponderacion }));
 
@@ -64,5 +64,19 @@ describe('cuando una funcion se va del cargo', () => {
 
   it('un cargo entero en cero no se puede reescalar: no hay proporcion que conservar', () => {
     expect(reescalarACien(pesos(0, 0))).toEqual(pesos(0, 0));
+  });
+
+  // Cuando llega una funcion de fuera, las de casa tienen que dejarle sitio.
+  it('hacer sitio para una funcion nueva conserva las proporciones de las demas', () => {
+    // 60 y 40 tienen que caber en 75: siguen siendo tres a dos.
+    expect(reescalarA(pesos(60, 40), 75)).toEqual(pesos(45, 30));
+  });
+
+  it('un cargo entero cede su sitio si hace falta', () => {
+    expect(reescalarA(pesos(100), 40)).toEqual(pesos(40));
+  });
+
+  it('sin funciones no hay nada que reescalar', () => {
+    expect(reescalarA([], 80)).toEqual([]);
   });
 });

@@ -17,7 +17,7 @@ export type { FlujoDelMes, Patron, PeriodoCumplido } from './cierre';
 export { coberturaDe, HORIZONTE } from './cobertura';
 export type { Cobertura, EstadoDeCobertura } from './cobertura';
 export { repartoDelMes } from './reparto';
-export { reescalarACien, sePuedePublicar, sumaDe } from './reparto-de-un-cargo';
+export { reescalarA, reescalarACien, sePuedePublicar, sumaDe } from './reparto-de-un-cargo';
 export type { Peso, Veredicto as VeredictoDelReparto } from './reparto-de-un-cargo';
 export type { FuncionDelMes, Tajada, TipoDeFuncion } from './reparto';
 export { identidadDe, normalizar, reconciliar } from './documento';
