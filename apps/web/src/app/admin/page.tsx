@@ -1,4 +1,5 @@
 import { gente, soloAdministrador } from '@/lib/administrador';
+import Link from 'next/link';
 
 // El trazador del backoffice: quien asigna entra y ve a su gente. Nada mas.
 // Lo que decide esta pantalla no es lo que muestra, es quien puede verla.
@@ -17,8 +18,9 @@ export default async function Panel() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
-          <div
+          <Link
             key={e.id}
+            href={`/admin/${e.id}`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -35,7 +37,7 @@ export default async function Panel() {
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
               {e.funciones} {e.funciones === 1 ? 'función' : 'funciones'}
             </span>
-          </div>
+          </Link>
         ))}
 
         {equipo.length === 0 && (

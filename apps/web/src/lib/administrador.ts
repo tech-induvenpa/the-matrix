@@ -64,3 +64,52 @@ export async function funcionesConSuHistorial(): Promise<FuncionDelPanel[]> {
       .sort((a, b) => a.desde.localeCompare(b.desde)),
   }));
 }
+
+export type FuncionDelCargo = {
+  id: string;
+  texto: string;
+  periodicidad: string;
+  importancia: number;
+  ponderacion: number;
+  tipo: string | null;
+  diaTope: number | null;
+};
+
+export type Cargo = { id: string; nombre: string; funciones: FuncionDelCargo[] };
+
+// El cargo de una persona: lo que tiene a su nombre ahora. La ponderacion sale
+// del vinculo, que es donde vive desde CEB-130.
+export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
+  const supabase = await clienteDelServidor();
+
+  const { data: empleado } = await supabase
+    .from('empleado')
+    .select('id, nombre_bloque')
+    .eq('id', empleadoId)
+    .maybeSingle();
+  if (!empleado) return null;
+
+  const { data } = await supabase
+    .from('titularidad')
+    .select('ponderacion, funcion!inner(id, texto, periodicidad, importancia, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido)')
+    .eq('empleado_id', empleadoId)
+    .is('hasta', null)
+    .eq('funcion.activa', true);
+
+  const funciones = ((data ?? []) as Record<string, unknown>[])
+    .map((t) => {
+      const f = t.funcion as Record<string, unknown>;
+      return {
+        id: f.id as string,
+        texto: f.texto as string,
+        periodicidad: f.periodicidad as string,
+        importancia: f.importancia as number,
+        ponderacion: t.ponderacion as number,
+        tipo: (f.tipo_corregido ?? f.tipo_generado ?? null) as string | null,
+        diaTope: (f.dia_tope_corregido ?? f.dia_tope_generado ?? null) as number | null,
+      };
+    })
+    .sort((a, b) => b.ponderacion - a.ponderacion || a.texto.localeCompare(b.texto));
+
+  return { id: empleado.id as string, nombre: empleado.nombre_bloque as string, funciones };
+}

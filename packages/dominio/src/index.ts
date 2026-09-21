@@ -20,6 +20,8 @@ export { repartoDelMes } from './reparto';
 export type { FuncionDelMes, Tajada, TipoDeFuncion } from './reparto';
 export { identidadDe, normalizar, reconciliar } from './documento';
 export type { Cambio, FilaDelDocumento, FuncionExistente, Reconciliacion } from './documento';
+export { ADMITE_DIA_TOPE, SE_AGENDA, tipoSegun } from './clases';
+export type { Respuestas } from './clases';
 export { interpretar } from './tipificacion';
 export type { Motivo, Propuesta, Tipificador, Veredicto } from './tipificacion';
 export { razonesParaElDocumento } from './razones';

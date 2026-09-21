@@ -97,4 +97,35 @@ describe('INV-2: un empleado nunca obtiene datos de otro', () => {
 
     expect(error).not.toBeNull();
   });
+
+  it('solo el administrador escribe funciones: lo dice la base, no el formulario', async () => {
+    const jefa = await comoAdministrador('jefa@prueba.test');
+    const ana = await comoEmpleado('ana@prueba.test');
+
+    const suya = await jefa
+      .from('funcion')
+      .insert({ hash_identidad: 'nueva-1', texto: 'Creada por la jefa', periodicidad: 'mensual', importancia: 5 })
+      .select('id')
+      .single();
+    expect(suya.error).toBeNull();
+
+    const deAna = await ana
+      .from('funcion')
+      .insert({ hash_identidad: 'nueva-2', texto: 'Creada por Ana', periodicidad: 'mensual', importancia: 5 });
+    expect(deAna.error).not.toBeNull();
+
+    const { error: sinEdicion } = await ana.from('funcion').update({ texto: 'secuestrada' }).eq('id', suya.data!.id);
+    const { data: intacta } = await jefa.from('funcion').select('texto').eq('id', suya.data!.id).single();
+    expect(sinEdicion === null && intacta?.texto === 'Creada por la jefa').toBe(true);
+  });
+
+  it('un empleado no puede repartirse a si mismo', async () => {
+    const ana = await comoEmpleado('ana@prueba.test');
+    const { data: mia } = await ana.from('funcion').select('id').limit(1).single();
+
+    const { error } = await ana.from('titularidad').update({ ponderacion: 99 }).eq('funcion_id', mia!.id);
+    const { data } = await ana.from('titularidad').select('ponderacion').eq('funcion_id', mia!.id).single();
+
+    expect(error === null && data?.ponderacion !== 99).toBe(true);
+  });
 });
