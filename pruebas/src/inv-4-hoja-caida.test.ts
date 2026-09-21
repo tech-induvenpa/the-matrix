@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { razonesParaElDocumento } from '@matriz/dominio';
 import { credenciales, escribirFilas } from '../../apps/web/src/lib/hoja';
-import { comoEmpleado, comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-4 · Una falla de la hoja nunca pierde ni bloquea una marca. El empleado
 // registra su trabajo contra la base; Google es un destino posterior, no un
@@ -23,21 +23,14 @@ describe('INV-4: la hoja puede caerse; la marca no se pierde', () => {
     await vaciar();
     const empleadoId = await sembrarEmpleado('ANA', 'ana@prueba.test');
 
-    const { data, error } = await comoServicio()
-      .from('funcion')
-      .insert({
-        empleado_id: empleadoId,
-        hash_identidad: 'hoja-1',
-        texto: 'Cierre financiero',
-        ponderacion: 25,
-        importancia: 9,
-        periodicidad: 'mensual',
-        tipo_generado: 'entregable',
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    funcionId = data.id as string;
+    funcionId = await sembrarFuncion(empleadoId, {
+      hash_identidad: 'hoja-1',
+      texto: 'Cierre financiero',
+      ponderacion: 25,
+      importancia: 9,
+      periodicidad: 'mensual',
+      tipo_generado: 'entregable',
+    });
   });
 
   it('escribir en un documento inaccesible falla, como debe', async () => {

@@ -127,14 +127,15 @@ const deEstaHoja = [...new Set(filas.map((f) => f.empleadoId))];
 
 const { data: actuales } = await supabase
   .from('funcion')
-  .select('id, hash_identidad, texto, periodicidad, ponderacion, importancia, dia_tope_generado, dia_tope_corregido')
+  .select('id, hash_identidad, texto, periodicidad, importancia, titularidad!inner(empleado_id, ponderacion)')
   .eq('activa', true)
-  .in('empleado_id', deEstaHoja);
+  .in('titularidad.empleado_id', deEstaHoja)
+  .is('titularidad.hasta', null);
 
 const existentes: FuncionExistente[] = (actuales ?? []).map((f) => ({
   identidad: f.hash_identidad,
   periodicidad: f.periodicidad,
-  ponderacion: f.ponderacion,
+  ponderacion: f.titularidad[0]?.ponderacion,
   importancia: f.importancia,
 }));
 
@@ -201,10 +202,8 @@ if (tipificar && altas.length) {
 const paraInsertar = altas.map((f: FilaDelDocumento) => {
   const propuesta = propuestas.get(f.nombre) ?? (tiposDePrueba ? propuestaDePrueba(f.nombre) : undefined);
   return {
-    empleado_id: f.empleadoId,
     hash_identidad: identidadDe(f),
     texto: f.nombre,
-    ponderacion: f.ponderacion ?? 0,
     importancia: f.importancia ?? 0,
     periodicidad: f.periodicidad!,
     tipo_generado: propuesta?.acepta ? propuesta.tipo : null,
@@ -212,21 +211,38 @@ const paraInsertar = altas.map((f: FilaDelDocumento) => {
   };
 });
 
+// La funcion y su vinculo con el titular son dos filas desde CEB-130: el peso
+// no es de la funcion, es de la relacion entre esa funcion y esa persona.
 if (paraInsertar.length) {
-  const { error } = await supabase.from('funcion').insert(paraInsertar);
+  const { data: creadas, error } = await supabase.from('funcion').insert(paraInsertar).select('id, hash_identidad');
   if (error) throw error;
+
+  const idPorIdentidad = new Map((creadas ?? []).map((f) => [f.hash_identidad as string, f.id as string]));
+  const vinculos = altas.map((f: FilaDelDocumento) => ({
+    funcion_id: idPorIdentidad.get(identidadDe(f))!,
+    empleado_id: f.empleadoId,
+    ponderacion: f.ponderacion ?? 0,
+  }));
+
+  const { error: sinVinculo } = await supabase.from('titularidad').insert(vinculos);
+  if (sinVinculo) throw sinVinculo;
 }
 
 for (const c of cambios) {
-  const { error } = await supabase
+  const { data: funcion, error } = await supabase
     .from('funcion')
-    .update({
-      ponderacion: c.fila.ponderacion ?? 0,
-      importancia: c.fila.importancia ?? 0,
-      periodicidad: c.fila.periodicidad!,
-    })
-    .eq('hash_identidad', c.identidad);
+    .update({ importancia: c.fila.importancia ?? 0, periodicidad: c.fila.periodicidad! })
+    .eq('hash_identidad', c.identidad)
+    .select('id')
+    .single();
   if (error) throw error;
+
+  const { error: sinPeso } = await supabase
+    .from('titularidad')
+    .update({ ponderacion: c.fila.ponderacion ?? 0 })
+    .eq('funcion_id', funcion.id)
+    .is('hasta', null);
+  if (sinPeso) throw sinPeso;
 }
 
 // Lo que desaparecio del documento se archiva, nunca se borra: sus marcas

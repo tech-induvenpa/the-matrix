@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { identidadDe, leerBloques } from '@matriz/dominio';
-import { comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-1 · Ningun monto del documento llega a la base. No es que no se muestre:
 // es que no se importa. La cuadricula lleva montos inventados y faciles de
@@ -26,37 +26,35 @@ describe('INV-1: ningun monto del documento llega a la base', () => {
 
     const { filas } = leerBloques(cuadricula, { ANA: empleadoId });
 
-    const { error } = await comoServicio()
-      .from('funcion')
-      .insert(
-        filas.map((f) => ({
-          empleado_id: f.empleadoId,
-          hash_identidad: identidadDe(f),
-          texto: f.nombre,
-          ponderacion: f.ponderacion ?? 0,
-          importancia: f.importancia ?? 0,
-          periodicidad: f.periodicidad!,
-        })),
-      );
-    if (error) throw error;
+    for (const f of filas) {
+      await sembrarFuncion(f.empleadoId, {
+        hash_identidad: identidadDe(f),
+        texto: f.nombre,
+        ponderacion: f.ponderacion ?? 0,
+        importancia: f.importancia ?? 0,
+        periodicidad: f.periodicidad!,
+      });
+    }
   });
 
   it('las funciones entran, con su ponderacion y su importancia', async () => {
-    const { data } = await comoServicio().from('funcion').select('texto, ponderacion, importancia');
+    // La ponderacion viaja en el vinculo con el titular, no en la funcion.
+    const { data } = await comoServicio().from('funcion').select('texto, importancia, titularidad(ponderacion)');
 
     expect(data?.map((f) => f.texto).sort()).toEqual(['Cierre de Ana', 'Pagos de Ana']);
-    expect(data?.find((f) => f.texto === 'Cierre de Ana')?.ponderacion).toBe(25);
+    expect(data?.find((f) => f.texto === 'Cierre de Ana')?.titularidad).toEqual([{ ponderacion: 25 }]);
   });
 
   it('ningun monto aparece en ninguna columna de ninguna tabla', async () => {
     const servicio = comoServicio();
-    const [funciones, empleados, marcas] = await Promise.all([
+    const [funciones, titularidades, empleados, marcas] = await Promise.all([
       servicio.from('funcion').select('*'),
+      servicio.from('titularidad').select('*'),
       servicio.from('empleado').select('*'),
       servicio.from('marca').select('*'),
     ]);
 
-    const todo = JSON.stringify([funciones.data, empleados.data, marcas.data]);
+    const todo = JSON.stringify([funciones.data, titularidades.data, empleados.data, marcas.data]);
 
     for (const monto of MONTOS) expect(todo).not.toContain(monto);
   });

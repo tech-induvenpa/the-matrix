@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-2 · Un empleado nunca obtiene datos de otro empleado, y quien no es
 // administrador no obtiene datos de nadie mas que de si mismo. Ni funciones, ni
@@ -18,16 +18,8 @@ describe('INV-2: un empleado nunca obtiene datos de otro', () => {
     const a = await sembrarEmpleado('ANA', 'ana@prueba.test');
     const b = await sembrarEmpleado('BENITO', 'benito@prueba.test');
 
-    const { data, error } = await servicio
-      .from('funcion')
-      .insert([
-        { empleado_id: a, hash_identidad: 'a-1', texto: 'Cierre de Ana', ponderacion: 10, importancia: 7, periodicidad: 'mensual' },
-        { empleado_id: b, hash_identidad: 'b-1', texto: 'Cierre de Benito', ponderacion: 20, importancia: 9, periodicidad: 'mensual' },
-      ])
-      .select('id, texto');
-    if (error) throw error;
-
-    funcionDeB = data.find((f) => f.texto === 'Cierre de Benito')!.id as string;
+    await sembrarFuncion(a, { hash_identidad: 'a-1', texto: 'Cierre de Ana', ponderacion: 10, importancia: 7, periodicidad: 'mensual' });
+    funcionDeB = await sembrarFuncion(b, { hash_identidad: 'b-1', texto: 'Cierre de Benito', ponderacion: 20, importancia: 9, periodicidad: 'mensual' });
 
     await servicio.from('marca').insert({ funcion_id: funcionDeB, periodo: '2026-09', resultado: 'no_pude', razon: 'Secreto de Benito' });
   });

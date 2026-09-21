@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { identidadDe, reconciliar } from '@matriz/dominio';
-import { comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-5 · Una funcion conserva su historial mientras siga siendo la misma
 // funcion. La identidad sale del id del empleado y del texto normalizado, no de
@@ -14,22 +14,15 @@ describe('INV-5: el historial sigue a la funcion, no a su posicion', () => {
     empleadoId = await sembrarEmpleado('ANA', 'ana@prueba.test');
 
     const fila = { empleadoId, nombre: 'Cierre financiero Auto Bengala' };
-    const { data, error } = await comoServicio()
-      .from('funcion')
-      .insert({
-        empleado_id: empleadoId,
-        hash_identidad: identidadDe(fila),
-        texto: fila.nombre,
-        ponderacion: 25,
-        importancia: 9,
-        periodicidad: 'mensual',
-        tipo_generado: 'entregable',
-        fecha_alta: '2026-06-01',
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    funcionId = data.id as string;
+    funcionId = await sembrarFuncion(empleadoId, {
+      hash_identidad: identidadDe(fila),
+      texto: fila.nombre,
+      ponderacion: 25,
+      importancia: 9,
+      periodicidad: 'mensual',
+      tipo_generado: 'entregable',
+      fecha_alta: '2026-06-01',
+    });
 
     await comoServicio()
       .from('marca')
@@ -86,9 +79,43 @@ describe('INV-5: el historial sigue a la funcion, no a su posicion', () => {
     expect(bajas).toHaveLength(1);
   });
 
-  // Lo que el invariante pide de verdad y todavia no existe: un camino para
-  // decir "estas dos son la misma" y que el historial se mude con ella. Hoy el
-  // importador solo sabe archivar la vieja y crear la nueva, asi que las marcas
-  // se quedan colgando de una funcion archivada.
-  it.todo('confirmar un renombre conserva marcas, fecha de alta y valores corregidos');
+  // Esto era lo que el invariante pedia y no se podia cumplir: hacia falta un
+  // camino para decir "estas dos son la misma". Desde CEB-130 no hace falta
+  // ninguno, porque la identidad dejo de salir del texto. Renombrar es editar
+  // un campo, y no hay nada que confirmar (ADR 0008).
+  it('renombrar conserva marcas, fecha de alta y titular: la identidad ya no sale del texto', async () => {
+    const servicio = comoServicio();
+    const empleadoId = await sembrarEmpleado('BEATRIZ', 'beatriz@prueba.test');
+
+    const funcionId = await sembrarFuncion(empleadoId, {
+      hash_identidad: 'renombrable',
+      texto: 'Declaraciones al SENIAT KIA',
+      ponderacion: 30,
+      importancia: 8,
+      periodicidad: 'mensual',
+      tipo_corregido: 'entregable',
+      dia_tope_corregido: 3,
+    });
+
+    await servicio.from('marca').insert({ funcion_id: funcionId, periodo: '2026-08', resultado: 'no_pude', razon: 'El portal estaba caido' });
+
+    const { data: antes } = await servicio.from('funcion').select('fecha_alta').eq('id', funcionId).single();
+
+    await servicio.from('funcion').update({ texto: 'Declaraciones al SENIAT de KIA Motors' }).eq('id', funcionId);
+
+    const { data: despues } = await servicio
+      .from('funcion')
+      .select('texto, fecha_alta, tipo_corregido, dia_tope_corregido, marca(razon), titularidad(ponderacion)')
+      .eq('id', funcionId)
+      .single();
+
+    expect(despues).toEqual({
+      texto: 'Declaraciones al SENIAT de KIA Motors',
+      fecha_alta: antes!.fecha_alta,
+      tipo_corregido: 'entregable',
+      dia_tope_corregido: 3,
+      marca: [{ razon: 'El portal estaba caido' }],
+      titularidad: [{ ponderacion: 30 }],
+    });
+  });
 });

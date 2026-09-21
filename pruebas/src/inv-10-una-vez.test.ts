@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Calendario, ocurrenciasEntre, pendientes, seleccionarPlan, unaPorFuncion } from '@matriz/dominio';
-import { comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-10 · Una funcion nunca aparece dos veces en el plan, y marcarla libera su
 // lugar. Se prueba con las ocurrencias calculadas sobre datos reales de la
@@ -16,22 +16,15 @@ describe('INV-10: una funcion aporta una sola fila, y marcarla libera su lugar',
     const servicio = comoServicio();
     const empleadoId = await sembrarEmpleado('ANA', 'ana@prueba.test');
 
-    const { data, error } = await servicio
-      .from('funcion')
-      .insert({
-        empleado_id: empleadoId,
-        hash_identidad: 'diaria-1',
-        texto: 'Cuentas por pagar',
-        ponderacion: 10,
-        importancia: 7,
-        periodicidad: 'diaria',
-        tipo_generado: 'entregable',
-        fecha_alta: '2026-08-01',
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    funcionId = data.id as string;
+    funcionId = await sembrarFuncion(empleadoId, {
+      hash_identidad: 'diaria-1',
+      texto: 'Cuentas por pagar',
+      ponderacion: 10,
+      importancia: 7,
+      periodicidad: 'diaria',
+      tipo_generado: 'entregable',
+      fecha_alta: '2026-08-01',
+    });
 
     const { data: noHabiles } = await servicio.from('dia_no_habil').select('desde, hasta');
     calendario = Calendario.con(noHabiles ?? []);

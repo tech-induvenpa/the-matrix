@@ -54,7 +54,7 @@ export async function panorama() {
       supabase
         .from('funcion')
         .select(
-          'id, texto, importancia, ponderacion, periodicidad, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido, fecha_alta',
+          'id, texto, importancia, periodicidad, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido, fecha_alta, titularidad!inner(ponderacion)',
         )
         .eq('activa', true),
       supabase.from('dia_no_habil').select('desde, hasta'),
@@ -74,7 +74,15 @@ export async function panorama() {
     calendario: Calendario.con(noHabiles ?? []),
     // Sin fila de cobertura, el calendario no cubre nada: fallar cerrado.
     cargadoHasta: (calendario?.cargado_hasta as string | undefined) ?? hoyISO(),
-    funciones: (funciones ?? []) as FilaFuncion[],
+    // La ponderacion vive en el vinculo con el titular: la misma funcion pesa
+    // distinto en cargos distintos (ADR 0008). Aqui se aplana porque el dominio
+    // no tiene por que saber de donde sale.
+    funciones: (funciones ?? []).map((f) => {
+      const { titularidad, ...resto } = f as Record<string, unknown> & {
+        titularidad: { ponderacion: number }[];
+      };
+      return { ...resto, ponderacion: titularidad[0]?.ponderacion ?? 0 } as FilaFuncion;
+    }),
     marcas: (marcas ?? []) as FilaMarca[],
     eventos: (eventos ?? []) as FilaEvento[],
   };

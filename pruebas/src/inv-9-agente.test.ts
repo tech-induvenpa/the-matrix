@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { interpretar } from '@matriz/dominio';
 import { tipificadorRemoto } from '../../scripts/tipificador.mts';
-import { comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-9 · El agente propone y nada mas: escribe tipo_generado y
 // dia_tope_generado, y ningun texto suyo llega al empleado. Corre contra el
@@ -21,20 +21,13 @@ describe('INV-9: el agente propone, y solo escribe lo suyo', () => {
     await vaciar();
     const empleadoId = await sembrarEmpleado('ANA', 'ana@prueba.test');
 
-    const { data, error } = await comoServicio()
-      .from('funcion')
-      .insert({
-        empleado_id: empleadoId,
-        hash_identidad: 'agente-1',
-        texto: 'CIERRE FINANCIERO AUTO BENGALA (ANTES DEL 3 DE CADA MES)',
-        ponderacion: 25,
-        importancia: 9,
-        periodicidad: 'mensual',
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    funcionId = data.id as string;
+    funcionId = await sembrarFuncion(empleadoId, {
+      hash_identidad: 'agente-1',
+      texto: 'CIERRE FINANCIERO AUTO BENGALA (ANTES DEL 3 DE CADA MES)',
+      ponderacion: 25,
+      importancia: 9,
+      periodicidad: 'mensual',
+    });
   });
 
   it('lo que devuelve el modelo real pasa por el mismo esquema cerrado', async () => {

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { comoEmpleado, comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-3 · El empleado no ve el peso de su trabajo en la pantalla donde trabaja,
 // y no ve una tasa de cumplimiento en ninguna parte. La ponderacion existe y es
@@ -11,13 +11,8 @@ describe('INV-3: la ponderacion vive en el mes, y la tasa no existe', () => {
     const ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
     const benito = await sembrarEmpleado('BENITO', 'benito@prueba.test');
 
-    const { error } = await comoServicio()
-      .from('funcion')
-      .insert([
-        { empleado_id: ana, hash_identidad: 'a-1', texto: 'Cierre de Ana', ponderacion: 25, importancia: 9, periodicidad: 'mensual', tipo_generado: 'entregable' },
-        { empleado_id: benito, hash_identidad: 'b-1', texto: 'Cierre de Benito', ponderacion: 40, importancia: 9, periodicidad: 'mensual', tipo_generado: 'entregable' },
-      ]);
-    if (error) throw error;
+    await sembrarFuncion(ana, { hash_identidad: 'a-1', texto: 'Cierre de Ana', ponderacion: 25, importancia: 9, periodicidad: 'mensual', tipo_generado: 'entregable' });
+    await sembrarFuncion(benito, { hash_identidad: 'b-1', texto: 'Cierre de Benito', ponderacion: 40, importancia: 9, periodicidad: 'mensual', tipo_generado: 'entregable' });
   });
 
   it('no existe ninguna tasa de cumplimiento que consultar: no se guarda, se calcularia', async () => {
@@ -30,15 +25,15 @@ describe('INV-3: la ponderacion vive en el mes, y la tasa no existe', () => {
   it('el empleado puede leer la ponderacion de lo suyo, que es lo que alimenta el mes', async () => {
     const ana = await comoEmpleado('ana@prueba.test');
 
-    const { data } = await ana.from('funcion').select('texto, ponderacion');
+    const { data } = await ana.from('funcion').select('texto, titularidad(ponderacion)');
 
-    expect(data).toEqual([{ texto: 'Cierre de Ana', ponderacion: 25 }]);
+    expect(data).toEqual([{ texto: 'Cierre de Ana', titularidad: [{ ponderacion: 25 }] }]);
   });
 
   it('y no puede leer la de nadie mas, ni sumarla', async () => {
     const ana = await comoEmpleado('ana@prueba.test');
 
-    const { data } = await ana.from('funcion').select('ponderacion').neq('texto', 'Cierre de Ana');
+    const { data } = await ana.from('funcion').select('titularidad(ponderacion)').neq('texto', 'Cierre de Ana');
 
     expect(data).toEqual([]);
   });

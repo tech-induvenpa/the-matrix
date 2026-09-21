@@ -102,10 +102,30 @@ export async function comoAdministrador(correo: string): Promise<SupabaseClient>
 // Cada prueba monta su escenario desde cero: nada de datos heredados.
 export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
-  for (const tabla of ['evento_flujo', 'marca', 'funcion', 'empleado', 'administrador']) {
+  for (const tabla of ['evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
     const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
     await servicio.from(tabla).delete().not(columna, 'is', null);
   }
+}
+
+// Una funcion y su vinculo con el titular, que desde CEB-130 son dos filas.
+// Devuelve el id de la funcion, que es lo que las pruebas necesitan.
+export async function sembrarFuncion(
+  empleadoId: string,
+  funcion: Record<string, unknown> & { ponderacion?: number },
+): Promise<string> {
+  const servicio = comoServicio();
+  const { ponderacion = 10, ...campos } = funcion;
+
+  const { data, error } = await servicio.from('funcion').insert(campos).select('id').single();
+  if (error) throw error;
+
+  const { error: sinVinculo } = await servicio
+    .from('titularidad')
+    .insert({ funcion_id: data.id, empleado_id: empleadoId, ponderacion });
+  if (sinVinculo) throw sinVinculo;
+
+  return data.id as string;
 }
 
 export async function sembrarEmpleado(nombreBloque: string, correo: string): Promise<string> {

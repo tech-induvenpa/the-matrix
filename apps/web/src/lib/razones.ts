@@ -22,7 +22,7 @@ export async function proyectarRazones(): Promise<void> {
     await Promise.all([
       supabase.from('marca').select('funcion_id, periodo, resultado, razon, marcada_en').not('razon', 'is', null),
       supabase.from('evento_flujo').select('funcion_id, estado, razon, en').not('razon', 'is', null),
-      supabase.from('funcion').select('id, texto, empleado_id'),
+      supabase.from('funcion').select('id, texto, titularidad!inner(empleado_id)'),
       supabase.from('empleado').select('id, nombre_bloque'),
     ]);
 
@@ -49,7 +49,7 @@ export async function proyectarRazones(): Promise<void> {
     const funcion = funcionPor.get(r.funcionId);
     return [
       r.en,
-      empleadoPor.get(funcion?.empleado_id ?? '') ?? '',
+      empleadoPor.get(funcion?.titularidad?.[0]?.empleado_id ?? '') ?? '',
       funcion?.texto ?? '',
       r.periodo ? 'no pude' : 'me atrasé',
       r.razon,

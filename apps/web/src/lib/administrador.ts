@@ -24,13 +24,43 @@ export async function gente(): Promise<EmpleadoDelPanel[]> {
 
   const { data } = await supabase
     .from('empleado')
-    .select('id, nombre_bloque, correo, funcion(count)')
+    .select('id, nombre_bloque, correo, titularidad(count)')
+    .is('titularidad.hasta', null)
     .order('nombre_bloque');
 
   return (data ?? []).map((e) => ({
     id: e.id as string,
     nombre: e.nombre_bloque as string,
     correo: e.correo as string,
-    funciones: (e.funcion as { count: number }[] | null)?.[0]?.count ?? 0,
+    funciones: (e.titularidad as { count: number }[] | null)?.[0]?.count ?? 0,
+  }));
+}
+
+export type Tenencia = { nombre: string; ponderacion: number; desde: string; hasta: string | null };
+export type FuncionDelPanel = { id: string; texto: string; periodicidad: string; historial: Tenencia[] };
+
+// Por cuantas manos paso una funcion. Es lo que distingue una funcion imposible
+// de una persona que no la esta haciendo, y hoy el sistema no podia verlo.
+export async function funcionesConSuHistorial(): Promise<FuncionDelPanel[]> {
+  const supabase = await clienteDelServidor();
+
+  const { data } = await supabase
+    .from('funcion')
+    .select('id, texto, periodicidad, titularidad(ponderacion, desde, hasta, empleado(nombre_bloque))')
+    .eq('activa', true)
+    .order('texto');
+
+  return (data ?? []).map((f) => ({
+    id: f.id as string,
+    texto: f.texto as string,
+    periodicidad: f.periodicidad as string,
+    historial: ((f.titularidad ?? []) as Record<string, unknown>[])
+      .map((t) => ({
+        nombre: ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string,
+        ponderacion: t.ponderacion as number,
+        desde: t.desde as string,
+        hasta: (t.hasta as string | null) ?? null,
+      }))
+      .sort((a, b) => a.desde.localeCompare(b.desde)),
   }));
 }

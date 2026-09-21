@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { comoServicio, sembrarEmpleado, vaciar } from './entorno';
+import { comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-11 · Lo que corrige una persona manda sobre lo que propone el agente, y
 // sobrevive a reimportar. El agente solo escribe las columnas _generado.
@@ -10,22 +10,15 @@ describe('INV-11: una correccion manual sobrevive a la reimportacion', () => {
     await vaciar();
     const empleadoId = await sembrarEmpleado('ANA', 'ana@prueba.test');
 
-    const { data, error } = await comoServicio()
-      .from('funcion')
-      .insert({
-        empleado_id: empleadoId,
-        hash_identidad: 'corregida-1',
-        texto: 'Asistencia a la gerencia',
-        ponderacion: 25,
-        importancia: 8,
-        periodicidad: 'mensual',
-        tipo_generado: 'entregable',
-        dia_tope_generado: 3,
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    funcionId = data.id as string;
+    funcionId = await sembrarFuncion(empleadoId, {
+      hash_identidad: 'corregida-1',
+      texto: 'Asistencia a la gerencia',
+      ponderacion: 25,
+      importancia: 8,
+      periodicidad: 'mensual',
+      tipo_generado: 'entregable',
+      dia_tope_generado: 3,
+    });
 
     // Una persona corrige: esto no es un entregable, es un area del cargo.
     await comoServicio()
@@ -42,20 +35,28 @@ describe('INV-11: una correccion manual sobrevive a la reimportacion', () => {
   });
 
   it('reimportar la fila actualiza lo que escribe JFS y no toca la correccion', async () => {
-    // Lo que hace el importador con una fila que cambio en el documento.
+    // Lo que hace el importador con una fila que cambio en el documento: la
+    // ponderacion se escribe donde vive ahora, en la titularidad vigente.
     const { error } = await comoServicio()
       .from('funcion')
-      .update({ ponderacion: 30, importancia: 9, periodicidad: 'trimestral' })
+      .update({ importancia: 9, periodicidad: 'trimestral' })
       .eq('hash_identidad', 'corregida-1');
     if (error) throw error;
 
+    const { error: sinPeso } = await comoServicio()
+      .from('titularidad')
+      .update({ ponderacion: 30 })
+      .eq('funcion_id', funcionId)
+      .is('hasta', null);
+    if (sinPeso) throw sinPeso;
+
     const { data } = await comoServicio()
       .from('funcion')
-      .select('ponderacion, periodicidad, tipo_generado, tipo_corregido')
+      .select('periodicidad, tipo_generado, tipo_corregido, titularidad(ponderacion)')
       .eq('id', funcionId)
       .single();
 
-    expect(data?.ponderacion).toBe(30);
+    expect(data?.titularidad).toEqual([{ ponderacion: 30 }]);
     expect(data?.periodicidad).toBe('trimestral');
     expect(data?.tipo_corregido).toBe('area');
   });
