@@ -124,3 +124,76 @@ export async function reporte(): Promise<PersonaDelReporte[]> {
     }))
     .sort((a, b) => b.arrastrado - a.arrastrado || a.nombre.localeCompare(b.nombre));
 }
+
+export type RazonDelPanel = {
+  en: string;
+  persona: string;
+  personaId: string;
+  funcion: string;
+  funcionId: string;
+  quePaso: string;
+  razon: string;
+};
+
+// Lo que reemplaza a la pestaña de razones. Filtrable por persona y por
+// funcion, que es algo que la pestaña nunca pudo hacer y es la mitad del
+// motivo para traerlas aqui (ADR 0006).
+//
+// Sin llave de servicio: la seguridad por fila es la que hace que esto traiga
+// las de todos, porque quien pregunta es el administrador.
+export async function razonesDelEquipo(): Promise<RazonDelPanel[]> {
+  const supabase = await clienteDelServidor();
+
+  const [{ data: marcas }, { data: eventos }, { data: titularidades }] = await Promise.all([
+    supabase.from('marca').select('funcion_id, periodo, resultado, razon, marcada_en').not('razon', 'is', null),
+    supabase.from('evento_flujo').select('funcion_id, estado, razon, en').not('razon', 'is', null),
+    supabase
+      .from('titularidad')
+      .select('funcion_id, desde, hasta, empleado_id, empleado(nombre_bloque), funcion(texto)'),
+  ]);
+
+  // Quien tenia la funcion cuando se escribio: atribuir al titular de hoy le
+  // colgaria a alguien las palabras de otro.
+  const tenencias = ((titularidades ?? []) as Record<string, unknown>[]).map((t) => ({
+    funcionId: t.funcion_id as string,
+    empleadoId: t.empleado_id as string,
+    persona: ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string,
+    funcion: ((t.funcion as { texto?: string } | null)?.texto ?? '') as string,
+    desde: t.desde as string,
+    hasta: (t.hasta as string | null) ?? '9999-12-31',
+  }));
+
+  const quienLaTenia = (funcionId: string, cuando: string) =>
+    tenencias.find((t) => t.funcionId === funcionId && t.desde <= cuando && cuando <= t.hasta) ??
+    tenencias.find((t) => t.funcionId === funcionId);
+
+  const deMarcas = (marcas ?? []).map((m) => {
+    const en = (m.marcada_en as string).slice(0, 10);
+    const t = quienLaTenia(m.funcion_id as string, en);
+    return {
+      en,
+      persona: t?.persona ?? '',
+      personaId: t?.empleadoId ?? '',
+      funcion: t?.funcion ?? '',
+      funcionId: m.funcion_id as string,
+      quePaso: m.resultado === 'no_pude' ? 'no pude' : 'hecho',
+      razon: m.razon as string,
+    };
+  });
+
+  const deFlujos = (eventos ?? []).map((e) => {
+    const en = (e.en as string).slice(0, 10);
+    const t = quienLaTenia(e.funcion_id as string, en);
+    return {
+      en,
+      persona: t?.persona ?? '',
+      personaId: t?.empleadoId ?? '',
+      funcion: t?.funcion ?? '',
+      funcionId: e.funcion_id as string,
+      quePaso: e.estado === 'atrasado' ? 'me atrasé' : 'me puse al día',
+      razon: e.razon as string,
+    };
+  });
+
+  return [...deMarcas, ...deFlujos].sort((a, b) => b.en.localeCompare(a.en));
+}

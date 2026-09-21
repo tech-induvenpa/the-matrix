@@ -55,3 +55,21 @@ export const ponderacionArrastrada = (funciones: readonly FuncionConArrastre[]) 
 // el cierre de mes del empleado y con umbral.
 export const UMBRAL_DEL_PATRON = 2;
 export const esPatron = (a: Arrastre) => a.periodos >= UMBRAL_DEL_PATRON;
+
+export type CargoDelMes = { ponderacion: number; asignadas: number; cerradas: number };
+
+// Cumplimiento ponderado: ocurrencias cerradas sobre asignadas, pesadas por
+// ponderacion. Es peso salarial expresado en porcentaje, asi que lo ve el
+// administrador y no el empleado (INV-3).
+//
+// Una funcion sin ocurrencias este mes no cuenta ni a favor ni en contra: no
+// tuvo oportunidad de cumplirse. Por eso el peso del divisor tambien la deja
+// fuera -- si no, un mes sin trimestrales hundiria a cualquiera.
+export function cumplimientoPonderado(cargo: readonly CargoDelMes[]): number {
+  const cuentan = cargo.filter((f) => f.asignadas > 0);
+  const peso = cuentan.reduce((t, f) => t + f.ponderacion, 0);
+  if (peso === 0) return 100;
+
+  const logrado = cuentan.reduce((t, f) => t + (f.ponderacion * Math.min(f.cerradas, f.asignadas)) / f.asignadas, 0);
+  return Math.round((logrado * 100) / peso);
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arrastreDe, esPatron, ponderacionArrastrada, SIN_ARRASTRE } from '../src/arrastre';
+import { arrastreDe, cumplimientoPonderado, esPatron, ponderacionArrastrada, SIN_ARRASTRE } from '../src/arrastre';
 
 const mensuales = (...meses: string[]) =>
   meses.map((m) => ({ periodo: m, vence: `${m}-28` }));
@@ -69,5 +69,45 @@ describe('el patron es un arrastre con umbral', () => {
   it('uno no es patron; dos si', () => {
     expect(esPatron({ periodos: 1, desde: '2026-08-28' })).toBe(false);
     expect(esPatron({ periodos: 2, desde: '2026-07-28' })).toBe(true);
+  });
+});
+
+describe('el cumplimiento ponderado del mes', () => {
+  it('todo cerrado es cien', () => {
+    expect(cumplimientoPonderado([{ ponderacion: 60, asignadas: 4, cerradas: 4 }])).toBe(100);
+  });
+
+  it('nada cerrado es cero', () => {
+    expect(cumplimientoPonderado([{ ponderacion: 60, asignadas: 4, cerradas: 0 }])).toBe(0);
+  });
+
+  // Lo que hace que sea "peso salarial": fallar en lo que pesa mucho duele mas
+  // que fallar en lo que pesa poco.
+  it('fallar en lo gordo pesa mas que fallar en lo flaco', () => {
+    const falloLoGordo = [
+      { ponderacion: 80, asignadas: 1, cerradas: 0 },
+      { ponderacion: 20, asignadas: 1, cerradas: 1 },
+    ];
+    const falloLoFlaco = [
+      { ponderacion: 80, asignadas: 1, cerradas: 1 },
+      { ponderacion: 20, asignadas: 1, cerradas: 0 },
+    ];
+
+    expect(cumplimientoPonderado(falloLoGordo)).toBe(20);
+    expect(cumplimientoPonderado(falloLoFlaco)).toBe(80);
+  });
+
+  // Una trimestral que no vence este mes no puede hundir a nadie.
+  it('lo que no tuvo ocurrencias este mes no cuenta ni a favor ni en contra', () => {
+    expect(
+      cumplimientoPonderado([
+        { ponderacion: 50, asignadas: 2, cerradas: 2 },
+        { ponderacion: 50, asignadas: 0, cerradas: 0 },
+      ]),
+    ).toBe(100);
+  });
+
+  it('un mes sin nada asignado no es un cero: es que no hubo nada', () => {
+    expect(cumplimientoPonderado([{ ponderacion: 100, asignadas: 0, cerradas: 0 }])).toBe(100);
   });
 });

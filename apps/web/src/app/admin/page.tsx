@@ -76,6 +76,12 @@ export default async function Panel() {
         <Link href="/admin/reporte" style={{ color: 'var(--gris)' }}>
           Qué se arrastra →
         </Link>
+        <Link href="/admin/razones" style={{ color: 'var(--gris)' }}>
+          Qué dijeron →
+        </Link>
+        <a href="/admin/descarga" style={{ color: 'var(--gris)' }}>
+          Descargar el mes ↓
+        </a>
         <Link href="/admin/calendario" style={{ color: 'var(--gris)' }}>
           El calendario →
         </Link>
