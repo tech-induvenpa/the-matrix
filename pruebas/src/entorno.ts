@@ -104,7 +104,11 @@ export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
   for (const tabla of ['evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
     const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
-    await servicio.from(tabla).delete().not(columna, 'is', null);
+    // Tragarse este error costo una tarde: una restriccion nueva bloqueaba el
+    // borrado, las tablas quedaban con datos de la corrida anterior, y el fallo
+    // aparecia lejos, como una clave duplicada.
+    const { error } = await servicio.from(tabla).delete().not(columna, 'is', null);
+    if (error) throw new Error(`No se pudo vaciar ${tabla}: ${error.message}`);
   }
 }
 
@@ -122,7 +126,7 @@ export async function sembrarFuncion(
 
   const { error: sinVinculo } = await servicio
     .from('titularidad')
-    .insert({ funcion_id: data.id, empleado_id: empleadoId, ponderacion });
+    .insert({ funcion_id: data.id, empleado_id: empleadoId, ponderacion, publicado_en: new Date().toISOString() });
   if (sinVinculo) throw sinVinculo;
 
   return data.id as string;

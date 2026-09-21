@@ -4,6 +4,7 @@ import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import Link from 'next/link';
 import { Formulario } from './formulario';
+import { Reparto } from './reparto';
 
 // El cargo de una persona: sus funciones y lo que pesa cada una. Aqui se crean
 // y se editan; repartir el cien es la otra pantalla (CEB-132).
@@ -25,9 +26,13 @@ export default async function Cargo({ params }: { params: Promise<{ empleado: st
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: '6px 0 0' }}>{cargo.nombre}</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
           {cargo.funciones.length} funciones · reparte {suma} de 100
-          {suma !== 100 && <strong style={{ color: '#D9503A' }}> · le faltan {100 - suma}</strong>}
         </p>
       </header>
+
+      <section>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 12px' }}>Su reparto 🥧</h2>
+        <Reparto empleadoId={empleado} funciones={cargo.funciones} borrador={cargo.borrador} />
+      </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {cargo.funciones.map((f) => (

@@ -75,7 +75,13 @@ export type FuncionDelCargo = {
   diaTope: number | null;
 };
 
-export type Cargo = { id: string; nombre: string; funciones: FuncionDelCargo[] };
+export type Cargo = {
+  id: string;
+  nombre: string;
+  funciones: FuncionDelCargo[];
+  // Lo que el administrador dejo a medias. Vacio si no hay nada pendiente.
+  borrador: { funcionId: string; ponderacion: number }[];
+};
 
 // El cargo de una persona: lo que tiene a su nombre ahora. La ponderacion sale
 // del vinculo, que es donde vive desde CEB-130.
@@ -94,7 +100,14 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
     .select('ponderacion, funcion!inner(id, texto, periodicidad, importancia, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido)')
     .eq('empleado_id', empleadoId)
     .is('hasta', null)
+    .not('publicado_en', 'is', null)
     .eq('funcion.activa', true);
+
+  const { data: pendiente } = await supabase
+    .from('titularidad')
+    .select('funcion_id, ponderacion')
+    .eq('empleado_id', empleadoId)
+    .is('publicado_en', null);
 
   const funciones = ((data ?? []) as Record<string, unknown>[])
     .map((t) => {
@@ -111,5 +124,13 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
     })
     .sort((a, b) => b.ponderacion - a.ponderacion || a.texto.localeCompare(b.texto));
 
-  return { id: empleado.id as string, nombre: empleado.nombre_bloque as string, funciones };
+  return {
+    id: empleado.id as string,
+    nombre: empleado.nombre_bloque as string,
+    funciones,
+    borrador: (pendiente ?? []).map((t) => ({
+      funcionId: t.funcion_id as string,
+      ponderacion: t.ponderacion as number,
+    })),
+  };
 }
