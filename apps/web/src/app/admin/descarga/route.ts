@@ -1,90 +1,188 @@
-import { Calendario, cumplimientoPonderado, ocurrenciasEntre, type Periodicidad } from '@matriz/dominio';
+import { arrastreDe, Calendario, ocurrenciasEntre, type Periodicidad } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { hoyISO } from '@/lib/datos';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // La salida hacia la hoja de sueldos. Es una funcion de la pantalla, no una
-// integracion: cero credenciales que custodiar, cero posibilidad de escribir
-// mal en la hoja de nadie, y sigue siendo el administrador quien decide que
-// entra a su documento (ADR 0007).
+// integracion: cero credenciales que custodiar y sigue siendo el administrador
+// quien decide que entra a su documento (ADR 0007).
 //
-// Lleva porcentajes y ningun monto. El impacto salarial ES el porcentaje; el
+// Una fila por persona x mes x funcion, que es el hecho suelto. No un resumen:
+// resumir obliga a elegir por quien lee, y desde el hecho cualquier resumen
+// sale con una tabla dinamica.
+//
+// La version anterior era una sola cifra por persona y resulto ilegible: dos
+// personas en la misma situacion -- un entregable, ninguna marca -- salian con
+// 100 y con 0, segun si su ocurrencia ya habia vencido. Un cien podia
+// significar "lo hizo todo" o "no le tocaba nada", y el archivo no distinguia.
+//
+// Lleva porcentajes y ningun monto: el impacto salarial ES el porcentaje, y el
 // monto aparece cuando el administrador multiplica en su hoja (INV-1).
+const MESES = 3;
+
+const CABECERA = [
+  'MES',
+  'CERRADO',
+  'PERSONA',
+  'FUNCION',
+  'TIPO',
+  'PERIODICIDAD',
+  'PONDERACION',
+  'ASIGNADAS',
+  'CERRADAS',
+  'SIN CUMPLIR',
+  'ATRASOS',
+  'ESTADO AL CIERRE',
+  'PESO NO CUMPLIDO',
+  'ARRASTRE',
+  'ARRASTRA DESDE',
+];
+
+const mesesHaciaAtras = (hoy: string, cuantos: number) => {
+  const anio = +hoy.slice(0, 4);
+  const mes = +hoy.slice(5, 7);
+  return Array.from({ length: cuantos }, (_, i) =>
+    new Date(Date.UTC(anio, mes - 1 - (cuantos - 1 - i), 1)).toISOString().slice(0, 7),
+  );
+};
+
+const finDe = (mes: string) =>
+  new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 0)).toISOString().slice(0, 10);
+
+// Los nombres de las funciones llevan barras, parentesis y comas. El punto y
+// coma no aparece hoy, pero basta con que alguien lo escriba una vez.
+const escapar = (v: string | number) => {
+  const s = String(v);
+  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
 export async function GET(request: NextRequest) {
   if (!(await esAdministrador())) return new NextResponse(null, { status: 404 });
 
   const hoy = hoyISO();
-  const mes = request.nextUrl.searchParams.get('mes') ?? hoy.slice(0, 7);
-  const primero = `${mes}-01`;
-  const finDeMes = new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 0)).toISOString().slice(0, 10);
-
-  // En el mes en curso solo cuenta lo que ya vencio. Contar todo el mes desde
-  // el dia uno diria que todo el mundo esta en cero hasta fin de mes, que es
-  // un numero que nadie puede leer.
-  const ultimo = finDeMes > hoy ? hoy : finDeMes;
+  const cuantos = Number(request.nextUrl.searchParams.get('meses') ?? MESES);
+  const meses = mesesHaciaAtras(hoy, Number.isInteger(cuantos) && cuantos > 0 ? cuantos : MESES);
+  const desde = `${meses[0]}-01`;
 
   const supabase = await clienteDelServidor();
 
-  const [{ data: dias }, { data: titularidades }, { data: marcas }] = await Promise.all([
+  const [{ data: dias }, { data: titularidades }, { data: marcas }, { data: eventos }] = await Promise.all([
     supabase.from('dia_no_habil').select('desde, hasta'),
     supabase
       .from('titularidad')
       .select(
-        'ponderacion, empleado_id, empleado(nombre_bloque), funcion!inner(id, periodicidad, fecha_alta, tipo_generado, tipo_corregido, activa)',
+        'ponderacion, empleado(nombre_bloque), funcion!inner(id, texto, periodicidad, fecha_alta, tipo_generado, tipo_corregido, activa)',
       )
       .is('hasta', null)
       .not('publicado_en', 'is', null),
-    supabase.from('marca').select('funcion_id, periodo').gte('periodo', mes).lte('periodo', `${mes}-￿`),
+    supabase.from('marca').select('funcion_id, periodo'),
+    supabase.from('evento_flujo').select('funcion_id, estado, en').order('en'),
   ]);
 
   const calendario = Calendario.con(dias ?? []);
   const cerradas = new Set((marcas ?? []).map((m) => `${m.funcion_id}|${m.periodo}`));
 
-  const porPersona = new Map<string, { nombre: string; cargo: { ponderacion: number; asignadas: number; cerradas: number }[] }>();
-
-  for (const t of (titularidades ?? []) as Record<string, unknown>[]) {
-    const funcion = t.funcion as Record<string, unknown>;
-    const tipo = (funcion.tipo_corregido ?? funcion.tipo_generado) as string | null;
-    if (!funcion.activa || tipo !== 'entregable') continue;
-
-    const ocurrencias = ocurrenciasEntre(
-      { periodicidad: funcion.periodicidad as Periodicidad, fechaAlta: funcion.fecha_alta as string },
-      calendario,
-      primero,
-      ultimo,
-    );
-
-    const persona = porPersona.get(t.empleado_id as string) ?? {
-      nombre: ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string,
-      cargo: [],
-    };
-
-    persona.cargo.push({
-      ponderacion: t.ponderacion as number,
-      asignadas: ocurrencias.length,
-      cerradas: ocurrencias.filter((o) => cerradas.has(`${funcion.id}|${o.periodo}`)).length,
-    });
-
-    porPersona.set(t.empleado_id as string, persona);
+  const marcasDe = new Map<string, { periodo: string }[]>();
+  for (const m of marcas ?? []) {
+    const clave = m.funcion_id as string;
+    marcasDe.set(clave, [...(marcasDe.get(clave) ?? []), { periodo: m.periodo as string }]);
   }
 
-  // Punto y coma, que es lo que Excel en español espera; con coma, todo cae en
-  // una sola columna y hay que pelearse con el asistente de importacion.
-  const filas = [...porPersona.values()]
-    .sort((a, b) => a.nombre.localeCompare(b.nombre))
-    .map((p) => [p.nombre, cumplimientoPonderado(p.cargo)].join(';'));
+  const filas: string[] = [];
 
-  const csv = ['PERSONA;CUMPLIMIENTO', ...filas].join('\n');
+  for (const t of (titularidades ?? []) as Record<string, unknown>[]) {
+    const f = t.funcion as Record<string, unknown>;
+    if (!f.activa) continue;
+
+    const funcionId = f.id as string;
+    const tipo = ((f.tipo_corregido ?? f.tipo_generado) as string | null) ?? 'sin tipo';
+    const persona = ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string;
+    const ponderacion = t.ponderacion as number;
+    const esEntregable = tipo === 'entregable';
+
+    const ocurrenciasEn = (hasta: string, inicio: string) =>
+      ocurrenciasEntre(
+        { periodicidad: f.periodicidad as Periodicidad, fechaAlta: f.fecha_alta as string },
+        calendario,
+        inicio,
+        hasta,
+      );
+
+    for (const mes of meses) {
+      const enCurso = mes === hoy.slice(0, 7);
+      const ultimo = enCurso ? hoy : finDe(mes);
+
+      // Un flujo no vence: no tiene ocurrencias, tiene estado. Medirlo como un
+      // entregable seria inventarle un denominador.
+      const ocurrencias = esEntregable ? ocurrenciasEn(ultimo, `${mes}-01`) : [];
+      const hechas = ocurrencias.filter((o) => cerradas.has(`${funcionId}|${o.periodo}`)).length;
+      const sinCumplir = ocurrencias.length - hechas;
+
+      const suyos = (eventos ?? []).filter(
+        (e) => e.funcion_id === funcionId && (e.en as string).slice(0, 10) <= ultimo,
+      );
+      const delMes = suyos.filter((e) => (e.en as string).slice(0, 7) === mes);
+      const atrasos = delMes.filter((e) => e.estado === 'atrasado').length;
+      const alCierre = suyos.length ? ((suyos.at(-1)!.estado as string) === 'atrasado' ? 'atrasado' : 'al dia') : '';
+
+      // El peso que no se cumplio. En un entregable es la fraccion que quedo
+      // sin cerrar; en un flujo es todo su peso si termino el mes atrasado,
+      // porque un flujo no se cumple a medias: o se esta atendiendo o no.
+      const noCumplido = esEntregable
+        ? ocurrencias.length
+          ? Math.round(((ponderacion * sinCumplir) / ocurrencias.length) * 10) / 10
+          : 0
+        : alCierre === 'atrasado'
+          ? ponderacion
+          : 0;
+
+      // El arrastre al cerrar ese mes, no el de hoy: pegarle el de hoy a una
+      // fila de julio seria contar lo que paso despues.
+      const arrastre = esEntregable
+        ? arrastreDe(ocurrenciasEn(ultimo, desde), marcasDe.get(funcionId) ?? [], ultimo)
+        : { periodos: 0, desde: null };
+
+      // Toda funcion sale todos los meses, aunque no tuviera nada que cumplir.
+      // Saltarse esas filas repetiria el error de la version anterior: la
+      // ausencia de fila es tan ambigua como un cien: no se sabe si es que no
+      // le tocaba o que la funcion no existe.
+
+      filas.push(
+        [
+          mes,
+          enCurso ? 'no' : 'si',
+          persona,
+          f.texto as string,
+          tipo,
+          f.periodicidad as string,
+          ponderacion,
+          esEntregable ? ocurrencias.length : '',
+          esEntregable ? hechas : '',
+          esEntregable ? sinCumplir : '',
+          esEntregable ? '' : atrasos,
+          esEntregable ? '' : alCierre,
+          noCumplido,
+          arrastre.periodos || '',
+          arrastre.desde ?? '',
+        ]
+          .map(escapar)
+          .join(';'),
+      );
+    }
+  }
+
+  const csv = [CABECERA.join(';'), ...filas].join('\n');
 
   // El BOM es lo que le dice a Excel que esto viene en UTF-8; sin el, los
-  // acentos de los nombres salen rotos.
+  // acentos de los nombres salen rotos. Y punto y coma, no coma: con coma,
+  // Excel en español lo mete todo en una sola columna.
   const BOM = String.fromCharCode(0xfeff);
 
   return new NextResponse(`${BOM}${csv}`, {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': `attachment; filename="cumplimiento-${mes}.csv"`,
+      'content-disposition': `attachment; filename="cumplimiento-${meses[0]}-a-${meses.at(-1)}.csv"`,
     },
   });
 }
