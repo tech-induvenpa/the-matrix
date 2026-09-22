@@ -4,6 +4,7 @@ import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { Formulario } from './formulario';
 import { Reparto } from './reparto';
+import { Propuesta } from './propuesta';
 import Link from 'next/link';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
@@ -17,16 +18,20 @@ export default async function Cargo({
   searchParams,
 }: {
   params: Promise<{ empleado: string }>;
-  searchParams: Promise<{ editar?: string }>;
+  searchParams: Promise<{ editar?: string; peso?: string }>;
 }) {
   const { empleado } = await params;
-  const { editar } = await searchParams;
+  const { editar, peso } = await searchParams;
   const cargo = await cargoDe(empleado);
 
   if (!cargo) return null;
 
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
+
+  // Un peso en la URL es una propuesta esperando aprobacion, no un cambio
+  // hecho: nada se toco todavia.
+  const proponiendo = peso !== undefined && editar !== undefined && Number.isInteger(Number(peso));
 
   return (
     <main style={{ maxWidth: 880, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -98,7 +103,18 @@ export default async function Cargo({
                   </Link>
                 </div>
 
-                {editar === f.id && (
+                {editar === f.id && proponiendo && (
+                  <div style={{ marginTop: 5 }}>
+                    <Propuesta
+                      empleadoId={empleado}
+                      funciones={cargo.funciones}
+                      funcionId={f.id}
+                      nueva={Number(peso)}
+                    />
+                  </div>
+                )}
+
+                {editar === f.id && !proponiendo && (
                   <div style={{ background: 'var(--suave)', borderRadius: 14, padding: '16px 18px', marginTop: 5 }}>
                     <Formulario funcionId={f.id} empleadoId={empleado} funcion={f} />
 

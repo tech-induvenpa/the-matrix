@@ -4,6 +4,7 @@ import { ADMITE_DIA_TOPE, reescalarA, reescalarACien, SE_AGENDA, sePuedePublicar
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
 
@@ -96,40 +97,21 @@ export async function editarFuncion(funcionId: string, empleadoId: string, formu
     .eq('id', funcionId);
   if (error) return { mensaje: error.message, celebra: false };
 
-  // La ponderacion es del todo y no de la parte, pero abrir una funcion y no
-  // poder tocar su peso ahi mismo es una sorpresa: es el dato que uno viene a
-  // cambiar. Se puede, y las demas se reacomodan a lo que queda conservando sus
-  // proporciones -- la misma aritmetica del lado que recibe en un traspaso.
+  // El peso no se aplica aqui. Cambiarlo mueve los numeros de las demas
+  // funciones, que el administrador no escribio: eso se propone y se aprueba
+  // viendo el antes y el despues, no se hace al vuelo.
   const pedida = Number(formulario.get('ponderacion') ?? -1);
-  if (Number.isInteger(pedida) && pedida >= 0 && pedida <= 100) {
-    const { data: vigentes } = await supabase
-      .from('titularidad')
-      .select('funcion_id, ponderacion')
-      .eq('empleado_id', empleadoId)
-      .is('hasta', null)
-      .not('publicado_en', 'is', null);
+  const { data: actual } = await supabase
+    .from('titularidad')
+    .select('ponderacion')
+    .eq('funcion_id', funcionId)
+    .eq('empleado_id', empleadoId)
+    .is('hasta', null)
+    .maybeSingle();
 
-    const actual = (vigentes ?? []).find((t) => t.funcion_id === funcionId)?.ponderacion;
-
-    if (actual !== undefined && actual !== pedida) {
-      const resto = (vigentes ?? [])
-        .filter((t) => t.funcion_id !== funcionId)
-        .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
-
-      const { error: sinAjuste } = await supabase.rpc('ajustar_ponderacion', {
-        la_funcion: funcionId,
-        quien: empleadoId,
-        nueva: pedida,
-        pesos_del_resto: reescalarA(resto, 100 - pedida).map((p) => ({
-          funcion_id: p.funcionId,
-          ponderacion: p.ponderacion,
-        })),
-      });
-      if (sinAjuste) return { mensaje: sinAjuste.message, celebra: false };
-
-      revalidatePath(`/admin/${empleadoId}`);
-      return { mensaje: `Guardada. Pasa a pesar ${pedida}% y el resto se reacomodó.`, celebra: false };
-    }
+  if (Number.isInteger(pedida) && pedida >= 0 && pedida <= 100 && actual && actual.ponderacion !== pedida) {
+    revalidatePath(`/admin/${empleadoId}`);
+    redirect(`/admin/${empleadoId}?editar=${funcionId}&peso=${pedida}`);
   }
 
   revalidatePath(`/admin/${empleadoId}`);
@@ -174,6 +156,42 @@ export async function archivarFuncion(funcionId: string, empleadoId: string) {
 // Guardar no publica. Quien reparte diecisiete funciones necesita poder dejarlo
 // a medias e irse: si la pantalla exigiera cuadrar cien para guardar, la
 // aritmetica se haria antes de entrar, y ese otro sitio seria Excel (ADR 0008).
+// Lo que el administrador aprueba despues de ver el antes y el despues. Los
+// pesos los vuelve a calcular el servidor con la misma funcion del dominio: lo
+// que se aplica es exactamente lo que se enseño, no lo que viaje en el formulario.
+export async function aplicarPonderacion(funcionId: string, empleadoId: string, nueva: number) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+  if (!Number.isInteger(nueva) || nueva < 0 || nueva > 100)
+    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+
+  const { data: vigentes } = await supabase
+    .from('titularidad')
+    .select('funcion_id, ponderacion')
+    .eq('empleado_id', empleadoId)
+    .is('hasta', null)
+    .not('publicado_en', 'is', null);
+
+  const resto = (vigentes ?? [])
+    .filter((t) => t.funcion_id !== funcionId)
+    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+
+  const { error } = await supabase.rpc('ajustar_ponderacion', {
+    la_funcion: funcionId,
+    quien: empleadoId,
+    nueva,
+    pesos_del_resto: reescalarA(resto, 100 - nueva).map((p) => ({
+      funcion_id: p.funcionId,
+      ponderacion: p.ponderacion,
+    })),
+  });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath(`/admin/${empleadoId}`);
+  redirect(`/admin/${empleadoId}`);
+}
+
 export async function guardarBorrador(empleadoId: string, formulario: FormData) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
 
