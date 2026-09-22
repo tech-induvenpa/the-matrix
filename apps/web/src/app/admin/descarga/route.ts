@@ -183,6 +183,10 @@ export async function GET(request: NextRequest) {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
       'content-disposition': `attachment; filename="cumplimiento-${meses[0]}-a-${meses.at(-1)}.csv"`,
+      // Sin esto el navegador se guarda la descarga y la vuelve a servir: tras
+      // cambiar el reporte seguia bajando el de antes, con su nombre viejo.
+      // Un archivo que cambia con los datos no se cachea nunca.
+      'cache-control': 'no-store, max-age=0',
     },
   });
 }
