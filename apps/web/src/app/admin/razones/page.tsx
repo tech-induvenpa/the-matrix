@@ -50,19 +50,32 @@ export default async function Razones({
             key={`${r.funcionId}-${r.en}-${i}`}
             style={{ background: 'var(--suave)', borderRadius: 14, padding: '12px 16px' }}
           >
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: 14 }}>{r.persona}</strong>
-              <span style={{ fontSize: 12.5, color: r.quePaso === 'me puse al día' ? '#5E9E62' : '#C97B72' }}>
+            {/* Lo que cede el sitio es el nombre de la funcion, que es lo unico
+                largo: parte en varias lineas dentro de su hueco. Antes envolvia
+                la fila entera y el enlace y la fecha se caian debajo. */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <strong style={{ fontSize: 14, whiteSpace: 'nowrap', flexShrink: 0 }}>{r.persona}</strong>
+              <span
+                style={{
+                  fontSize: 12.5,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  color: r.quePaso === 'me puse al día' ? '#5E9E62' : '#C97B72',
+                }}
+              >
                 {r.quePaso}
               </span>
-              <span style={{ fontSize: 12.5, color: 'var(--gris)', flexGrow: 1, minWidth: 0 }}>{r.funcion}</span>
-              <Ir
-                href={`/admin/razones?funcion=${r.funcionId}`}
-                style={{ fontSize: 12, color: 'var(--gris)' }}
-              >
-                solo esta función
-              </Ir>
-              <span style={{ fontSize: 12.5, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{fechaCorta(r.en)}</span>
+
+              <span style={{ fontSize: 12.5, color: 'var(--gris)', flexGrow: 1, minWidth: 0, lineHeight: 1.35 }}>
+                {r.funcion}
+              </span>
+
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <Ir href={`/admin/razones?funcion=${r.funcionId}`} style={{ fontSize: 12, color: 'var(--gris)' }}>
+                  solo esta función
+                </Ir>
+                <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>{fechaCorta(r.en)}</span>
+              </span>
             </div>
             <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.45 }}>“{r.razon}”</p>
           </article>
