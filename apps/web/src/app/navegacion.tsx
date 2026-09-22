@@ -6,7 +6,13 @@ import { usePathname } from 'next/navigation';
 // Cada rol tiene su menu y ninguno ve el del otro: al administrador, "Esta
 // semana" y "El mes" lo mandaban de vuelta al panel, y al empleado no le
 // existen estas pantallas.
-export function Navegacion({ entradas }: { entradas: { href: string; texto: string; externo?: boolean }[] }) {
+export function Navegacion({
+  entradas,
+  salida,
+}: {
+  entradas: { href: string; texto: string; externo?: boolean }[];
+  salida?: () => Promise<void>;
+}) {
   const donde = usePathname();
 
   return (
@@ -39,6 +45,17 @@ export function Navegacion({ entradas }: { entradas: { href: string; texto: stri
           </Link>
         );
       })}
+
+      {salida && (
+        <form action={salida} style={{ marginLeft: 'auto' }}>
+          <button
+            type="submit"
+            style={{ background: 'none', border: 0, padding: 0, color: 'var(--gris)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}
+          >
+            Salir
+          </button>
+        </form>
+      )}
     </nav>
   );
 }
