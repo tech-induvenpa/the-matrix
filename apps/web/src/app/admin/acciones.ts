@@ -346,3 +346,29 @@ export async function declararCobertura(formulario: FormData) {
   revalidatePath('/admin');
   return { mensaje: `Calendario revisado hasta el ${hasta}.`, celebra: true };
 }
+
+// El nombre que hay viene del Excel, donde era el titulo de un bloque; los
+// correos son inventados. Los dos hay que poder arreglarlos, y el correo ademas
+// es como entra esa persona: se cambia donde se comprueba al entrar, o se queda
+// fuera sin que nadie se entere hasta que lo intente.
+export async function editarEmpleado(empleadoId: string, formulario: FormData) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const nombre = String(formulario.get('nombre') ?? '').trim();
+  const correo = String(formulario.get('correo') ?? '').trim().toLowerCase();
+
+  if (!nombre) return { mensaje: 'Sin nombre no se puede.', celebra: false };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) return { mensaje: 'Ese correo no parece un correo.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('editar_empleado', {
+    el_empleado: empleadoId,
+    el_nombre: nombre,
+    el_correo: correo,
+  });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath(`/admin/${empleadoId}`);
+  revalidatePath('/admin');
+  return { mensaje: 'Guardado. Entrará con ese correo.', celebra: false };
+}

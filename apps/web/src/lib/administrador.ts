@@ -82,6 +82,7 @@ export type Companero = { id: string; nombre: string };
 export type Cargo = {
   id: string;
   nombre: string;
+  correo: string;
   funciones: FuncionDelCargo[];
   // Lo que el administrador dejo a medias. Vacio si no hay nada pendiente.
   borrador: { funcionId: string; ponderacion: number }[];
@@ -96,7 +97,7 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
 
   const { data: empleado } = await supabase
     .from('empleado')
-    .select('id, nombre_bloque')
+    .select('id, nombre_bloque, correo')
     .eq('id', empleadoId)
     .maybeSingle();
   if (!empleado) return null;
@@ -139,6 +140,7 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
   return {
     id: empleado.id as string,
     nombre: empleado.nombre_bloque as string,
+    correo: empleado.correo as string,
     funciones,
     borrador: (pendiente ?? []).map((t) => ({
       funcionId: t.funcion_id as string,

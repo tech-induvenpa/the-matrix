@@ -1,5 +1,5 @@
 import { cargoDe } from '@/lib/administrador';
-import { archivarFuncion, crearFuncion, traspasar } from '../acciones';
+import { archivarFuncion, crearFuncion, editarEmpleado, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { Formulario } from './formulario';
@@ -22,6 +22,27 @@ export default async function Cargo({ params }: { params: Promise<{ empleado: st
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
           {cargo.funciones.length} funciones · reparte {suma} de 100
         </p>
+
+        {/* El nombre viene del Excel, donde era el titulo de un bloque, y el
+            correo es inventado. Los dos hay que poder arreglarlos aqui. */}
+        <Accion accion={editarEmpleado.bind(null, empleado)}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 12 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--gris)' }}>
+              Cómo se llama
+              <input name="nombre" defaultValue={cargo.nombre} required style={PERSONA} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--gris)', flexGrow: 1, minWidth: 220 }}>
+              Su correo — con este entra
+              <input name="correo" type="email" defaultValue={cargo.correo} required style={PERSONA} />
+            </label>
+            <Enviar
+              style={{ height: 34, padding: '0 16px', borderRadius: 999, background: 'rgba(26,23,19,0.06)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
+              enviando="Guardando…"
+            >
+              Guardar
+            </Enviar>
+          </div>
+        </Accion>
       </header>
 
       <section>
@@ -97,3 +118,12 @@ export default async function Cargo({ params }: { params: Promise<{ empleado: st
     </main>
   );
 }
+
+const PERSONA = {
+  height: 34,
+  borderRadius: 8,
+  border: '1px solid rgba(26,23,19,0.18)',
+  padding: '0 10px',
+  fontSize: 13.5,
+  background: '#fff',
+} as const;
