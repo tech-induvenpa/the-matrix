@@ -70,7 +70,7 @@ export default async function Cargo({
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su reparto 🥧</h2>
           <Link href={repartiendo ? '?' : '?editar=reparto'} style={{ fontSize: 13, color: 'var(--gris)' }}>
-            {repartiendo ? 'dejar de repartir' : '✏️ repartir'}
+            {repartiendo ? 'dejar de modificar' : '✏️ modificar ponderación'}
           </Link>
         </div>
 
