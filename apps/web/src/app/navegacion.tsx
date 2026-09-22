@@ -16,47 +16,59 @@ export function Navegacion({
   const donde = usePathname();
 
   return (
-    <nav
+    // Una banda de verdad, de borde a borde. Sin ella el menu quedaba flotando
+    // sobre el blanco, mas adentro que el contenido y sin nada que lo sujetara.
+    <div
       style={{
-        display: 'flex',
-        gap: 18,
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        maxWidth: 1180,
-        margin: '0 auto',
-        padding: '18px 16px 0',
-        fontSize: 15,
-        fontWeight: 600,
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        background: 'var(--panel)',
+        borderBottom: '1px solid rgba(26,23,19,0.08)',
       }}
     >
-      {entradas.map((e) => {
-        const aqui = donde === e.href;
-        const estilo = { color: aqui ? 'var(--tinta)' : 'var(--gris)', textDecoration: 'none' };
+      <nav
+        style={{
+          display: 'flex',
+          gap: 18,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          maxWidth: 1440,
+          margin: '0 auto',
+          padding: '12px 34px',
+          fontSize: 15,
+          fontWeight: 600,
+        }}
+      >
+        {entradas.map((e) => {
+          const aqui = donde === e.href;
+          const estilo = { color: aqui ? 'var(--tinta)' : 'var(--gris)', textDecoration: 'none' };
 
-        // La descarga no es una pantalla: es un archivo, y Link la trataria
-        // como navegacion.
-        return e.externo ? (
-          <a key={e.href} href={e.href} style={estilo}>
-            {e.texto}
-          </a>
-        ) : (
-          <Link key={e.href} href={e.href} style={estilo}>
-            {e.texto}
-          </Link>
-        );
-      })}
+          // La descarga no es una pantalla: es un archivo, y Link la trataria
+          // como navegacion.
+          return e.externo ? (
+            <a key={e.href} href={e.href} style={estilo}>
+              {e.texto}
+            </a>
+          ) : (
+            <Link key={e.href} href={e.href} style={estilo}>
+              {e.texto}
+            </Link>
+          );
+        })}
 
-      {salida && (
-        <form action={salida} style={{ marginLeft: 'auto' }}>
-          <button
-            type="submit"
-            style={{ background: 'none', border: 0, padding: 0, color: 'var(--gris)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}
-          >
-            Salir
-          </button>
-        </form>
-      )}
-    </nav>
+        {salida && (
+          <form action={salida} style={{ marginLeft: 'auto' }}>
+            <button
+              type="submit"
+              style={{ background: 'none', border: 0, padding: 0, color: 'var(--gris)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}
+            >
+              Salir
+            </button>
+          </form>
+        )}
+      </nav>
+    </div>
   );
 }
 

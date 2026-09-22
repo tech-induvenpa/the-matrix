@@ -184,18 +184,7 @@ export default async function Semana() {
         <section style={PANEL}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>¡Buenos días, {nombre}! 👋</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={CHIP}>{fecha}</span>
-              <form action={salir}>
-                <button title="Salir" aria-label="Salir" style={{ ...CHIP, width: 33, height: 33, padding: 0, justifyContent: 'center' }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                </button>
-              </form>
-            </div>
+            <span style={CHIP}>{fecha}</span>
           </div>
 
           <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, flexWrap: 'wrap', padding: '10px 0' }}>
@@ -235,7 +224,7 @@ export default async function Semana() {
 
   return (
     <>
-      <Navegacion entradas={DEL_EMPLEADO} />
+      <Navegacion entradas={DEL_EMPLEADO} salida={salir} />
     <main style={{ display: 'flex', flexDirection: 'column', maxWidth: 1440, margin: '0 auto' }}>
       {metaCumplida ? (
         <CierreDeSemana
