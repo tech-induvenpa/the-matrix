@@ -3,7 +3,7 @@ import { darDeAlta } from './acciones';
 import { Accion } from '../accion';
 import { Enviar } from '../boton';
 import { AvisoDeCobertura } from './cobertura';
-import Link from 'next/link';
+import { Ir } from '../ir';
 
 // El trazador del backoffice: quien asigna entra y ve a su gente. Nada mas.
 // Lo que decide esta pantalla no es lo que muestra, es quien puede verla.
@@ -23,7 +23,7 @@ export default async function Panel() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
-          <Link
+          <Ir
             key={e.id}
             href={`/admin/${e.id}`}
             style={{
@@ -42,7 +42,7 @@ export default async function Panel() {
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
               {e.funciones} {e.funciones === 1 ? 'función' : 'funciones'}
             </span>
-          </Link>
+          </Ir>
         ))}
 
         {equipo.length === 0 && (

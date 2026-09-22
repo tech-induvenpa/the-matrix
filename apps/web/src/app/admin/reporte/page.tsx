@@ -1,6 +1,6 @@
 import { reporte } from '@/lib/reporte';
 import { fechaCorta } from '@/lib/datos';
-import Link from 'next/link';
+import { Ir } from '../../ir';
 
 // Lo que el administrador venia a buscar: que se esta ejecutando y que no.
 //
@@ -23,9 +23,9 @@ export default async function Reporte() {
       {gente.map((p) => (
         <section key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <Link href={`/admin/${p.id}`} style={{ fontSize: 17, fontWeight: 700, color: 'var(--tinta)', textDecoration: 'none' }}>
+            <Ir href={`/admin/${p.id}`} style={{ fontSize: 17, fontWeight: 700, color: 'var(--tinta)', textDecoration: 'none' }}>
               {p.nombre}
-            </Link>
+            </Ir>
             {/* Dos numeros, porque no dicen lo mismo. El peso dice cuanto duele;
                 cuantas dice si hay algo que mirar. Una funcion de cero por
                 ciento no mueve el primero y si el segundo, que es justo para lo

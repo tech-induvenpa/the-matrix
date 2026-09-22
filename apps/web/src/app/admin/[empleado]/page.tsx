@@ -5,7 +5,7 @@ import { Enviar } from '../../boton';
 import { Formulario } from './formulario';
 import { Reparto } from './reparto';
 import { Propuesta } from './propuesta';
-import Link from 'next/link';
+import { Ir } from '../../ir';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
 // repartir y la de editar, con los mismos nombres repetidos uno debajo del otro.
@@ -42,9 +42,9 @@ export default async function Cargo({
           {editar !== 'persona' && (
             <>
               {' · '}
-              <Link href="?editar=persona" style={{ color: 'var(--gris)' }}>
+              <Ir href="?editar=persona" style={{ color: 'var(--gris)' }}>
                 ✏️ su nombre y su correo
-              </Link>
+              </Ir>
             </>
           )}
         </p>
@@ -63,9 +63,9 @@ export default async function Cargo({
               <Enviar style={BOTON} enviando="Guardando…">
                 Guardar
               </Enviar>
-              <Link href="?" style={{ fontSize: 12.5, color: 'var(--gris)', paddingBottom: 9 }}>
+              <Ir href="?" style={{ fontSize: 12.5, color: 'var(--gris)', paddingBottom: 9 }}>
                 cancelar
-              </Link>
+              </Ir>
             </div>
           </Accion>
         )}
@@ -74,9 +74,9 @@ export default async function Cargo({
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su reparto 🥧</h2>
-          <Link href={repartiendo ? '?' : '?editar=reparto'} style={{ fontSize: 13, color: 'var(--gris)' }}>
+          <Ir href={repartiendo ? '?' : '?editar=reparto'} style={{ fontSize: 13, color: 'var(--gris)' }}>
             {repartiendo ? 'dejar de modificar' : '✏️ modificar ponderación'}
-          </Link>
+          </Ir>
         </div>
 
         {repartiendo ? (
@@ -94,13 +94,13 @@ export default async function Cargo({
                   <span style={{ fontSize: 13.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
                     {f.ponderacion}%
                   </span>
-                  <Link
+                  <Ir
                     href={editar === f.id ? '?' : `?editar=${f.id}`}
                     title="Editar esta función"
                     style={{ fontSize: 15, textDecoration: 'none' }}
                   >
                     {editar === f.id ? '✕' : '✏️'}
-                  </Link>
+                  </Ir>
                 </div>
 
                 {editar === f.id && proponiendo && (

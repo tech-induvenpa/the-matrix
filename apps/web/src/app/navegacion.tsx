@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Ir } from './ir';
 
 // Cada rol tiene su menu y ninguno ve el del otro: al administrador, "Esta
 // semana" y "El mes" lo mandaban de vuelta al panel, y al empleado no le
@@ -51,9 +51,9 @@ export function Navegacion({
               {e.texto}
             </a>
           ) : (
-            <Link key={e.href} href={e.href} style={estilo}>
+            <Ir key={e.href} href={e.href} style={estilo}>
               {e.texto}
-            </Link>
+            </Ir>
           );
         })}
 

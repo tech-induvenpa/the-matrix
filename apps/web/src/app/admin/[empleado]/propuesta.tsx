@@ -2,7 +2,7 @@ import { reescalarA } from '@matriz/dominio';
 import { aplicarPonderacion } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
-import Link from 'next/link';
+import { Ir } from '../../ir';
 
 type Fila = { id: string; texto: string; ponderacion: number };
 
@@ -97,9 +97,9 @@ export function Propuesta({
           </Enviar>
         </Accion>
 
-        <Link href="?" style={{ fontSize: 13, color: 'var(--gris)' }}>
+        <Ir href="?" style={{ fontSize: 13, color: 'var(--gris)' }}>
           dejarlo como está
-        </Link>
+        </Ir>
 
         <span style={{ fontSize: 12, color: 'var(--gris)', marginLeft: 'auto' }}>suma {total}</span>
       </div>

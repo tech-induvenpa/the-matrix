@@ -1,6 +1,6 @@
 import { razonesDelEquipo } from '@/lib/reporte';
 import { fechaCorta } from '@/lib/datos';
-import Link from 'next/link';
+import { Ir } from '../../ir';
 
 // Lo que reemplaza a la pestaña de razones. La diferencia que justifica el
 // cambio: aquí se puede filtrar, y ahí no se podía.
@@ -56,12 +56,12 @@ export default async function Razones({
                 {r.quePaso}
               </span>
               <span style={{ fontSize: 12.5, color: 'var(--gris)', flexGrow: 1, minWidth: 0 }}>{r.funcion}</span>
-              <Link
+              <Ir
                 href={`/admin/razones?funcion=${r.funcionId}`}
                 style={{ fontSize: 12, color: 'var(--gris)' }}
               >
                 solo esta función
-              </Link>
+              </Ir>
               <span style={{ fontSize: 12.5, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{fechaCorta(r.en)}</span>
             </div>
             <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.45 }}>“{r.razon}”</p>
@@ -80,7 +80,7 @@ export default async function Razones({
 
 function Filtro({ href, activo, children }: { href: string; activo: boolean; children: React.ReactNode }) {
   return (
-    <Link
+    <Ir
       href={href}
       style={{
         padding: '5px 12px',
@@ -92,6 +92,6 @@ function Filtro({ href, activo, children }: { href: string; activo: boolean; chi
       }}
     >
       {children}
-    </Link>
+    </Ir>
   );
 }
