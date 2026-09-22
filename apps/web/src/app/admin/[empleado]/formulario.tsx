@@ -8,6 +8,7 @@ type Valores = {
   importancia: number;
   tipo: string | null;
   diaTope: number | null;
+  ponderacion: number;
 };
 
 const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
@@ -70,6 +71,13 @@ export function Formulario({
             />
           </label>
 
+          {funcionId && (
+            <label style={ETIQUETA}>
+              Cuánto pesa en su cargo
+              <input name="ponderacion" type="number" min={0} max={100} defaultValue={funcion?.ponderacion ?? 0} style={CAMPO} />
+            </label>
+          )}
+
           <label style={ETIQUETA}>
             Día tope, si lo tiene
             <input name="diaTope" type="number" min={1} max={31} defaultValue={funcion?.diaTope ?? ''} style={CAMPO} />
@@ -91,6 +99,11 @@ export function Formulario({
           <span style={{ fontSize: 12, color: 'var(--gris)' }}>
             Sin marcar ninguna, es holgura: la parte del cargo reservada a lo no planificado.
           </span>
+          {funcionId && (
+            <span style={{ fontSize: 12, color: 'var(--gris)' }}>
+              Si cambias el peso, las demás funciones se reacomodan para que siga sumando 100.
+            </span>
+          )}
         </fieldset>
 
         <Enviar

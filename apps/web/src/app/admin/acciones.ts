@@ -96,6 +96,42 @@ export async function editarFuncion(funcionId: string, empleadoId: string, formu
     .eq('id', funcionId);
   if (error) return { mensaje: error.message, celebra: false };
 
+  // La ponderacion es del todo y no de la parte, pero abrir una funcion y no
+  // poder tocar su peso ahi mismo es una sorpresa: es el dato que uno viene a
+  // cambiar. Se puede, y las demas se reacomodan a lo que queda conservando sus
+  // proporciones -- la misma aritmetica del lado que recibe en un traspaso.
+  const pedida = Number(formulario.get('ponderacion') ?? -1);
+  if (Number.isInteger(pedida) && pedida >= 0 && pedida <= 100) {
+    const { data: vigentes } = await supabase
+      .from('titularidad')
+      .select('funcion_id, ponderacion')
+      .eq('empleado_id', empleadoId)
+      .is('hasta', null)
+      .not('publicado_en', 'is', null);
+
+    const actual = (vigentes ?? []).find((t) => t.funcion_id === funcionId)?.ponderacion;
+
+    if (actual !== undefined && actual !== pedida) {
+      const resto = (vigentes ?? [])
+        .filter((t) => t.funcion_id !== funcionId)
+        .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+
+      const { error: sinAjuste } = await supabase.rpc('ajustar_ponderacion', {
+        la_funcion: funcionId,
+        quien: empleadoId,
+        nueva: pedida,
+        pesos_del_resto: reescalarA(resto, 100 - pedida).map((p) => ({
+          funcion_id: p.funcionId,
+          ponderacion: p.ponderacion,
+        })),
+      });
+      if (sinAjuste) return { mensaje: sinAjuste.message, celebra: false };
+
+      revalidatePath(`/admin/${empleadoId}`);
+      return { mensaje: `Guardada. Pasa a pesar ${pedida}% y el resto se reacomodó.`, celebra: false };
+    }
+  }
+
   revalidatePath(`/admin/${empleadoId}`);
   return { mensaje: 'Guardada.', celebra: false };
 }
