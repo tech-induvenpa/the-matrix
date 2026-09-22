@@ -28,6 +28,10 @@ export type PersonaDelReporte = {
   id: string;
   nombre: string;
   arrastrado: number;
+  // Cuantas funciones suyas arrastran, pesen lo que pesen. Una funcion de cero
+  // por ciento existe para verse, no para pesar: si solo miraramos el peso,
+  // seria invisible justo cuando hay algo que mirar.
+  arrastrando: number;
   funciones: FuncionDelReporte[];
 };
 
@@ -105,24 +109,28 @@ export async function reporte(): Promise<PersonaDelReporte[]> {
     };
 
     const nombre = ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string;
-    const persona = gente.get(empleadoId) ?? { id: empleadoId, nombre, arrastrado: 0, funciones: [] };
+    const persona = gente.get(empleadoId) ?? { id: empleadoId, nombre, arrastrado: 0, arrastrando: 0, funciones: [] };
     persona.funciones.push(fila);
     gente.set(empleadoId, persona);
   }
 
-  // El orden es por ponderacion arrastrada, no por numero de periodos: cuanto
-  // del cargo de alguien esta sin cumplirse es lo unico comparable entre
-  // personas y entre cadencias, y es ademas el impacto salarial expresado en
-  // el unico lenguaje que el sistema conoce (ADR 0007).
+  // El orden primero es por ponderacion arrastrada: cuanto del cargo de alguien
+  // esta sin cumplirse es lo unico comparable entre personas y entre cadencias
+  // (ADR 0007). Pero a igual peso manda cuantas arrastran, y eso saca a flote a
+  // quien solo arrastra funciones de cero por ciento: saber que paso con una
+  // funcion importa aunque no mueva sueldo.
   return [...gente.values()]
     .map((p) => ({
       ...p,
       arrastrado: ponderacionArrastrada(p.funciones.map((f) => ({ ...f, arrastre: f.delTitular }))),
+      arrastrando: p.funciones.filter((f) => f.delTitular.periodos > 0).length,
       funciones: p.funciones.sort(
         (a, b) => b.deLaFuncion.periodos - a.deLaFuncion.periodos || b.ponderacion - a.ponderacion,
       ),
     }))
-    .sort((a, b) => b.arrastrado - a.arrastrado || a.nombre.localeCompare(b.nombre));
+    .sort(
+      (a, b) => b.arrastrado - a.arrastrado || b.arrastrando - a.arrastrando || a.nombre.localeCompare(b.nombre),
+    );
 }
 
 export type RazonDelPanel = {

@@ -26,9 +26,14 @@ export default async function Reporte() {
             <Link href={`/admin/${p.id}`} style={{ fontSize: 17, fontWeight: 700, color: 'var(--tinta)', textDecoration: 'none' }}>
               {p.nombre}
             </Link>
-            {p.arrastrado > 0 ? (
+            {/* Dos numeros, porque no dicen lo mismo. El peso dice cuanto duele;
+                cuantas dice si hay algo que mirar. Una funcion de cero por
+                ciento no mueve el primero y si el segundo, que es justo para lo
+                que existe. */}
+            {p.arrastrando > 0 ? (
               <span style={{ fontSize: 13.5, fontWeight: 600, color: '#D9503A' }}>
-                {p.arrastrado}% de su cargo sin cumplirse
+                {p.arrastrando} {p.arrastrando === 1 ? 'función arrastrando' : 'funciones arrastrando'}
+                {p.arrastrado > 0 ? ` · ${p.arrastrado}% de su cargo` : ' · sin peso en su cargo'}
               </span>
             ) : (
               <span style={{ fontSize: 13.5, color: '#5E9E62' }}>al día</span>

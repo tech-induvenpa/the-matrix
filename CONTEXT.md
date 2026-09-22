@@ -75,6 +75,13 @@ El peso fijo de una funcion dentro del cargo de una persona. Suma cien por
 persona y no cambia nunca por posicion en la matriz.
 _Avoid_: peso (reservado), prioridad, porcentaje.
 
+**Seguimiento sin peso**:
+Una funcion con ponderacion cero. Existe para verse, no para pesar: aparece en
+el plan de su titular, se marca y acumula arrastre, y no descuadra el reparto
+de nadie. Es como entra al sistema el trabajo que hay que seguir aunque no
+mueva sueldo -- una convencion que hoy vive en la memoria de la gente.
+_Avoid_: opcional (no lo es), secundaria, informativa.
+
 **Reparto**:
 Las funciones de una persona con sus ponderaciones, tomadas como un todo que
 suma cien. Nadie cambia la ponderacion de una funcion suelta: se redistribuye el
@@ -243,6 +250,11 @@ _Avoid_: problema, falla (senalan a la persona).
   deduce el agente. Resuelto: **la reconciliacion solo compara lo que JFS escribe
   en la hoja**; lo que el documento no trae no puede marcar una fila como
   cambiada.
+- Si mover trabajo mueve sueldo es una decision aplazada: se toma tras **tres
+  meses de sistema corriendo** (decidido el 22/09/2026), cuando haya con que
+  responderla. Hasta entonces lo que importa es el seguimiento, no el peso, y
+  el sistema tiene que poder mostrar que paso con una funcion aunque no mueva
+  el sueldo de nadie.
 - La ponderacion se repartio **hacia atras**: se sabia lo que gana cada persona y
   se acomodaron porcentajes sobre sus funciones hasta cuadrar cien. O sea que hoy
   la flecha va sueldo -> ponderacion, y el peso de una funcion no es una medida
