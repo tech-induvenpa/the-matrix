@@ -32,9 +32,19 @@ const sitio =
 const { data: empleados, error } = await supabase.from('empleado').select('nombre_bloque, correo, auth_user_id');
 if (error) throw error;
 
-const hallados = empleados.filter(
+let hallados = empleados.filter(
   (e) => e.nombre_bloque?.toLowerCase().includes(buscado) || e.correo?.toLowerCase().includes(buscado),
 );
+
+// El administrador no es un empleado: existe solo como usuario de auth, y es a
+// quien mas falta le hace un enlace a mano. Si no esta entre la gente, se busca
+// donde si esta.
+if (!hallados.length) {
+  const { data: cuentas } = await supabase.auth.admin.listUsers();
+  hallados = cuentas.users
+    .filter((u) => u.email?.toLowerCase().includes(buscado))
+    .map((u) => ({ nombre_bloque: u.email!, correo: u.email!, auth_user_id: u.id }));
+}
 
 if (!hallados.length) {
   console.log(`\nNadie se llama "${buscado}". Hay: ${empleados.map((e) => e.nombre_bloque).join(', ')}\n`);
