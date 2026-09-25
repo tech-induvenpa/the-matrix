@@ -14,6 +14,8 @@ export type Fila = {
   urgencia: number;
   faltan: number;
   cuadrante: Cuadrante;
+  // Los imprevistos que podrian explicar un "no pude" de esta ocurrencia.
+  vinculables?: readonly { id: string; texto: string }[];
 };
 
 // La misma tarjeta en la semana y en el mes: una funcion no cambia de cara
@@ -46,7 +48,8 @@ export function Tarjeta({ o, hoy }: { o: Fila; hoy: string }) {
         </Accion>
 
         <PorQue
-          accion={marcarNoPude.bind(null, o.funcionId, o.periodo)}
+          accion={marcarNoPude.bind(null, o.funcionId, o.periodo, o.vence)}
+          opciones={o.vinculables}
           titulo="No pude"
           placeholder="¿Qué pasó? Así lo entendemos luego"
           estilo={{ ...REDONDO, color: '#C62828' }}

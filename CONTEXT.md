@@ -67,6 +67,31 @@ _Avoid_: categoria, macro-tarea.
 
 **Holgura**:
 La porcion del cargo reservada a lo no planificado, presupuestada de antemano.
+Es por donde pesan los imprevistos: ninguno trae peso propio, se miden contra
+la holgura de su empleado. La asigna el administrador en el reparto como
+cualquier ponderacion; quien no tiene holgura recibe imprevistos igual, y
+cuentan, pero no pesan. Se cumple con imprevistos hechos sobre los que se
+esperaba hacer: "no pude" y abiertos vencidos cuentan en contra, "no lo tome"
+es neutro (rechazar a tiempo no es fallar), y un mes sin imprevistos
+esperables no cuenta ni a favor ni en contra.
+
+**Imprevisto**:
+Trabajo que llega sin estar en el reparto de nadie y se hace una sola vez. No es
+una funcion: no se repite, no tiene periodicidad ni ponderacion, y no se
+traspasa. Vence a mas tardar el dia habil siguiente a cuando se pidio, asi que
+su urgencia se calcula igual que la de cualquier ocurrencia y nace alta sin que
+nadie la escriba. No arrastra, porque no tiene serie: si vence sin marca sigue
+abierto en la pantalla de su empleado hasta que alguien lo marque, y cuenta su
+retraso en dias habiles. Que se acumulen abiertos es el dato: dice que nadie
+les esta haciendo seguimiento. Se marca de tres formas: hecho, "no pude" o
+"no lo tome"; las dos ultimas con razon. Rechazarlo es una respuesta de quien
+lo recibe, no una aprobacion: el imprevisto rechazado cuenta como llegado, y si
+quien lo pidio insiste, es un imprevisto nuevo. No se edita: si esta mal se
+borra y se registra otro, asi la fecha en que se pidio nunca se mueve. Un
+imprevisto borrado no cuenta en ninguna cifra, pero no desaparece: queda quien
+lo borro y cuando. Un imprevisto que vuelve con regularidad es una
+funcion que nadie ha dado de alta.
+_Avoid_: urgente (la urgencia se calcula, no se declara), encargo, comodin.
 
 ### Los tres ejes
 
@@ -161,8 +186,10 @@ _Avoid_: prioridad alta/baja, los nombres clasicos de Eisenhower.
 ### El registro
 
 **Marca**:
-El acto de declarar una ocurrencia ejecutada o no ejecutada. Marcar "no pude"
-libera el lugar igual que marcar hecho.
+El acto de declarar una ocurrencia o un imprevisto ejecutado o no ejecutado.
+Marcar "no pude" libera el lugar igual que marcar hecho. Un imprevisto admite
+ademas "no lo tome"; una ocurrencia no, porque lo previsto ya se acepto al
+publicar el reparto.
 _Avoid_: check, completar, cerrar.
 
 **Estado de flujo**:
@@ -193,6 +220,21 @@ ponderaciones de sus funciones con arrastre. Es lo unico comparable entre
 personas y entre cadencias, y por eso es el orden del reporte. Ordenar por
 numero de periodos pondria siempre las diarias arriba.
 
+**Intromision**:
+El vinculo que el empleado declara entre un incumplimiento de lo previsto --un
+"no pude" en una ocurrencia o un atraso declarado en un flujo-- y los
+imprevistos que lo causaron. Es opcional, admite varios imprevistos y no
+reemplaza a la razon, que sigue siendo obligatoria. Solo vale con imprevistos
+pedidos antes del vencimiento de esa ocurrencia (en un flujo, desde que estuvo
+al dia por ultima vez): un imprevisto viejo no puede excusar cualquier cosa.
+_Avoid_: excusa, justificacion.
+
+**Ponderacion desplazada**:
+Cuanto del cargo de una persona dejo de cumplirse por intromision: la suma de
+las ponderaciones de lo previsto que no se cumplio con imprevistos vinculados.
+Es la medida de cuanto empuja lo no planificado a lo planificado, comparable
+entre personas como la ponderacion arrastrada.
+
 **Patron**:
 Un arrastre de dos periodos o mas; en un flujo, un atraso declarado dos veces en
 el mismo mes. Es el mismo hecho que el arrastre, visto desde el cierre de mes del
@@ -205,11 +247,16 @@ _Avoid_: problema, falla (senalan a la persona).
 - Una **Funcion** pertenece a exactamente un empleado y tiene exactamente un **Tipo**
 - Solo las funciones de tipo **Entregable** producen **Ocurrencias**
 - Una **Funcion** produce muchas **Ocurrencias**, una por cada periodo de su **Periodicidad**
-- Una **Ocurrencia** pertenece a exactamente un **Periodo** y recibe a lo sumo una **Marca**
+- Una **Ocurrencia** pertenece a exactamente un **Periodo** y recibe a lo sumo una **Marca**; un **Imprevisto** tambien
 - La **Ventana de la semana** contiene las **Ocurrencias** que vencen en los
   proximos cinco **Dias habiles**
 - Un **Cuadrante** se deriva de **Urgencia** e **Importancia**; la
   **Ponderacion** ordena dentro de el
+- Un **Imprevisto** pertenece a exactamente un empleado y no a una **Funcion**;
+  no entra a la **Ventana de la semana**, y al **Cumplimiento ponderado** solo
+  entra a traves de la **Holgura** de su empleado. Lo
+  previsto y lo imprevisto se miden cada uno con sus cifras: el imprevisto
+  afecta a lo previsto por intromision (le quita tiempo), nunca por conteo
 
 ## Example dialogue
 
@@ -255,6 +302,13 @@ _Avoid_: problema, falla (senalan a la persona).
   responderla. Hasta entonces lo que importa es el seguimiento, no el peso, y
   el sistema tiene que poder mostrar que paso con una funcion aunque no mueva
   el sueldo de nadie.
+- JFS quiere que el empleado vea como su trabajo impacta en su sueldo (dicho
+  el 24/09/2026). Choca con el ADR 0007 (el sistema no conoce sueldos) y con
+  que el empleado no vea su cumplimiento ponderado. Sin resolver: es una
+  decision propia, fuera de los imprevistos. Hasta entonces la **ponderacion
+  desplazada** la ve solo el administrador, igual que el cumplimiento
+  ponderado; si se abre, hay que cuidar que vincular imprevistos a lo de mas
+  peso no se vuelva una estrategia.
 - La ponderacion se repartio **hacia atras**: se sabia lo que gana cada persona y
   se acomodaron porcentajes sobre sus funciones hasta cuadrar cien. O sea que hoy
   la flecha va sueldo -> ponderacion, y el peso de una funcion no es una medida

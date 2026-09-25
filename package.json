@@ -15,7 +15,8 @@
     "proteger": "tsx scripts/proteger.mts",
     "invariantes": "pnpm --filter @matriz/pruebas invariantes",
     "start": "pnpm --filter web start",
-    "acceso": "tsx scripts/acceso.mts"
+    "acceso": "tsx scripts/acceso.mts",
+    "enlace": "tsx scripts/enlace.mts"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

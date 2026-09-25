@@ -1,4 +1,4 @@
-import { arrastreDe, Calendario, ocurrenciasEntre, type Periodicidad } from '@matriz/dominio';
+import { arrastreDe, Calendario, cumplimientoDeLaHolgura, ocurrenciasEntre, type Periodicidad, type Resultado } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { hoyISO } from '@/lib/datos';
@@ -67,18 +67,25 @@ export async function GET(request: NextRequest) {
 
   const supabase = await clienteDelServidor();
 
-  const [{ data: dias }, { data: titularidades }, { data: marcas }, { data: eventos }] = await Promise.all([
+  const [{ data: dias }, { data: titularidades }, { data: marcas }, { data: eventos }, { data: imprevistos }] = await Promise.all([
     supabase.from('dia_no_habil').select('desde, hasta'),
     supabase
       .from('titularidad')
       .select(
-        'ponderacion, empleado(nombre_bloque), funcion!inner(id, texto, periodicidad, fecha_alta, tipo_generado, tipo_corregido, activa)',
+        'ponderacion, empleado_id, empleado(nombre_bloque), funcion!inner(id, texto, periodicidad, fecha_alta, tipo_generado, tipo_corregido, activa)',
       )
       .is('hasta', null)
       .not('publicado_en', 'is', null),
     supabase.from('marca').select('funcion_id, periodo'),
     supabase.from('evento_flujo').select('funcion_id, estado, en').order('en'),
+    // La holgura se cumple con los imprevistos de su titular (CEB-158).
+    supabase.from('imprevisto').select('empleado_id, vence, resultado, borrado_en').gte('vence', desde),
   ]);
+
+  const imprevistosDe = (empleadoId: string) =>
+    (imprevistos ?? [])
+      .filter((i) => i.empleado_id === empleadoId)
+      .map((i) => ({ vence: i.vence as string, resultado: i.resultado as Resultado | null, borradoEn: i.borrado_en as string | null }));
 
   const calendario = Calendario.con(dias ?? []);
   const cerradas = new Set((marcas ?? []).map((m) => `${m.funcion_id}|${m.periodo}`));
@@ -100,6 +107,7 @@ export async function GET(request: NextRequest) {
     const persona = ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string;
     const ponderacion = t.ponderacion as number;
     const esEntregable = tipo === 'entregable';
+    const esHolgura = tipo === 'holgura';
 
     const ocurrenciasEn = (hasta: string, inicio: string) =>
       ocurrenciasEntre(
@@ -126,16 +134,25 @@ export async function GET(request: NextRequest) {
       const atrasos = delMes.filter((e) => e.estado === 'atrasado').length;
       const alCierre = suyos.length ? ((suyos.at(-1)!.estado as string) === 'atrasado' ? 'atrasado' : 'al dia') : '';
 
+      // La holgura no tiene ocurrencias: se cumple con los imprevistos que
+      // vencieron ese mes. Antes salia siempre en cero, pagada sin rendir
+      // cuentas.
+      const holgura = esHolgura
+        ? cumplimientoDeLaHolgura(imprevistosDe(t.empleado_id as string), { desde: `${mes}-01`, hasta: ultimo }, hoy)
+        : null;
+
       // El peso que no se cumplio. En un entregable es la fraccion que quedo
-      // sin cerrar; en un flujo es todo su peso si termino el mes atrasado,
-      // porque un flujo no se cumple a medias: o se esta atendiendo o no.
+      // sin cerrar, y en la holgura la fraccion de imprevistos sin cumplir; en
+      // un flujo es todo su peso si termino el mes atrasado, porque un flujo no
+      // se cumple a medias: o se esta atendiendo o no.
+      const fraccion = (sin: number, de: number) => (de ? Math.round(((ponderacion * sin) / de) * 10) / 10 : 0);
       const noCumplido = esEntregable
-        ? ocurrencias.length
-          ? Math.round(((ponderacion * sinCumplir) / ocurrencias.length) * 10) / 10
-          : 0
-        : alCierre === 'atrasado'
-          ? ponderacion
-          : 0;
+        ? fraccion(sinCumplir, ocurrencias.length)
+        : holgura
+          ? fraccion(holgura.sinCumplir, holgura.esperados)
+          : alCierre === 'atrasado'
+            ? ponderacion
+            : 0;
 
       // El arrastre al cerrar ese mes, no el de hoy: pegarle el de hoy a una
       // fila de julio seria contar lo que paso despues.
@@ -157,11 +174,11 @@ export async function GET(request: NextRequest) {
           tipo,
           f.periodicidad as string,
           ponderacion,
-          esEntregable ? ocurrencias.length : '',
-          esEntregable ? hechas : '',
-          esEntregable ? sinCumplir : '',
-          esEntregable ? '' : atrasos,
-          esEntregable ? '' : alCierre,
+          esEntregable ? ocurrencias.length : (holgura?.esperados ?? ''),
+          esEntregable ? hechas : (holgura?.hechos ?? ''),
+          esEntregable ? sinCumplir : (holgura?.sinCumplir ?? ''),
+          esEntregable || holgura ? '' : atrasos,
+          esEntregable || holgura ? '' : alCierre,
           noCumplido,
           arrastre.periodos || '',
           arrastre.desde ?? '',
