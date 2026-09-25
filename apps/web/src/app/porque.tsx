@@ -12,12 +12,16 @@ export function PorQue({
   titulo,
   placeholder,
   estilo,
+  opciones = [],
   children,
 }: {
   accion: (formulario: FormData) => Promise<Aviso | undefined>;
   titulo: string;
   placeholder: string;
   estilo: CSSProperties;
+  // Los imprevistos que se pueden vincular (intromision). Opcional: la razon
+  // se escribe igual, con o sin ellos.
+  opciones?: readonly { id: string; texto: string }[];
   children: ReactNode;
 }) {
   const [abierto, setAbierto] = useState(false);
@@ -44,10 +48,25 @@ export function PorQue({
           onKeyDown={(evento) => {
             if (evento.key === 'Escape') setAbierto(false);
           }}
-          style={PANEL}
+          style={{ ...PANEL, flexDirection: 'column' }}
         >
-          <input name="razon" required autoFocus placeholder={placeholder} style={CAMPO} />
-          <Enviar style={BOTON}>Guardar</Enviar>
+          {opciones.length > 0 && (
+            <fieldset style={OPCIONES}>
+              <legend style={{ fontSize: 12, color: 'var(--gris)', padding: 0, marginBottom: 4 }}>
+                ¿Te lo impidió algún imprevisto?
+              </legend>
+              {opciones.map((o) => (
+                <label key={o.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+                  <input type="checkbox" name="imprevisto" value={o.id} />
+                  {o.texto}
+                </label>
+              ))}
+            </fieldset>
+          )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input name="razon" required autoFocus placeholder={placeholder} style={CAMPO} />
+            <Enviar style={BOTON}>Guardar</Enviar>
+          </div>
         </form>
       )}
     </div>
@@ -65,6 +84,18 @@ const PANEL = {
   borderRadius: 18,
   background: '#ffffff',
   boxShadow: '0 10px 30px rgba(26,23,19,0.18)',
+} as const;
+
+const OPCIONES = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  border: 'none',
+  margin: 0,
+  padding: '4px 8px',
+  maxHeight: 180,
+  overflowY: 'auto',
+  color: 'var(--tinta)',
 } as const;
 
 const CAMPO = {

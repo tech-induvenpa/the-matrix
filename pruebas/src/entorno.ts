@@ -108,7 +108,7 @@ export async function comoAdministrador(correo: string): Promise<SupabaseClient>
 // Cada prueba monta su escenario desde cero: nada de datos heredados.
 export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
-  for (const tabla of ['evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
+  for (const tabla of ['intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
     const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
     // Tragarse este error costo una tarde: una restriccion nueva bloqueaba el
     // borrado, las tablas quedaban con datos de la corrida anterior, y el fallo

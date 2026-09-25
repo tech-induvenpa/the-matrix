@@ -1,5 +1,5 @@
 import { Calendario } from '@matriz/dominio';
-import type { Periodicidad } from '@matriz/dominio';
+import type { Periodicidad, Resultado } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 
 export type FilaFuncion = {
@@ -15,8 +15,34 @@ export type FilaFuncion = {
   fecha_alta: string;
 };
 
-export type FilaMarca = { funcion_id: string; periodo: string; resultado: string; razon: string | null };
-export type FilaEvento = { funcion_id: string; estado: string; razon: string | null; en: string };
+export type FilaMarca = { id: string; funcion_id: string; periodo: string; resultado: string; razon: string | null };
+export type FilaEvento = { id: string; funcion_id: string; estado: string; razon: string | null; en: string };
+
+export type FilaImprevisto = {
+  id: string;
+  empleado_id: string;
+  texto: string;
+  pedido_en: string;
+  vence: string;
+  pedido_por_admin: string | null;
+  pedido_por_otro: string | null;
+  registrado_por: string;
+  resultado: Resultado | null;
+  razon: string | null;
+  marcada_en: string | null;
+  borrado_en: string | null;
+};
+
+export type FilaIntromision = { imprevisto_id: string; marca_id: string | null; evento_flujo_id: string | null };
+export type QuienPide = { id: string; nombre: string };
+
+export const COLUMNAS_DE_IMPREVISTO =
+  'id, empleado_id, texto, pedido_en, vence, pedido_por_admin, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en';
+
+// Quien lo pidio, en palabras: un administrador por su nombre, o lo que se
+// escribio en "otro".
+export const quienPidio = (i: FilaImprevisto, quienes: readonly QuienPide[]) =>
+  i.pedido_por_otro ?? quienes.find((q) => q.id === i.pedido_por_admin)?.nombre ?? 'un administrador';
 
 // Lo que el agente propuso solo vale mientras nadie lo corrija.
 export const tipoDe = (f: FilaFuncion) => f.tipo_corregido ?? f.tipo_generado;
@@ -50,6 +76,9 @@ export async function panorama() {
     { data: eventos },
     { data: calendario },
     { data: empleado },
+    { data: imprevistos },
+    { data: intromisiones },
+    { data: quienesPiden },
   ] = await Promise.all([
       supabase
         .from('funcion')
@@ -58,10 +87,20 @@ export async function panorama() {
         )
         .eq('activa', true),
       supabase.from('dia_no_habil').select('desde, hasta'),
-      supabase.from('marca').select('funcion_id, periodo, resultado, razon'),
-      supabase.from('evento_flujo').select('funcion_id, estado, razon, en'),
+      supabase.from('marca').select('id, funcion_id, periodo, resultado, razon'),
+      supabase.from('evento_flujo').select('id, funcion_id, estado, razon, en'),
       supabase.from('calendario').select('cargado_hasta').maybeSingle(),
-      supabase.from('empleado').select('nombre_bloque').maybeSingle(),
+      supabase.from('empleado').select('id, nombre_bloque, auth_user_id').maybeSingle(),
+      // ponytail: dos meses para atras. Alcanza para el mes en curso, para lo
+      // vencido que sigue abierto y para vincular a lo que vencio hace poco.
+      supabase
+        .from('imprevisto')
+        .select(COLUMNAS_DE_IMPREVISTO)
+        .is('borrado_en', null)
+        .gte('pedido_en', sumarDias(hoyISO(), -62))
+        .order('pedido_en'),
+      supabase.from('intromision').select('imprevisto_id, marca_id, evento_flujo_id'),
+      supabase.rpc('quienes_piden'),
     ]);
 
   // La seguridad por fila hace que solo llegue el suyo.
@@ -85,6 +124,11 @@ export async function panorama() {
     }),
     marcas: (marcas ?? []) as FilaMarca[],
     eventos: (eventos ?? []) as FilaEvento[],
+    empleadoId: (empleado?.id as string | undefined) ?? '',
+    yo: (empleado?.auth_user_id as string | undefined) ?? '',
+    imprevistos: (imprevistos ?? []) as FilaImprevisto[],
+    intromisiones: (intromisiones ?? []) as FilaIntromision[],
+    quienesPiden: (quienesPiden ?? []) as QuienPide[],
   };
 }
 

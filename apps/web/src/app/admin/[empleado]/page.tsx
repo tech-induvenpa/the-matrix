@@ -1,4 +1,5 @@
-import { cargoDe } from '@/lib/administrador';
+import { cargoDe, imprevistosDe } from '@/lib/administrador';
+import { NuevoImprevisto, TarjetaDeImprevisto } from '../../imprevistos';
 import { archivarFuncion, crearFuncion, editarEmpleado, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
@@ -22,7 +23,7 @@ export default async function Cargo({
 }) {
   const { empleado } = await params;
   const { editar, peso } = await searchParams;
-  const cargo = await cargoDe(empleado);
+  const [cargo, imprevistos] = await Promise.all([cargoDe(empleado), imprevistosDe(empleado)]);
 
   if (!cargo) return null;
 
@@ -70,6 +71,24 @@ export default async function Cargo({
           </Accion>
         )}
       </header>
+
+      {/* Lo que el administrador le pide a ultimo minuto tambien cuenta como
+          imprevisto (CEB-151). Se marca desde la pantalla de la persona. */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Imprevistos abiertos 🌪️</h2>
+        {imprevistos.abiertos.map((i) => (
+          <TarjetaDeImprevisto
+            key={i.id}
+            i={i}
+            hoy={imprevistos.hoy}
+            calendario={imprevistos.calendario}
+            quienesPiden={imprevistos.quienesPiden}
+            puedeMarcar={false}
+            puedeBorrar
+          />
+        ))}
+        <NuevoImprevisto empleadoId={empleado} quienesPiden={imprevistos.quienesPiden} pidioPorDefecto={imprevistos.yo} rotulo="＋ Registrarle un imprevisto" />
+      </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>

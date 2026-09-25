@@ -16,13 +16,26 @@ import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
 import { DEL_EMPLEADO, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
+import { ImprevistosDelMes } from '../imprevistos';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
 export default async function Mes() {
   if (await esAdministrador()) redirect('/admin');
 
-  const { hoy, calendario, funciones, marcas, eventos } = await panorama();
+  const { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden } = await panorama();
+
+  // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
+  // cuyo "no pude" o atraso se le vinculo.
+  const textoDe = new Map(funciones.map((f) => [f.id, f.texto]));
+  const funcionDeMarca = new Map(marcas.map((m) => [m.id, m.funcion_id]));
+  const funcionDeEvento = new Map(eventos.map((e) => [e.id, e.funcion_id]));
+  const explico = new Map<string, string[]>();
+  for (const v of intromisiones) {
+    const funcion = v.marca_id ? funcionDeMarca.get(v.marca_id) : funcionDeEvento.get(v.evento_flujo_id!);
+    const texto = funcion && textoDe.get(funcion);
+    if (texto) explico.set(v.imprevisto_id, [...(explico.get(v.imprevisto_id) ?? []), texto]);
+  }
 
   const primero = `${hoy.slice(0, 7)}-01`;
   const ultimo = new Date(Date.UTC(+hoy.slice(0, 4), +hoy.slice(5, 7), 0)).toISOString().slice(0, 10);
@@ -229,6 +242,14 @@ export default async function Mes() {
           </div>
         </section>
       </div>
+
+      <ImprevistosDelMes
+        imprevistos={imprevistos.filter((i) => i.pedido_en.slice(0, 7) === hoy.slice(0, 7) || !i.resultado)}
+        explico={explico}
+        quienesPiden={quienesPiden}
+        hoy={hoy}
+        calendario={calendario}
+      />
     </main>
     </>
   );

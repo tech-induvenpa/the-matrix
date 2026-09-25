@@ -16,6 +16,7 @@ import {
   TRAMOS,
   unaPorFuncion,
   urgenciaDe,
+  vinculables,
   type Aviso,
   type Etapa,
 } from '@matriz/dominio';
@@ -29,6 +30,7 @@ import { CIRCULO, Numero, Tarjeta, YaResueltas } from './tarjeta';
 import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
 import { DEL_EMPLEADO, Navegacion } from './navegacion';
+import { NuevoImprevisto, TarjetaDeImprevisto } from './imprevistos';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -42,7 +44,20 @@ export default async function Semana() {
   // Quien asigna no tiene funciones: su sitio es el panel, no una pantalla vacia.
   if (await esAdministrador()) redirect('/admin');
 
-  const { hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos } = await panorama();
+  const {
+    hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
+  } = await panorama();
+
+  // Imprevistos: arriba de los flujos, fuera del plan y de la meta (ADR 0009).
+  const imprevistosAbiertos = imprevistos.filter((i) => !i.resultado).sort((a, b) => a.vence.localeCompare(b.vence));
+  const paraVincular = imprevistos.map((i) => ({ id: i.id, texto: i.texto, pedidoEn: i.pedido_en, borradoEn: i.borrado_en }));
+  const opcionesHasta = (vence: string) => vinculables(paraVincular, { vence }).map(({ id, texto }) => ({ id, texto }));
+  const ultimoAlDia = (funcionId: string) =>
+    eventos
+      .filter((e) => e.funcion_id === funcionId && e.estado === 'al_dia')
+      .map((e) => e.en)
+      .sort()
+      .at(-1) ?? null;
 
   const desde = sumarDias(hoy, -RESCATE);
   const hasta = sumarDias(hoy, 120);
@@ -80,7 +95,7 @@ export default async function Semana() {
   const conCuadrante = (o: (typeof ocurrencias)[number]) => {
     const urgencia = urgenciaDe(o.faltan);
     const efectiva = importanciaEfectiva(o.importancia, o.faltan, o.periodicidad);
-    return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva) };
+    return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva), vinculables: opcionesHasta(o.vence) };
   };
 
   const elegidas = seleccionarPlan(unaPorFuncion(abiertas), CUANTAS);
@@ -222,6 +237,63 @@ export default async function Semana() {
     </div>
   );
 
+  const flujosAtrasados = flujos.filter((f) => f.vigente?.estado === 'atrasado').length;
+  const listaDeFlujos = (
+    <>
+          {flujos.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 15 }}>No tienes flujos asignados.</p>}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {flujos.map((f) => {
+              const atrasado = f.vigente?.estado === 'atrasado';
+              const dias = atrasado ? calendario.habilesEntre(f.vigente!.en.slice(0, 10), hoy) : 0;
+
+              return (
+                <article key={f.id} style={{ display: 'flex', gap: 10, background: '#E8CE7A', color: '#2A2313', borderRadius: 20, padding: '10px 12px', boxSizing: 'border-box' }}>
+                  {atrasado && <span style={{ width: 5, borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexGrow: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ ...CIRCULO, background: 'rgba(42,35,19,0.14)' }}>{atrasado ? '🐢' : '🍃'}</span>
+
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{f.texto}</span>
+                        <span style={{ fontSize: 13, color: atrasado ? '#9E3322' : 'rgba(42,35,19,0.66)', fontWeight: atrasado ? 600 : 400 }}>
+                          {atrasado ? `me atrasé · ${dias} ${dias === 1 ? 'día' : 'días'}` : 'al día'}
+                        </span>
+                      </span>
+
+                      <Numero etiqueta="IMP" valor={f.importancia} velo="rgba(42,35,19,0.14)" />
+
+                      {atrasado ? (
+                        <Accion accion={cambiarEstadoFlujo.bind(null, f.id, 'al_dia')}>
+                          <Enviar style={FLUJO}>Ya me puse al día</Enviar>
+                        </Accion>
+                      ) : (
+                        <PorQue
+                          accion={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')}
+                          titulo="Me atrasé"
+                          placeholder="¿Qué te frenó? Así lo entendemos luego"
+                          estilo={FLUJO}
+                          opciones={vinculables(paraVincular, { alDiaDesde: ultimoAlDia(f.id) }).map(({ id, texto }) => ({ id, texto }))}
+                        >
+                          Me atrasé
+                        </PorQue>
+                      )}
+                    </div>
+
+                    {atrasado && f.vigente?.razon && (
+                      <p style={{ margin: 0, fontSize: 12.5, paddingLeft: 54, color: 'rgba(42,35,19,0.86)' }}>
+                        “{f.vigente.razon}”
+                      </p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+    </>
+  );
+
   return (
     <>
       <Navegacion entradas={DEL_EMPLEADO} salida={salir} />
@@ -308,58 +380,40 @@ export default async function Semana() {
         </section>
 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Lo que llevas al día</h2>
-
-          {flujos.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 15 }}>No tienes flujos asignados.</p>}
-
+          {imprevistosAbiertos.length > 0 && (
+            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Lo que te cayó</h2>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {flujos.map((f) => {
-              const atrasado = f.vigente?.estado === 'atrasado';
-              const dias = atrasado ? calendario.habilesEntre(f.vigente!.en.slice(0, 10), hoy) : 0;
-
-              return (
-                <article key={f.id} style={{ display: 'flex', gap: 10, background: '#E8CE7A', color: '#2A2313', borderRadius: 20, padding: '10px 12px', boxSizing: 'border-box' }}>
-                  {atrasado && <span style={{ width: 5, borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexGrow: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ ...CIRCULO, background: 'rgba(42,35,19,0.14)' }}>{atrasado ? '🐢' : '🍃'}</span>
-
-                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{f.texto}</span>
-                        <span style={{ fontSize: 13, color: atrasado ? '#9E3322' : 'rgba(42,35,19,0.66)', fontWeight: atrasado ? 600 : 400 }}>
-                          {atrasado ? `me atrasé · ${dias} ${dias === 1 ? 'día' : 'días'}` : 'al día'}
-                        </span>
-                      </span>
-
-                      <Numero etiqueta="IMP" valor={f.importancia} velo="rgba(42,35,19,0.14)" />
-
-                      {atrasado ? (
-                        <Accion accion={cambiarEstadoFlujo.bind(null, f.id, 'al_dia')}>
-                          <Enviar style={FLUJO}>Ya me puse al día</Enviar>
-                        </Accion>
-                      ) : (
-                        <PorQue
-                          accion={cambiarEstadoFlujo.bind(null, f.id, 'atrasado')}
-                          titulo="Me atrasé"
-                          placeholder="¿Qué te frenó? Así lo entendemos luego"
-                          estilo={FLUJO}
-                        >
-                          Me atrasé
-                        </PorQue>
-                      )}
-                    </div>
-
-                    {atrasado && f.vigente?.razon && (
-                      <p style={{ margin: 0, fontSize: 12.5, paddingLeft: 54, color: 'rgba(42,35,19,0.86)' }}>
-                        “{f.vigente.razon}”
-                      </p>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
+            {imprevistosAbiertos.map((i) => (
+              <TarjetaDeImprevisto
+                key={i.id}
+                i={i}
+                hoy={hoy}
+                calendario={calendario}
+                quienesPiden={quienesPiden}
+                puedeBorrar={i.registrado_por === yo}
+              />
+            ))}
           </div>
+          <NuevoImprevisto empleadoId={empleadoId} quienesPiden={quienesPiden} />
+
+          {/* Con imprevistos abiertos, los flujos se pliegan pero nunca se van:
+              sin el boton de "me atrase" a la vista, el atraso de un flujo deja
+              de registrarse justo cuando hay mas carga. */}
+          {imprevistosAbiertos.length > 0 ? (
+            <details>
+              <summary style={{ cursor: 'pointer', fontSize: 15, fontWeight: 600 }}>
+                {flujos.length} {flujos.length === 1 ? 'flujo' : 'flujos'}
+                {flujosAtrasados > 0 ? ` · ${flujosAtrasados} ${flujosAtrasados === 1 ? 'atrasado' : 'atrasados'}` : ' · al día'}
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>{listaDeFlujos}</div>
+            </details>
+          ) : (
+            <>
+              <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Lo que llevas al día</h2>
+              {listaDeFlujos}
+            </>
+          )}
         </section>
       </div>
     </main>

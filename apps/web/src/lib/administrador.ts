@@ -1,6 +1,6 @@
 import { Calendario, coberturaDe } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { hoyISO } from '@/lib/datos';
+import { COLUMNAS_DE_IMPREVISTO, hoyISO, type FilaImprevisto, type QuienPide } from '@/lib/datos';
 import { notFound } from 'next/navigation';
 
 // Quien asigna. Lo pregunta la base, no la aplicacion: la sesion no lleva el
@@ -171,5 +171,31 @@ export async function elCalendario() {
     cargadoHasta,
     dias: (dias ?? []) as DiaNoHabil[],
     cobertura: coberturaDe(Calendario.con(dias ?? []), hoy, cargadoHasta),
+  };
+}
+
+// Los imprevistos abiertos de una persona, para su ficha. El administrador
+// aparece por defecto como quien lo pidio: es el caso en que registra el.
+export async function imprevistosDe(empleadoId: string) {
+  const supabase = await clienteDelServidor();
+  const [{ data: dias }, { data: filas }, { data: quienes }, { data: usuario }] = await Promise.all([
+    supabase.from('dia_no_habil').select('desde, hasta'),
+    supabase
+      .from('imprevisto')
+      .select(COLUMNAS_DE_IMPREVISTO)
+      .eq('empleado_id', empleadoId)
+      .is('borrado_en', null)
+      .is('resultado', null)
+      .order('vence'),
+    supabase.rpc('quienes_piden'),
+    supabase.auth.getUser(),
+  ]);
+
+  return {
+    hoy: hoyISO(),
+    calendario: Calendario.con(dias ?? []),
+    abiertos: (filas ?? []) as FilaImprevisto[],
+    quienesPiden: (quienes ?? []) as QuienPide[],
+    yo: usuario.user?.id ?? '',
   };
 }

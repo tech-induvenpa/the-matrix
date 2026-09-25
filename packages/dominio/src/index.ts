@@ -35,3 +35,7 @@ export { leerBloques } from './cuadricula';
 export type { Cuadricula, Lectura } from './cuadricula';
 export { diasSeguidosCerrando } from './racha';
 export type { DiaDeTrabajo } from './racha';
+export { cifrasPor, cumplimientoDeLaHolgura, estadoDe, retrasoDe, vencimientoDe } from './imprevistos';
+export type { Cifras, EstadoDeImprevisto, Plazo, Resultado } from './imprevistos';
+export { ponderacionDesplazada, vinculables } from './intromision';
+export type { ImprevistoVinculable, Limite } from './intromision';
