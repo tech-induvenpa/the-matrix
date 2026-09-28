@@ -86,22 +86,37 @@ describe('INV-24: solo el administrador escribe un bono', () => {
     expect(data).toEqual([{ monto: 800 }]);
   });
 
+  // El traspaso tiene que aplicarse de verdad: si se rechazara, los bonos
+  // tampoco cambiarian y la prueba pasaria sin probar nada. Asi paso hasta el
+  // 28/09/2026, con los pesos mal armados.
   it('un traspaso no toca ningun bono', async () => {
-    const funcion = await sembrarFuncion(ana, { texto: 'Cierre', periodicidad: 'mensual', importancia: 9, tipo_generado: 'entregable', ponderacion: 100 });
-    await sembrarFuncion(benito, { texto: 'Pagos', periodicidad: 'mensual', importancia: 5, tipo_generado: 'entregable', ponderacion: 100 });
+    // Ana reparte 30/70; Benito, 100 en una sola.
+    const cierre = await sembrarFuncion(ana, { texto: 'Cierre', periodicidad: 'mensual', importancia: 9, tipo_generado: 'entregable', ponderacion: 30 });
+    const pagos = await sembrarFuncion(ana, { texto: 'Pagos', periodicidad: 'semanal', importancia: 5, tipo_generado: 'entregable', ponderacion: 70 });
+    const compras = await sembrarFuncion(benito, { texto: 'Compras', periodicidad: 'semanal', importancia: 6, tipo_generado: 'entregable', ponderacion: 100 });
     const antes = (await comoServicio().from('bono').select('*').order('id')).data;
 
     const jefa = await comoAdministrador('jefa@prueba.test');
     const { error } = await jefa.rpc('traspasar', {
-      la_funcion: funcion, de_quien: ana, a_quien: benito, peso_nuevo: 20,
-      pesos_de_quien_entrega: {}, pesos_de_quien_recibe: {},
+      la_funcion: cierre,
+      de_quien: ana,
+      a_quien: benito,
+      peso_nuevo: 25,
+      pesos_de_quien_entrega: [{ funcion_id: pagos, ponderacion: 100 }],
+      pesos_de_quien_recibe: [{ funcion_id: compras, ponderacion: 75 }],
     });
+    expect(error).toBeNull();
+
+    const { data: titular } = await comoServicio()
+      .from('titularidad')
+      .select('empleado_id')
+      .eq('funcion_id', cierre)
+      .is('hasta', null)
+      .single();
+    expect(titular?.empleado_id).toBe(benito);
 
     const despues = (await comoServicio().from('bono').select('*').order('id')).data;
     expect(despues).toEqual(antes);
-    // El traspaso puede rechazarse por el cien; lo que importa es que, pase o
-    // no, los bonos no se movieron.
-    void error;
   });
 
   it.todo('el HTML de / no contiene dólares y el de /mes sí (INV-3)');
