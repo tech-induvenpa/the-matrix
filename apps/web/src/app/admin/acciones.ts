@@ -426,3 +426,19 @@ export async function editarEmpleado(empleadoId: string, formulario: FormData) {
   revalidatePath('/admin');
   return { mensaje: 'Guardado. Entrará con ese correo.', celebra: false };
 }
+
+// El bono (ADR 0010): rige siempre desde el mes siguiente. Lo decide la base,
+// no esta accion, asi que aqui solo se valida el monto.
+export async function fijarBono(empleadoId: string, formulario: FormData) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const monto = Number(String(formulario.get('monto') ?? '').replace(',', '.'));
+  if (!Number.isFinite(monto) || monto < 0) return { mensaje: 'Ese monto no parece un monto.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('fijar_bono', { el_empleado: empleadoId, el_monto: Math.round(monto * 100) / 100 });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath(`/admin/${empleadoId}`);
+  return { mensaje: 'Anotado. Rige desde el mes que viene.', celebra: false };
+}

@@ -5,12 +5,14 @@ import {
   ocurrenciasEntre,
   ordenarPlan,
   pendientes,
+  bonoDelMes,
+  enDolares,
   repartoDelMes,
   urgenciaDe,
   type Cuadrante,
   type TipoDeFuncion,
 } from '@matriz/dominio';
-import { diaTopeDe, panorama, tipoDe } from '@/lib/datos';
+import { diaTopeDe, dolares, panorama, tipoDe } from '@/lib/datos';
 import { Tarjeta, YaResueltas } from '../tarjeta';
 import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
@@ -23,7 +25,7 @@ import { ImprevistosDelMes } from '../imprevistos';
 export default async function Mes() {
   if (await esAdministrador()) redirect('/admin');
 
-  const { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden } = await panorama();
+  const { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos } = await panorama();
 
   // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
   // cuyo "no pude" o atraso se le vinculo.
@@ -101,6 +103,11 @@ export default async function Mes() {
 
   // Cinco porciones con nombre y el resto junto: una leyenda de veinte lineas
   // no la lee nadie.
+  // Cuanto de su bono vale cada porcion (ADR 0010). Con el bono de este mes,
+  // aunque ya este cargado el del que viene. Sin bono, solo el porcentaje.
+  const bono = bonoDelMes(bonos, hoy.slice(0, 7));
+  const enDinero = new Map(bono === null ? [] : enDolares(reparto, bono).map((r) => [r.funcionId, r.dolares]));
+
   const grandes = reparto.slice(0, 5);
   const resto = reparto.slice(5);
   const sumaDelResto = resto.reduce((t, r) => t + r.porcentaje, 0);
@@ -206,6 +213,7 @@ export default async function Mes() {
               <p style={{ fontSize: 12.5, color: 'var(--gris)', margin: '4px 0 0', maxWidth: 420 }}>
                 El tamaño de cada porción es lo que esa función pesa dentro de tu cargo. Las grandes son por las que
                 te buscan a ti.
+                {bono !== null && <> Tu bono de este mes es de {dolares(bono)}, y así se reparte.</>}
               </p>
             </div>
 
@@ -222,7 +230,12 @@ export default async function Mes() {
                       {r.nombre}
                       {r.tipo !== 'entregable' && <span style={{ color: 'var(--gris)' }}> · {ETIQUETA[r.tipo]}</span>}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{r.porcentaje}%</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                      {r.porcentaje}%
+                      {enDinero.has(r.funcionId) && (
+                        <span style={{ fontWeight: 500, color: 'var(--gris)' }}> · {dolares(enDinero.get(r.funcionId)!)}</span>
+                      )}
+                    </span>
                   </div>
                 ))}
 
@@ -230,7 +243,14 @@ export default async function Mes() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--gris)' }}>
                     <span style={{ width: 10, height: 10, borderRadius: 3, background: RESTO, flexShrink: 0 }} />
                     <span style={{ flexGrow: 1, fontSize: 12.5 }}>Las otras {resto.length}, entre todas</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{sumaDelResto}%</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                      {sumaDelResto}%
+                      {bono !== null && (
+                        <span style={{ fontWeight: 500 }}>
+                          {' '}· {dolares(Math.round(resto.reduce((t, r) => t + (enDinero.get(r.funcionId) ?? 0), 0) * 100) / 100)}
+                        </span>
+                      )}
+                    </span>
                   </div>
                 )}
               </div>

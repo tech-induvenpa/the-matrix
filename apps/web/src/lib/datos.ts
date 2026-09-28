@@ -1,5 +1,5 @@
 import { Calendario } from '@matriz/dominio';
-import type { Periodicidad, Resultado } from '@matriz/dominio';
+import type { CambioDeBono, Periodicidad, Resultado } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 
 export type FilaFuncion = {
@@ -35,6 +35,16 @@ export type FilaImprevisto = {
 
 export type FilaIntromision = { imprevisto_id: string; marca_id: string | null; evento_flujo_id: string | null };
 export type QuienPide = { id: string; nombre: string };
+
+// El bono en la forma que lo entiende el dominio: el mes desde el que rige y el
+// monto. La base guarda el primer dia del mes; el dominio, el mes.
+export const comoCambios = (filas: readonly { monto: unknown; rige_desde: unknown }[] | null): CambioDeBono[] =>
+  (filas ?? []).map((b) => ({ rigeDesde: String(b.rige_desde).slice(0, 7), monto: Number(b.monto) }));
+
+// Dolares como los escribe la gente aqui: "$1.250" o "$1.250,50". es-VE y no
+// es: el español genérico no agrupa los miles de cuatro cifras ("$1000").
+export const dolares = (n: number) =>
+  `$${n.toLocaleString('es-VE', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
 
 export const COLUMNAS_DE_IMPREVISTO =
   'id, empleado_id, texto, pedido_en, vence, pedido_por_admin, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en';
@@ -79,6 +89,7 @@ export async function panorama() {
     { data: imprevistos },
     { data: intromisiones },
     { data: quienesPiden },
+    { data: bonos },
   ] = await Promise.all([
       supabase
         .from('funcion')
@@ -101,6 +112,8 @@ export async function panorama() {
         .order('pedido_en'),
       supabase.from('intromision').select('imprevisto_id, marca_id, evento_flujo_id'),
       supabase.rpc('quienes_piden'),
+      // La seguridad por fila hace que solo llegue el suyo (INV-1).
+      supabase.from('bono').select('monto, rige_desde'),
     ]);
 
   // La seguridad por fila hace que solo llegue el suyo.
@@ -129,6 +142,7 @@ export async function panorama() {
     imprevistos: (imprevistos ?? []) as FilaImprevisto[],
     intromisiones: (intromisiones ?? []) as FilaIntromision[],
     quienesPiden: (quienesPiden ?? []) as QuienPide[],
+    bonos: comoCambios(bonos),
   };
 }
 
