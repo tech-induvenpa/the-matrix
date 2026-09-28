@@ -1,6 +1,7 @@
-import { cargoDe, imprevistosDe } from '@/lib/administrador';
+import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
+import { dolares } from '@/lib/datos';
 import { NuevoImprevisto, TarjetaDeImprevisto } from '../../imprevistos';
-import { archivarFuncion, crearFuncion, editarEmpleado, traspasar } from '../acciones';
+import { archivarFuncion, crearFuncion, editarEmpleado, fijarBono, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { Formulario } from './formulario';
@@ -23,7 +24,7 @@ export default async function Cargo({
 }) {
   const { empleado } = await params;
   const { editar, peso } = await searchParams;
-  const [cargo, imprevistos] = await Promise.all([cargoDe(empleado), imprevistosDe(empleado)]);
+  const [cargo, imprevistos, bono] = await Promise.all([cargoDe(empleado), imprevistosDe(empleado), bonoDe(empleado)]);
 
   if (!cargo) return null;
 
@@ -71,6 +72,23 @@ export default async function Cargo({
           </Accion>
         )}
       </header>
+
+      {/* El bono (ADR 0010): el unico monto que el sistema conoce. Un cambio
+          rige siempre desde el mes que viene; la base lo decide, no esta pantalla. */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su bono 💵</h2>
+        <p style={{ fontSize: 14, margin: 0 }}>
+          {bono.vigente === null ? 'Sin bono cargado este mes.' : `Este mes: ${dolares(bono.vigente)}.`}
+          {bono.pendiente !== null && ` Desde el mes que viene: ${dolares(bono.pendiente)}.`}
+        </p>
+        <Accion accion={fijarBono.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input name="monto" inputMode="decimal" required placeholder="Nuevo bono en dólares" style={CAMPO} />
+          <Enviar style={BOTON} enviando="Guardando…">
+            Guardar
+          </Enviar>
+          <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>Rige desde el mes que viene.</span>
+        </Accion>
+      </section>
 
       {/* Lo que el administrador le pide a ultimo minuto tambien cuenta como
           imprevisto (CEB-151). Se marca desde la pantalla de la persona. */}

@@ -1,5 +1,6 @@
 import {
   arrastreDe,
+  bonoDelMes,
   Calendario,
   cifrasPor,
   ponderacionDesplazada,
@@ -10,7 +11,7 @@ import {
   type Periodicidad,
 } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { COLUMNAS_DE_IMPREVISTO, hoyISO, quienPidio, type FilaImprevisto, type QuienPide } from '@/lib/datos';
+import { COLUMNAS_DE_IMPREVISTO, comoCambios, hoyISO, quienPidio, type FilaImprevisto, type QuienPide } from '@/lib/datos';
 
 export type FuncionDelReporte = {
   funcionId: string;
@@ -54,7 +55,8 @@ export async function reporte(): Promise<PersonaDelReporte[]> {
       .select(
         'funcion_id, empleado_id, ponderacion, desde, hasta, publicado_en, empleado(nombre_bloque), funcion!inner(texto, periodicidad, fecha_alta, tipo_generado, tipo_corregido, activa)',
       ),
-    supabase.from('marca').select('funcion_id, periodo'),
+    // Solo "hecho" cumple: un "no pude" no corta el arrastre (glosario).
+    supabase.from('marca').select('funcion_id, periodo').eq('resultado', 'hecho'),
   ]);
 
   const calendario = Calendario.con(dias ?? []);
@@ -292,4 +294,18 @@ export async function imprevistosDelEquipo() {
     .sort((a, b) => b.desplazada - a.desplazada || (b.cifras?.llegados ?? 0) - (a.cifras?.llegados ?? 0));
 
   return { hoy, calendario, quienesPiden, personas, porQuienPidio: [...porQuienPidio] };
+}
+
+// El bono de este mes de cada persona, para poner dolares junto a los
+// porcentajes del reporte (ADR 0010). Quien no tiene bono no aparece.
+export async function bonosDelMes(): Promise<Map<string, number>> {
+  const supabase = await clienteDelServidor();
+  const { data } = await supabase.from('bono').select('empleado_id, monto, rige_desde');
+  const mes = hoyISO().slice(0, 7);
+  const bonos = new Map<string, number>();
+  for (const id of new Set((data ?? []).map((b) => b.empleado_id as string))) {
+    const bono = bonoDelMes(comoCambios((data ?? []).filter((b) => b.empleado_id === id)), mes);
+    if (bono !== null) bonos.set(id, bono);
+  }
+  return bonos;
 }

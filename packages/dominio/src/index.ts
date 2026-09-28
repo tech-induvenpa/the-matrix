@@ -39,3 +39,7 @@ export { cifrasPor, cumplimientoDeLaHolgura, estadoDe, retrasoDe, vencimientoDe 
 export type { Cifras, EstadoDeImprevisto, Plazo, Resultado } from './imprevistos';
 export { ponderacionDesplazada, vinculables } from './intromision';
 export type { ImprevistoVinculable, Limite } from './intromision';
+export { bonoDelMes, enDolares, montoNoCumplido } from './bono';
+export type { CambioDeBono, Mes } from './bono';
+export { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura } from './descarga';
+export type { HechoDeLaHolgura, Tramo } from './descarga';

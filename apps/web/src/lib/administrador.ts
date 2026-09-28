@@ -1,6 +1,6 @@
-import { Calendario, coberturaDe } from '@matriz/dominio';
+import { bonoDelMes, Calendario, coberturaDe } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { COLUMNAS_DE_IMPREVISTO, hoyISO, type FilaImprevisto, type QuienPide } from '@/lib/datos';
+import { COLUMNAS_DE_IMPREVISTO, comoCambios, hoyISO, type FilaImprevisto, type QuienPide } from '@/lib/datos';
 import { notFound } from 'next/navigation';
 
 // Quien asigna. Lo pregunta la base, no la aplicacion: la sesion no lleva el
@@ -198,4 +198,17 @@ export async function imprevistosDe(empleadoId: string) {
     quienesPiden: (quienes ?? []) as QuienPide[],
     yo: usuario.user?.id ?? '',
   };
+}
+
+// El bono de una persona para su ficha: el de este mes y, si ya se cambio, el
+// que regira el que viene.
+export async function bonoDe(empleadoId: string) {
+  const supabase = await clienteDelServidor();
+  const { data } = await supabase.from('bono').select('monto, rige_desde').eq('empleado_id', empleadoId);
+  const historial = comoCambios(data);
+  const mes = hoyISO().slice(0, 7);
+  const siguiente = new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 1)).toISOString().slice(0, 7);
+  const vigente = bonoDelMes(historial, mes);
+  const proximo = bonoDelMes(historial, siguiente);
+  return { vigente, pendiente: proximo !== vigente ? proximo : null };
 }

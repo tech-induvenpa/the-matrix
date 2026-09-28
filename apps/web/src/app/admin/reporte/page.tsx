@@ -1,5 +1,6 @@
-import { imprevistosDelEquipo, reporte } from '@/lib/reporte';
-import { fechaCorta, quienPidio } from '@/lib/datos';
+import { bonosDelMes, imprevistosDelEquipo, reporte } from '@/lib/reporte';
+import { montoNoCumplido } from '@matriz/dominio';
+import { dolares, fechaCorta, quienPidio } from '@/lib/datos';
 import { enPalabras } from '../../imprevistos';
 import { Ir } from '../../ir';
 
@@ -9,7 +10,9 @@ import { Ir } from '../../ir';
 // falla mas veces. Eso cambia a quien señala: una diaria de tres puntos con
 // veinte incumplimientos pesa menos que una mensual de veinticinco con uno.
 export default async function Reporte() {
-  const [gente, equipo] = await Promise.all([reporte(), imprevistosDelEquipo()]);
+  const [gente, equipo, bonos] = await Promise.all([reporte(), imprevistosDelEquipo(), bonosDelMes()]);
+  // Un porcentaje del cargo, en dolares del bono de este mes. Sin bono, nada.
+  const enDolares = (id: string, pct: number) => (bonos.has(id) ? ` · ${dolares(montoNoCumplido(pct, bonos.get(id)!))}` : '');
 
   return (
     <main style={{ maxWidth: 940, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -34,7 +37,7 @@ export default async function Reporte() {
             {p.arrastrando > 0 ? (
               <span style={{ fontSize: 13.5, fontWeight: 600, color: '#D9503A' }}>
                 {p.arrastrando} {p.arrastrando === 1 ? 'función arrastrando' : 'funciones arrastrando'}
-                {p.arrastrado > 0 ? ` · ${p.arrastrado}% de su cargo` : ' · sin peso en su cargo'}
+                {p.arrastrado > 0 ? ` · ${p.arrastrado}% de su cargo${enDolares(p.id, p.arrastrado)}` : ' · sin peso en su cargo'}
               </span>
             ) : (
               <span style={{ fontSize: 13.5, color: '#5E9E62' }}>al día</span>
@@ -98,7 +101,7 @@ export default async function Reporte() {
 
       {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14 }}>Todavía no hay nada que mirar.</p>}
 
-      <ImprevistosDelEquipo equipo={equipo} />
+      <ImprevistosDelEquipo equipo={equipo} bonos={bonos} />
     </main>
   );
 }
@@ -107,7 +110,13 @@ export default async function Reporte() {
 // cuantos le caen a cada quien, si los termina, y cuanto de lo previsto
 // desplazaron. Los textos van tal cual, sin agrupar: el imprevisto que se
 // repite se reconoce a ojo, y es una funcion que nadie ha dado de alta.
-function ImprevistosDelEquipo({ equipo }: { equipo: Awaited<ReturnType<typeof imprevistosDelEquipo>> }) {
+function ImprevistosDelEquipo({
+  equipo,
+  bonos,
+}: {
+  equipo: Awaited<ReturnType<typeof imprevistosDelEquipo>>;
+  bonos: Map<string, number>;
+}) {
   const { personas, porQuienPidio, quienesPiden } = equipo;
 
   return (
@@ -129,7 +138,10 @@ function ImprevistosDelEquipo({ equipo }: { equipo: Awaited<ReturnType<typeof im
               {p.nombre}
             </Ir>
             {p.desplazada > 0 && (
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: '#D9503A' }}>{p.desplazada}% de su cargo desplazado</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: '#D9503A' }}>
+                {p.desplazada}% de su cargo desplazado
+                {bonos.has(p.id) && ` · ${dolares(montoNoCumplido(p.desplazada, bonos.get(p.id)!))}`}
+              </span>
             )}
           </div>
           {p.cifras && <p style={{ fontSize: 13.5, margin: 0 }}>{enPalabras(p.cifras)}</p>}

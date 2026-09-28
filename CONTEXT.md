@@ -121,6 +121,18 @@ vigente.
 _Avoid_: guardar (se guarda el borrador, se publica el reparto), importar
 (era el acto de publicar cuando la entrada era el documento).
 
+**Bono**:
+La parte variable de lo que gana una persona, la que el cumplimiento mueve.
+Siempre en dolares, para todos. La
+ponderacion reparte el bono, no el sueldo: el sueldo base no depende de lo que
+se cumpla. Por eso el impacto de una funcion en dinero es su ponderacion por
+el bono, nunca por el sueldo entero. Es un monto por mes: un cambio rige siempre
+desde el mes siguiente a cuando se hace y se mantiene hasta el siguiente
+cambio. Nunca parte un mes ni reescribe los anteriores. Es el unico monto que el sistema conoce; el sueldo base no existe
+en el. Lo ve la persona a quien pertenece y el administrador, nadie mas; solo
+el administrador lo escribe.
+_Avoid_: sueldo (incluye la base, que no se mueve), asignacion, incentivo.
+
 **Importancia**:
 El unico juicio que JFS escribe a mano. Cero a nueve.
 
@@ -194,7 +206,11 @@ _Avoid_: check, completar, cerrar.
 
 **Estado de flujo**:
 Al dia o atrasado. Un flujo no se marca: su estado lo cambia el empleado cuando
-cambia de verdad, sin que nadie se lo pregunte.
+cambia de verdad, sin que nadie se lo pregunte. Un flujo se da por cumplido
+salvo lo que se declare: cada dia habil que pasa atrasado descuenta su
+ponderacion repartida entre los dias habiles del mes. Se confia en la buena fe
+de quien lo declara; callar un atraso es mas caro, si se descubre, que el
+atraso mismo.
 _Avoid_: marca (las marcas son de ocurrencias).
 
 **Razon de no ejecucion**:
@@ -202,7 +218,8 @@ El texto que el empleado escribe al marcar "no pude" en una ocurrencia o al
 declarar atrasado un flujo. JFS lo lee, y el empleado sabe que lo lee.
 
 **Cumplimiento ponderado**:
-Ocurrencias cerradas sobre asignadas, pesadas por ponderacion. Es peso salarial
+Ocurrencias cumplidas (marcadas "hecho") sobre asignadas, pesadas por
+ponderacion. Un "no pude" libera el lugar en el plan, pero no cumple. Es peso salarial
 expresado en porcentaje, asi que lo ve JFS y no el empleado.
 
 **Arrastre**:
@@ -301,14 +318,18 @@ _Avoid_: problema, falla (senalan a la persona).
   meses de sistema corriendo** (decidido el 22/09/2026), cuando haya con que
   responderla. Hasta entonces lo que importa es el seguimiento, no el peso, y
   el sistema tiene que poder mostrar que paso con una funcion aunque no mueva
-  el sueldo de nadie.
+  el sueldo de nadie. Con el bono en el sistema sigue aplazada: un traspaso no
+  toca el bono de nadie, y si el dinero se mueve, el administrador edita los
+  bonos a mano.
 - JFS quiere que el empleado vea como su trabajo impacta en su sueldo (dicho
-  el 24/09/2026). Choca con el ADR 0007 (el sistema no conoce sueldos) y con
-  que el empleado no vea su cumplimiento ponderado. Sin resolver: es una
-  decision propia, fuera de los imprevistos. Hasta entonces la **ponderacion
-  desplazada** la ve solo el administrador, igual que el cumplimiento
-  ponderado; si se abre, hay que cuidar que vincular imprevistos a lo de mas
-  peso no se vuelva una estrategia.
+  el 24/09/2026). Resuelto el 25/09/2026: el sistema conoce el **bono**, no el
+  sueldo, y el empleado ve en su mes cuanto de su bono vale cada funcion. No ve
+  cuanto lleva cobrado ni ninguna tasa, ni la **ponderacion desplazada**, que
+  sigue siendo solo del administrador.
+- El **area** no se mide: no se marca, no se cumple y no sale en la descarga.
+  Es mas una descripcion del cargo que trabajo, y aun asi reparte ponderacion,
+  o sea bono que nadie puede perder (dicho el 28/09/2026). Sin resolver: hay que
+  repensar si un area es una funcion o solo un encabezado del cargo.
 - La ponderacion se repartio **hacia atras**: se sabia lo que gana cada persona y
   se acomodaron porcentajes sobre sus funciones hasta cuadrar cien. O sea que hoy
   la flecha va sueldo -> ponderacion, y el peso de una funcion no es una medida

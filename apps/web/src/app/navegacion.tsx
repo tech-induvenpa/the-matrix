@@ -10,7 +10,7 @@ export function Navegacion({
   entradas,
   salida,
 }: {
-  entradas: { href: string; texto: string; externo?: boolean }[];
+  entradas: { href: string; texto: string; externo?: boolean; porMes?: boolean }[];
   salida?: () => Promise<void>;
 }) {
   const donde = usePathname();
@@ -43,6 +43,32 @@ export function Navegacion({
         {entradas.map((e) => {
           const aqui = donde === e.href;
           const estilo = { color: aqui ? 'var(--tinta)' : 'var(--gris)', textDecoration: 'none' };
+
+          // La descarga se pide por mes: el menu se despliega al hacer clic y
+          // pide confirmar con el boton. `details` nativo, sin JavaScript de por
+          // medio; el formulario GET baja el archivo.
+          if (e.porMes) {
+            return (
+              <details key={e.href} style={{ position: 'relative' }}>
+                <summary style={{ ...estilo, cursor: 'pointer', listStyle: 'none' }}>{e.texto}</summary>
+                <form action={e.href} method="get" style={PANEL}>
+                  <label style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
+                    ¿Qué mes?
+                    <select name="mes" defaultValue={MESES[0]!.valor} style={SELECTOR}>
+                      {MESES.map((m) => (
+                        <option key={m.valor} value={m.valor}>
+                          {m.texto}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="submit" style={BOTON}>
+                    Descargar
+                  </button>
+                </form>
+              </details>
+            );
+          }
 
           // La descarga no es una pantalla: es un archivo, y Link la trataria
           // como navegacion.
@@ -82,5 +108,57 @@ export const DEL_ADMINISTRADOR = [
   { href: '/admin/reporte', texto: 'Qué se arrastra' },
   { href: '/admin/razones', texto: 'Qué dijeron' },
   { href: '/admin/calendario', texto: 'El calendario' },
-  { href: '/admin/descarga', texto: 'Descargar el mes ↓', externo: true },
+  { href: '/admin/descarga', texto: 'Descargar ↓', porMes: true },
 ];
+
+// Los ultimos doce meses, del mas reciente al mas viejo, como "septiembre de
+// 2026". El valor viaja como AAAA-MM.
+// ponytail: calculado al cargar el modulo; si la pestaña queda abierta de un mes
+// a otro, el nuevo aparece al recargar.
+const MESES = Array.from({ length: 12 }, (_, i) => {
+  const hoy = new Date();
+  const d = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - i, 1));
+  return {
+    valor: d.toISOString().slice(0, 7),
+    texto: new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d),
+  };
+});
+
+const PANEL = {
+  position: 'absolute',
+  top: 'calc(100% + 10px)',
+  left: 0,
+  zIndex: 20,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: 12,
+  borderRadius: 16,
+  background: '#ffffff',
+  boxShadow: '0 10px 30px rgba(26,23,19,0.18)',
+  minWidth: 220,
+} as const;
+
+const SELECTOR = {
+  display: 'block',
+  width: '100%',
+  marginTop: 4,
+  height: 34,
+  borderRadius: 999,
+  border: '1px solid rgba(26,23,19,0.12)',
+  padding: '0 12px',
+  fontSize: 14,
+  color: 'var(--tinta)',
+  background: '#ffffff',
+} as const;
+
+const BOTON = {
+  height: 34,
+  borderRadius: 999,
+  border: 0,
+  background: 'var(--tinta)',
+  color: '#ffffff',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+} as const;
