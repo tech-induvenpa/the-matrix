@@ -82,6 +82,16 @@ describe('los hechos de la holgura', () => {
     expect(veces).toBe(3);
   });
 
+  it('un "hecho" devuelto sale como devuelto y no cumple', () => {
+    const { filas, veces } = hechosDeHolgura(
+      [{ texto: 'Cierre', vence: '2026-09-10', resultado: 'hecho', borradoEn: null, devueltoEn: '2026-09-10T15:00:00Z' }],
+      SEPTIEMBRE,
+      HOY,
+    );
+    expect(filas.map((f) => [f.resultado, f.cumplio])).toEqual([['devuelto', 0]]);
+    expect(veces).toBe(1);
+  });
+
   it('un abierto que todavia no vence y un borrado no salen', () => {
     const { filas } = hechosDeHolgura(
       [imprevisto('Para mañana', '2026-09-30', null), imprevisto('Error', '2026-09-10', null, '2026-09-10T10:00:00Z')],

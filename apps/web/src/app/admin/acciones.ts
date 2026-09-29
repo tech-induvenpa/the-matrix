@@ -442,3 +442,17 @@ export async function fijarBono(empleadoId: string, formulario: FormData) {
   revalidatePath(`/admin/${empleadoId}`);
   return { mensaje: 'Anotado. Rige desde el mes que viene.', celebra: false };
 }
+
+// Quien supervisa a quien (CEB-177). La base comprueba que haya un solo nivel
+// (INV-28); aqui solo se traduce el formulario. Vacio es "sin supervisor".
+export async function asignarSupervisor(empleadoId: string, formulario: FormData) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const supervisor = String(formulario.get('supervisor') ?? '') || null;
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('asignar_supervisor', { el_empleado: empleadoId, el_supervisor: supervisor });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath(`/admin/${empleadoId}`);
+  return { mensaje: supervisor ? 'Anotado. Ya responde por esta persona.' : 'Anotado. Sin supervisor.', celebra: false };
+}

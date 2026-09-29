@@ -43,3 +43,5 @@ export { bonoDelMes, enDolares, montoNoCumplido } from './bono';
 export type { CambioDeBono, Mes } from './bono';
 export { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura } from './descarga';
 export type { HechoDeLaHolgura, Tramo } from './descarga';
+export { delegable, delegacionesPorFuncion, estaAbierta, estadoDeLaDelegacion } from './delegacion';
+export type { Delegable, Delegacion, DelegacionesDeUnaFuncion, EstadoDeLaDelegacion } from './delegacion';

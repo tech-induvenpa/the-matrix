@@ -11,6 +11,7 @@ type Fila = {
   resultado: 'hecho' | 'no_pude' | 'no_lo_tome' | null;
   marcadaEn: string | null;
   borradoEn: string | null;
+  devueltoEn?: string | null;
 };
 
 const fila = (f: Partial<Fila>): Fila => ({
@@ -32,6 +33,16 @@ describe('las cifras de imprevistos', () => {
     ).get('ana');
 
     expect(cifras).toMatchObject({ llegados: 4, hechos: 1, noPude: 1, noLoTome: 1, abiertos: 1 });
+  });
+
+  it('un "hecho" devuelto por el supervisor cuenta como devuelto y no como hecho', () => {
+    const cifras = cifrasPor(
+      [fila({ resultado: 'hecho', marcadaEn: '2026-09-29T10:00:00Z', devueltoEn: '2026-09-29T12:00:00Z' })],
+      (i) => i.empleado,
+      HOY,
+      calendario,
+    ).get('ana');
+    expect(cifras).toMatchObject({ llegados: 1, hechos: 0, devueltos: 1 });
   });
 
   it('los borrados no cuentan en nada', () => {

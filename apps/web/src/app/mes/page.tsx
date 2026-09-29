@@ -16,7 +16,7 @@ import { diaTopeDe, dolares, panorama, tipoDe } from '@/lib/datos';
 import { Tarjeta, YaResueltas } from '../tarjeta';
 import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
-import { DEL_EMPLEADO, Navegacion } from '../navegacion';
+import { DEL_EMPLEADO, DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
 import { ImprevistosDelMes } from '../imprevistos';
 
@@ -25,7 +25,7 @@ import { ImprevistosDelMes } from '../imprevistos';
 export default async function Mes() {
   if (await esAdministrador()) redirect('/admin');
 
-  const { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos } = await panorama();
+  const { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos, gente } = await panorama();
 
   // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
   // cuyo "no pude" o atraso se le vinculo.
@@ -121,7 +121,7 @@ export default async function Mes() {
 
   return (
     <>
-      <Navegacion entradas={DEL_EMPLEADO} salida={salir} />
+      <Navegacion entradas={gente.length > 0 ? DEL_SUPERVISOR : DEL_EMPLEADO} salida={salir} />
     <main style={{ maxWidth: 1440, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
         <div>

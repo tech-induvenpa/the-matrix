@@ -6,7 +6,12 @@ import { cumplimientoDeLaHolgura } from '../src/imprevistos';
 const SEPTIEMBRE = { desde: '2026-09-01', hasta: '2026-09-30' };
 const HOY = '2026-10-05';
 
-type Fila = { vence: string; resultado: 'hecho' | 'no_pude' | 'no_lo_tome' | null; borradoEn: string | null };
+type Fila = {
+  vence: string;
+  resultado: 'hecho' | 'no_pude' | 'no_lo_tome' | null;
+  borradoEn: string | null;
+  devueltoEn?: string | null;
+};
 const fila = (f: Partial<Fila>): Fila => ({ vence: '2026-09-15', resultado: null, borradoEn: null, ...f });
 
 describe('el cumplimiento de la holgura', () => {
@@ -35,5 +40,13 @@ describe('el cumplimiento de la holgura', () => {
   it('los borrados y los que vencen fuera del mes no cuentan', () => {
     const otros = [fila({ borradoEn: '2026-09-15T10:00:00Z' }), fila({ vence: '2026-08-31', resultado: 'no_pude' })];
     expect(cumplimientoDeLaHolgura(otros, SEPTIEMBRE, HOY)).toEqual({ esperados: 0, hechos: 0, sinCumplir: 0 });
+  });
+
+  // Una delegacion devuelta (ADR 0012): el "hecho" de quien la recibio no
+  // valio, y cuenta como un "no pude". Si no, marcar hecho algo mal hecho no
+  // costaria nada.
+  it('un "hecho" devuelto cuenta en contra', () => {
+    const devuelto = [fila({ resultado: 'hecho', devueltoEn: '2026-09-16T10:00:00Z' }), fila({ resultado: 'hecho' })];
+    expect(cumplimientoDeLaHolgura(devuelto, SEPTIEMBRE, HOY)).toEqual({ esperados: 2, hechos: 1, sinCumplir: 1 });
   });
 });
