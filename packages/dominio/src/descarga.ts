@@ -53,7 +53,7 @@ export function atrasosDelFlujo(
 export type HechoDeLaHolgura = {
   que: string;
   vence: Fecha;
-  resultado: Resultado | 'sin_marcar';
+  resultado: Resultado | 'devuelto' | 'sin_marcar';
   // null en "no lo tome": es neutro, ni cumple ni deja de cumplir.
   cumplio: 0 | 1 | null;
 };
@@ -62,7 +62,13 @@ export type HechoDeLaHolgura = {
 // neutro y no cuenta en las veces; un abierto que todavia no vence no sale,
 // porque aun no se le puede pedir. Los borrados no existen.
 export function hechosDeHolgura(
-  imprevistos: readonly { texto: string; vence: Fecha; resultado: Resultado | null; borradoEn: string | null }[],
+  imprevistos: readonly {
+    texto: string;
+    vence: Fecha;
+    resultado: Resultado | null;
+    borradoEn: string | null;
+    devueltoEn?: string | null;
+  }[],
   tramo: Tramo,
   hoy: Fecha,
 ): { filas: HechoDeLaHolgura[]; veces: number } {
@@ -73,8 +79,9 @@ export function hechosDeHolgura(
     .map((i): HechoDeLaHolgura => ({
       que: i.texto,
       vence: i.vence,
-      resultado: i.resultado ?? 'sin_marcar',
-      cumplio: i.resultado === 'no_lo_tome' ? null : i.resultado === 'hecho' ? 1 : 0,
+      // Un "hecho" devuelto por el supervisor no cumple (ADR 0012).
+      resultado: i.devueltoEn ? 'devuelto' : (i.resultado ?? 'sin_marcar'),
+      cumplio: i.devueltoEn ? 0 : i.resultado === 'no_lo_tome' ? null : i.resultado === 'hecho' ? 1 : 0,
     }));
 
   return { filas, veces: filas.filter((f) => f.cumplio !== null).length };

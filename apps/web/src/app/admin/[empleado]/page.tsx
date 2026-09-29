@@ -1,7 +1,7 @@
 import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
 import { dolares } from '@/lib/datos';
 import { NuevoImprevisto, TarjetaDeImprevisto } from '../../imprevistos';
-import { archivarFuncion, crearFuncion, editarEmpleado, fijarBono, traspasar } from '../acciones';
+import { archivarFuncion, asignarSupervisor, crearFuncion, editarEmpleado, fijarBono, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { Formulario } from './formulario';
@@ -72,6 +72,31 @@ export default async function Cargo({
           </Accion>
         )}
       </header>
+
+      {/* Quien responde por esta persona (CEB-145). Un solo nivel: quien
+          supervisa a alguien no tiene supervisor. */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su supervisor 👥</h2>
+        {cargo.supervisa.length > 0 ? (
+          <p style={{ fontSize: 14, margin: 0 }}>
+            Supervisa a {cargo.supervisa.map((p) => p.nombre).join(', ')}. Quien supervisa no tiene supervisor.
+          </p>
+        ) : (
+          <Accion accion={asignarSupervisor.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select name="supervisor" defaultValue={cargo.supervisorId ?? ''} style={CAMPO} aria-label="Su supervisor">
+              <option value="">Sin supervisor</option>
+              {cargo.puedenSupervisar.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
+                </option>
+              ))}
+            </select>
+            <Enviar style={BOTON} enviando="Guardando…">
+              Guardar
+            </Enviar>
+          </Accion>
+        )}
+      </section>
 
       {/* El bono (ADR 0010): el unico monto que el sistema conoce. Un cambio
           rige siempre desde el mes que viene; la base lo decide, no esta pantalla. */}

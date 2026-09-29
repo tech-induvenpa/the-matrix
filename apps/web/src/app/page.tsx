@@ -3,7 +3,9 @@ import {
   avisoDe,
   coberturaDe,
   cuadranteDe,
+  delegable,
   diasSeguidosCerrando,
+  estadoDeLaDelegacion,
   estadosVigentes,
   etapaDe,
   importanciaEfectiva,
@@ -29,8 +31,9 @@ import { PorQue } from './porque';
 import { CIRCULO, Numero, Tarjeta, YaResueltas } from './tarjeta';
 import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
-import { DEL_EMPLEADO, Navegacion } from './navegacion';
+import { DEL_EMPLEADO, DEL_SUPERVISOR, Navegacion } from './navegacion';
 import { NuevoImprevisto, TarjetaDeImprevisto } from './imprevistos';
+import { Delegadas, type Delegada } from './delegadas';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -46,7 +49,18 @@ export default async function Semana() {
 
   const {
     hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
+    gente, delegaciones,
   } = await panorama();
+
+  // Una delegacion devuelta vuelve como una nueva: trae la razon de la anterior,
+  // para saber que rehacer (ADR 0012).
+  const devolucionDe = (i: (typeof imprevistos)[number]) =>
+    i.delega_funcion
+      ? imprevistos
+          .filter((j) => j.devuelto_razon && j.delega_funcion === i.delega_funcion && j.delega_periodo === i.delega_periodo)
+          .map((j) => `te la devolvió: “${j.devuelto_razon}”`)
+          .at(-1)
+      : undefined;
 
   // Imprevistos: arriba de los flujos, fuera del plan y de la meta (ADR 0009).
   const imprevistosAbiertos = imprevistos.filter((i) => !i.resultado).sort((a, b) => a.vence.localeCompare(b.vence));
@@ -89,13 +103,52 @@ export default async function Semana() {
     )
     .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
 
-  const abiertas = pendientes(ocurrencias, cerradas);
+  // Lo delegado (ADR 0012). Cuenta la ultima delegacion de cada ocurrencia:
+  // mientras espera a su gente o espera su revision, sale de la lista y va a
+  // "Delegadas". Si no la tomaron, no pudieron o se devolvio, vuelve a la lista.
+  const ultimaDelegacion = new Map<string, (typeof delegaciones)[number]>();
+  for (const d of [...delegaciones].sort((a, b) => a.pedido_en.localeCompare(b.pedido_en))) {
+    ultimaDelegacion.set(`${d.delega_funcion}|${d.delega_periodo}`, d);
+  }
+  const textoDe = new Map(funciones.map((f) => [f.id, f.texto]));
+  const delegadas: Delegada[] = [...ultimaDelegacion]
+    .filter(([clave]) => !marcaDe.has(clave))
+    .map(([, d]) => ({
+      id: d.id,
+      funcionId: d.delega_funcion,
+      periodo: d.delega_periodo,
+      texto: textoDe.get(d.delega_funcion) ?? '',
+      empleadoId: d.empleado_id,
+      nombre: d.nombre,
+      vence: d.vence,
+      estado: estadoDeLaDelegacion({ resultado: d.resultado, devueltoEn: d.devuelto_en, borradoEn: null }, false),
+      razon: d.razon,
+    }))
+    // "No pudo" y "no la tomo" se quedan a la vista con su razon: la ocurrencia
+    // volvio a su lista, pero tiene que saber por que.
+    .filter((d) => ['esperando', 'para_revisar', 'no_pudo', 'no_tomada'].includes(d.estado));
+  const enManosDeOtro = new Set(
+    delegadas.filter((d) => d.estado === 'esperando' || d.estado === 'para_revisar').map((d) => `${d.funcionId}|${d.periodo}`),
+  );
+  const aQuienDelegar = (o: { funcionId: string; periodo: string; vence: string }) => {
+    const d = ultimaDelegacion.get(`${o.funcionId}|${o.periodo}`);
+    const lista = d ? [{ resultado: d.resultado, devueltoEn: d.devuelto_en, borradoEn: null }] : [];
+    return delegable(o, hoy, lista, false).si ? gente : [];
+  };
+
+  const abiertas = pendientes(ocurrencias, cerradas).filter((o) => !enManosDeOtro.has(`${o.funcionId}|${o.periodo}`));
 
   // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
   const conCuadrante = (o: (typeof ocurrencias)[number]) => {
     const urgencia = urgenciaDe(o.faltan);
     const efectiva = importanciaEfectiva(o.importancia, o.faltan, o.periodicidad);
-    return { ...o, urgencia, cuadrante: cuadranteDe(urgencia, efectiva), vinculables: opcionesHasta(o.vence) };
+    return {
+      ...o,
+      urgencia,
+      cuadrante: cuadranteDe(urgencia, efectiva),
+      vinculables: opcionesHasta(o.vence),
+      delegarA: aQuienDelegar(o),
+    };
   };
 
   const elegidas = seleccionarPlan(unaPorFuncion(abiertas), CUANTAS);
@@ -296,7 +349,7 @@ export default async function Semana() {
 
   return (
     <>
-      <Navegacion entradas={DEL_EMPLEADO} salida={salir} />
+      <Navegacion entradas={gente.length > 0 ? DEL_SUPERVISOR : DEL_EMPLEADO} salida={salir} />
     <main style={{ display: 'flex', flexDirection: 'column', maxWidth: 1440, margin: '0 auto' }}>
       {metaCumplida ? (
         <CierreDeSemana
@@ -373,6 +426,8 @@ export default async function Semana() {
             />
           )}
 
+          <Delegadas delegadas={delegadas} hoy={hoy} gente={gente} />
+
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
           {mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) && (
             <YaResueltas cerradas={cerradasDeLaSemana} marcaDe={marcaDe} />
@@ -392,10 +447,12 @@ export default async function Semana() {
                 calendario={calendario}
                 quienesPiden={quienesPiden}
                 puedeBorrar={i.registrado_por === yo}
+                nota={devolucionDe(i)}
               />
             ))}
           </div>
-          <NuevoImprevisto empleadoId={empleadoId} quienesPiden={quienesPiden} />
+          {/* Un supervisor no se pide trabajo a si mismo: no aparece en su lista. */}
+          <NuevoImprevisto empleadoId={empleadoId} quienesPiden={quienesPiden.filter((q) => q.id !== yo)} />
 
           {/* Con imprevistos abiertos, los flujos se pliegan pero nunca se van:
               sin el boton de "me atrase" a la vista, el atraso de un flujo deja

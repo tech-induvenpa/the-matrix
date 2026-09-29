@@ -1,6 +1,6 @@
 import { emojiDe, type Cuadrante } from '@matriz/dominio';
 import { comoVence } from '@/lib/datos';
-import { deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
+import { delegar, deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
@@ -16,6 +16,9 @@ export type Fila = {
   cuadrante: Cuadrante;
   // Los imprevistos que podrian explicar un "no pude" de esta ocurrencia.
   vinculables?: readonly { id: string; texto: string }[];
+  // A quien se le puede delegar (ADR 0012). Vacio si no se puede: no supervisa,
+  // o la ocurrencia ya vencio.
+  delegarA?: readonly { id: string; nombre: string }[];
 };
 
 // La misma tarjeta en la semana y en el mes: una funcion no cambia de cara
@@ -56,10 +59,56 @@ export function Tarjeta({ o, hoy }: { o: Fila; hoy: string }) {
         >
           <Equis />
         </PorQue>
+
+        {o.delegarA && o.delegarA.length > 0 && (
+          <details style={{ position: 'relative' }}>
+            <summary title="Delegar" aria-label="Delegar" style={{ ...REDONDO, listStyle: 'none', color: 'var(--tinta)', fontSize: 17 }}>
+              🤝
+            </summary>
+            <Accion accion={delegar.bind(null, o.funcionId, o.periodo, o.vence)} style={DELEGAR}>
+              <select name="aQuien" required defaultValue="" style={SELECTOR} aria-label="A quién">
+                <option value="" disabled>
+                  ¿A quién?
+                </option>
+                {o.delegarA.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+              <Enviar style={{ ...HECHO, height: 34, background: 'var(--tinta)', color: '#fff' }} enviando="…">
+                Delegar
+              </Enviar>
+            </Accion>
+          </details>
+        )}
       </span>
     </article>
   );
 }
+
+const DELEGAR = {
+  position: 'absolute',
+  right: 0,
+  top: 'calc(100% + 8px)',
+  zIndex: 20,
+  display: 'flex',
+  gap: 6,
+  padding: 10,
+  borderRadius: 16,
+  background: '#ffffff',
+  color: 'var(--tinta)',
+  boxShadow: '0 10px 30px rgba(26,23,19,0.18)',
+} as const;
+
+const SELECTOR = {
+  height: 34,
+  borderRadius: 999,
+  border: '1px solid rgba(26,23,19,0.12)',
+  padding: '0 12px',
+  fontSize: 14,
+  background: '#ffffff',
+} as const;
 
 export function Numero({ etiqueta, valor, velo }: { etiqueta: string; valor: number; velo: string }) {
   return (

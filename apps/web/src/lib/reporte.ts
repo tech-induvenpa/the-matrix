@@ -3,6 +3,7 @@ import {
   bonoDelMes,
   Calendario,
   cifrasPor,
+  delegacionesPorFuncion,
   ponderacionDesplazada,
   type Cifras,
   ocurrenciasEntre,
@@ -251,7 +252,7 @@ export async function imprevistosDelEquipo() {
   const calendario = Calendario.con(dias ?? []);
   const imprevistos = (filas ?? []) as FilaImprevisto[];
   const quienesPiden = (quienes ?? []) as QuienPide[];
-  const contables = imprevistos.map((i) => ({ ...i, marcadaEn: i.marcada_en, borradoEn: i.borrado_en }));
+  const contables = imprevistos.map((i) => ({ ...i, marcadaEn: i.marcada_en, borradoEn: i.borrado_en, devueltoEn: i.devuelto_en }));
 
   const porPersona = cifrasPor(contables, (i) => i.empleado_id, hoy, calendario);
   const porQuienPidio = cifrasPor(contables, (i) => quienPidio(i, quienesPiden), hoy, calendario);
@@ -308,4 +309,31 @@ export async function bonosDelMes(): Promise<Map<string, number>> {
     if (bono !== null) bonos.set(id, bono);
   }
   return bonos;
+}
+
+// Las delegaciones del mes (CEB-182): por supervisor y funcion, cuantas se
+// delegaron y cuantas se devolvieron. El mismo cierre delegado mes tras mes es
+// un traspaso que nadie hizo (ADR 0012).
+export async function delegacionesDelMes() {
+  const supabase = await clienteDelServidor();
+  const primeroDelMes = `${hoyISO().slice(0, 7)}-01`;
+
+  const [{ data }, { data: quienes }] = await Promise.all([
+    supabase
+      .from('imprevisto')
+      .select('pedido_por, pedido_por_otro, devuelto_en, borrado_en, funcion:delega_funcion(texto)')
+      .not('delega_funcion', 'is', null)
+      .gte('pedido_en', primeroDelMes),
+    supabase.rpc('quienes_piden'),
+  ]);
+
+  const quienesPiden = (quienes ?? []) as QuienPide[];
+  return delegacionesPorFuncion(
+    ((data ?? []) as Record<string, unknown>[]).map((d) => ({
+      supervisor: quienPidio(d as { pedido_por: string | null; pedido_por_otro: string | null }, quienesPiden),
+      funcion: ((d.funcion as { texto?: string } | null)?.texto ?? '') as string,
+      devueltoEn: (d.devuelto_en as string | null) ?? null,
+      borradoEn: (d.borrado_en as string | null) ?? null,
+    })),
+  );
 }

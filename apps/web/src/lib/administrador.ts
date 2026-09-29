@@ -88,6 +88,12 @@ export type Cargo = {
   borrador: { funcionId: string; ponderacion: number }[];
   // A quien se le puede traspasar: todos menos quien ya la tiene.
   companeros: Companero[];
+  // CEB-145. Quien lo supervisa, y a quien supervisa el. Hay un solo nivel:
+  // quien supervisa no tiene supervisor, asi que una lista vacia la otra.
+  supervisorId: string | null;
+  supervisa: Companero[];
+  // Quienes podrian supervisarlo: nadie que ya tenga supervisor.
+  puedenSupervisar: Companero[];
 };
 
 // El cargo de una persona: lo que tiene a su nombre ahora. La ponderacion sale
@@ -97,7 +103,7 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
 
   const { data: empleado } = await supabase
     .from('empleado')
-    .select('id, nombre_bloque, correo')
+    .select('id, nombre_bloque, correo, supervisor_id')
     .eq('id', empleadoId)
     .maybeSingle();
   if (!empleado) return null;
@@ -112,7 +118,7 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
 
   const { data: otros } = await supabase
     .from('empleado')
-    .select('id, nombre_bloque')
+    .select('id, nombre_bloque, supervisor_id')
     .neq('id', empleadoId)
     .order('nombre_bloque');
 
@@ -147,6 +153,13 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
       ponderacion: t.ponderacion as number,
     })),
     companeros: (otros ?? []).map((e) => ({ id: e.id as string, nombre: e.nombre_bloque as string })),
+    supervisorId: (empleado.supervisor_id as string | null) ?? null,
+    supervisa: (otros ?? [])
+      .filter((e) => e.supervisor_id === empleadoId)
+      .map((e) => ({ id: e.id as string, nombre: e.nombre_bloque as string })),
+    puedenSupervisar: (otros ?? [])
+      .filter((e) => e.supervisor_id === null)
+      .map((e) => ({ id: e.id as string, nombre: e.nombre_bloque as string })),
   };
 }
 

@@ -11,7 +11,7 @@ import {
 } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
-import { comoCambios, hoyISO } from '@/lib/datos';
+import { comoCambios, hoyISO, quienPidio, type QuienPide } from '@/lib/datos';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // La salida hacia la hoja de sueldos. Es una funcion de la pantalla, no una
@@ -46,6 +46,7 @@ const RESULTADO: Record<string, string> = {
   hecho: 'hecho',
   no_pude: 'no pude',
   no_lo_tome: 'no lo tome',
+  devuelto: 'devuelto',
   sin_marcar: 'vencio sin marcar',
 };
 
@@ -74,7 +75,15 @@ export async function GET(request: NextRequest) {
 
   const supabase = await clienteDelServidor();
 
-  const [{ data: dias }, { data: titularidades }, { data: marcas }, { data: eventos }, { data: imprevistos }, { data: bonos }] =
+  const [
+    { data: dias },
+    { data: titularidades },
+    { data: marcas },
+    { data: eventos },
+    { data: imprevistos },
+    { data: bonos },
+    { data: quienes },
+  ] =
     await Promise.all([
       supabase.from('dia_no_habil').select('desde, hasta'),
       supabase
@@ -86,8 +95,12 @@ export async function GET(request: NextRequest) {
         .not('publicado_en', 'is', null),
       supabase.from('marca').select('funcion_id, periodo, resultado'),
       supabase.from('evento_flujo').select('funcion_id, estado, en').order('en'),
-      supabase.from('imprevisto').select('empleado_id, texto, vence, resultado, borrado_en').gte('vence', desde),
+      supabase
+        .from('imprevisto')
+        .select('empleado_id, texto, vence, resultado, borrado_en, devuelto_en, delega_funcion, pedido_por, pedido_por_otro')
+        .gte('vence', desde),
       supabase.from('bono').select('empleado_id, monto, rige_desde'),
+      supabase.rpc('quienes_piden'),
     ]);
 
   const calendario = Calendario.con(dias ?? []);
@@ -102,7 +115,11 @@ export async function GET(request: NextRequest) {
     (imprevistos ?? [])
       .filter((i) => i.empleado_id === empleadoId)
       .map((i) => ({
-        texto: i.texto as string,
+        // Una delegacion lo dice en su texto: sin columnas nuevas (CEB-182).
+        texto: i.delega_funcion
+          ? `${i.texto} (delegado por ${quienPidio(i as { pedido_por: string | null; pedido_por_otro: string | null }, (quienes ?? []) as QuienPide[])})`
+          : (i.texto as string),
+        devueltoEn: i.devuelto_en as string | null,
         vence: i.vence as string,
         resultado: i.resultado as Resultado | null,
         borradoEn: i.borrado_en as string | null,

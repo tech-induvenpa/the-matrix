@@ -82,7 +82,8 @@ export async function marcarNoPude(
 // Lo que el formulario dice que vincular, filtrado por lo que de verdad se
 // puede. Nadie arma el formulario a mano, pero esta es la frontera.
 async function soloVinculables(formulario: FormData, limite: Limite): Promise<string[]> {
-  const pedidos = formulario.getAll('imprevisto').map(String);
+  // Uno o ninguno ("Ninguno" viaja vacio).
+  const pedidos = formulario.getAll('imprevisto').map(String).filter(Boolean).slice(0, 1);
   if (pedidos.length === 0) return [];
 
   const supabase = await clienteDelServidor();
@@ -157,7 +158,7 @@ export async function registrarImprevisto(empleadoId: string, formulario: FormDa
     empleado_id: empleadoId,
     texto,
     vence: vencimientoDe(hoyISO(), plazo, Calendario.con(dias ?? [])),
-    pedido_por_admin: pidio === 'otro' ? null : pidio,
+    pedido_por: pidio === 'otro' ? null : pidio,
     pedido_por_otro: pidio === 'otro' ? otro : null,
   });
   if (error) throw error;
@@ -208,6 +209,49 @@ export async function borrarImprevisto(id: string): Promise<Aviso> {
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: 'Borrado.', celebra: false };
+}
+
+// Delegar una ocurrencia propia a alguien a cargo (ADR 0012). La ocurrencia
+// sigue siendo de quien delega; la base comprueba lo demas (INV-26).
+export async function delegar(
+  funcionId: string,
+  periodo: string,
+  vence: string,
+  formulario: FormData,
+): Promise<Aviso | undefined> {
+  const aQuien = String(formulario.get('aQuien') ?? '');
+  if (!aQuien) return;
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('delegar', {
+    la_funcion: funcionId,
+    el_periodo: periodo,
+    a_quien: aQuien,
+    el_vence: vence,
+  });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return { mensaje: 'Delegada. Sigue siendo tuya: la revisas cuando vuelva.', celebra: false };
+}
+
+// Devolver un "hecho" que no convence: con razon, y cuenta en contra para quien
+// lo recibio (INV-27). Despues se puede delegar otra vez.
+export async function devolver(delegacionId: string, formulario: FormData): Promise<Aviso | undefined> {
+  const razon = String(formulario.get('razon') ?? '').trim();
+  if (!razon) return;
+
+  const supabase = await clienteDelServidor();
+  // A la misma persona o a otra, en el mismo acto; vacio, se la queda quien delego.
+  const aQuien = String(formulario.get('aQuien') ?? '') || null;
+  const { error } = await supabase.rpc('devolver', { la_delegacion: delegacionId, la_razon: razon, a_quien: aQuien });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return {
+    mensaje: aQuien ? 'Devuelta. Ya la tiene otra vez, con tu razón.' : 'Devuelta. Volvió a tu lista.',
+    celebra: false,
+  };
 }
 
 export async function salir() {

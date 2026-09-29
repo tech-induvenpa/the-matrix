@@ -24,13 +24,19 @@ export type FilaImprevisto = {
   texto: string;
   pedido_en: string;
   vence: string;
-  pedido_por_admin: string | null;
+  // Un administrador o un supervisor; si no, lo dice `pedido_por_otro`.
+  pedido_por: string | null;
   pedido_por_otro: string | null;
   registrado_por: string;
   resultado: Resultado | null;
   razon: string | null;
   marcada_en: string | null;
   borrado_en: string | null;
+  // Si es una delegacion (ADR 0012): la ocurrencia del supervisor que cumple.
+  delega_funcion: string | null;
+  delega_periodo: string | null;
+  devuelto_en: string | null;
+  devuelto_razon: string | null;
 };
 
 export type FilaIntromision = { imprevisto_id: string; marca_id: string | null; evento_flujo_id: string | null };
@@ -47,12 +53,27 @@ export const dolares = (n: number) =>
   `$${n.toLocaleString('es-VE', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
 
 export const COLUMNAS_DE_IMPREVISTO =
-  'id, empleado_id, texto, pedido_en, vence, pedido_por_admin, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en';
+  'id, empleado_id, texto, pedido_en, vence, pedido_por, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en, delega_funcion, delega_periodo, devuelto_en, devuelto_razon';
 
-// Quien lo pidio, en palabras: un administrador por su nombre, o lo que se
-// escribio en "otro".
-export const quienPidio = (i: FilaImprevisto, quienes: readonly QuienPide[]) =>
-  i.pedido_por_otro ?? quienes.find((q) => q.id === i.pedido_por_admin)?.nombre ?? 'un administrador';
+// Quien lo pidio, en palabras: un administrador o un supervisor por su nombre,
+// o lo que se escribio en "otro".
+export const quienPidio = (i: Pick<FilaImprevisto, 'pedido_por' | 'pedido_por_otro'>, quienes: readonly QuienPide[]) =>
+  i.pedido_por_otro ?? quienes.find((q) => q.id === i.pedido_por)?.nombre ?? 'alguien que ya no pide';
+
+// Lo que un supervisor delego (ADR 0012), siga o no a cargo de esa persona.
+export type FilaDelegacion = {
+  id: string;
+  empleado_id: string;
+  nombre: string;
+  delega_funcion: string;
+  delega_periodo: string;
+  vence: string;
+  resultado: Resultado | null;
+  razon: string | null;
+  devuelto_en: string | null;
+  devuelto_razon: string | null;
+  pedido_en: string;
+};
 
 // Lo que el agente propuso solo vale mientras nadie lo corrija.
 export const tipoDe = (f: FilaFuncion) => f.tipo_corregido ?? f.tipo_generado;
@@ -90,6 +111,8 @@ export async function panorama() {
     { data: intromisiones },
     { data: quienesPiden },
     { data: bonos },
+    { data: gente },
+    { data: delegaciones },
   ] = await Promise.all([
       supabase
         .from('funcion')
@@ -114,6 +137,9 @@ export async function panorama() {
       supabase.rpc('quienes_piden'),
       // La seguridad por fila hace que solo llegue el suyo (INV-1).
       supabase.from('bono').select('monto, rige_desde'),
+      // Vacio para quien no supervisa (CEB-145).
+      supabase.rpc('mi_gente'),
+      supabase.rpc('mis_delegaciones'),
     ]);
 
   // La seguridad por fila hace que solo llegue el suyo.
@@ -143,6 +169,8 @@ export async function panorama() {
     intromisiones: (intromisiones ?? []) as FilaIntromision[],
     quienesPiden: (quienesPiden ?? []) as QuienPide[],
     bonos: comoCambios(bonos),
+    gente: (gente ?? []) as { id: string; nombre: string }[],
+    delegaciones: (delegaciones ?? []) as FilaDelegacion[],
   };
 }
 

@@ -38,12 +38,20 @@ export type Cifras = {
   hechos: number;
   noPude: number;
   noLoTome: number;
+  // Un "hecho" que el supervisor devolvio (ADR 0012): no cuenta como hecho.
+  devueltos: number;
   abiertos: number;
   vencidos: number;
   retrasoPromedio: number;
 };
 
-type Contable = { vence: Fecha; resultado: Resultado | null; marcadaEn: string | null; borradoEn: string | null };
+type Contable = {
+  vence: Fecha;
+  resultado: Resultado | null;
+  marcadaEn: string | null;
+  borradoEn: string | null;
+  devueltoEn?: string | null;
+};
 
 // Cuantos imprevistos le caen a alguien y si los termina (preguntas 1 y 2 de
 // CEB-146). Se agrupa por lo que se pida -- persona o quien lo pidio -- porque
@@ -62,13 +70,14 @@ export function cifrasPor<T extends Contable>(
 
     const k = clave(i);
     const g = grupos.get(k) ?? {
-      cifras: { llegados: 0, hechos: 0, noPude: 0, noLoTome: 0, abiertos: 0, vencidos: 0, retrasoPromedio: 0 },
+      cifras: { llegados: 0, hechos: 0, noPude: 0, noLoTome: 0, devueltos: 0, abiertos: 0, vencidos: 0, retrasoPromedio: 0 },
       retrasos: [],
     };
     grupos.set(k, g);
 
     g.cifras.llegados++;
-    if (i.resultado === 'hecho') g.cifras.hechos++;
+    if (i.devueltoEn) g.cifras.devueltos++;
+    else if (i.resultado === 'hecho') g.cifras.hechos++;
     if (i.resultado === 'no_pude') g.cifras.noPude++;
     if (i.resultado === 'no_lo_tome') g.cifras.noLoTome++;
     if (!i.resultado) g.cifras.abiertos++;
@@ -96,7 +105,7 @@ export function cifrasPor<T extends Contable>(
 // contra la gente aceptaria todo --, y un abierto que aun no vence tampoco
 // cuenta: todavia no se le puede pedir. Se toman los que vencen en el tramo.
 export function cumplimientoDeLaHolgura(
-  imprevistos: readonly { vence: Fecha; resultado: Resultado | null; borradoEn: string | null }[],
+  imprevistos: readonly { vence: Fecha; resultado: Resultado | null; borradoEn: string | null; devueltoEn?: string | null }[],
   tramo: { desde: Fecha; hasta: Fecha },
   hoy: Fecha,
 ): { esperados: number; hechos: number; sinCumplir: number } {
@@ -105,8 +114,9 @@ export function cumplimientoDeLaHolgura(
 
   for (const i of imprevistos) {
     if (i.borradoEn || i.vence < tramo.desde || i.vence > tramo.hasta) continue;
-    if (i.resultado === 'hecho') hechos++;
-    else if (i.resultado === 'no_pude' || (!i.resultado && hoy > i.vence)) sinCumplir++;
+    // Un "hecho" devuelto cuenta como un "no pude" (ADR 0012).
+    if (i.resultado === 'hecho' && !i.devueltoEn) hechos++;
+    else if (i.devueltoEn || i.resultado === 'no_pude' || (!i.resultado && hoy > i.vence)) sinCumplir++;
   }
 
   return { esperados: hechos + sinCumplir, hechos, sinCumplir };

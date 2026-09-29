@@ -20,7 +20,8 @@ const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral
 const PREGUNTAS = [
   { campo: 'quedaTerminado', texto: '¿Se entrega algo concreto y queda terminado?', si: ['entregable'] },
   { campo: 'seAtiendeMientrasHaya', texto: '¿Se atiende mientras haya, sin que exista un “ya está”?', si: ['flujo'] },
-  { campo: 'nombraUnAmbito', texto: '¿Nombra un ámbito del cargo más que un acto?', si: ['area'] },
+  // ponytail: el area ya no se crea desde aqui (29/09/2026): no se mide y esta
+  // por repensar. Las que existen siguen siendo areas hasta que se editen.
 ] as const;
 
 export function Formulario({
@@ -85,20 +86,29 @@ export function Formulario({
         </div>
 
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Una sola: las preguntas son excluyentes. */}
           {PREGUNTAS.map((p) => (
             <label key={p.campo} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
               <input
-                type="checkbox"
-                name={p.campo}
-                value="si"
+                type="radio"
+                name="tipo"
+                value={p.campo}
                 defaultChecked={funcion?.tipo ? p.si.includes(funcion.tipo as never) : false}
               />
               {p.texto}
             </label>
           ))}
-          <span style={{ fontSize: 12, color: 'var(--gris)' }}>
-            Sin marcar ninguna, es holgura: la parte del cargo reservada a lo no planificado.
-          </span>
+          {/* Un area que ya existe no se vuelve holgura por editarle otra cosa. */}
+          {funcion?.tipo === 'area' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
+              <input type="radio" name="tipo" value="nombraUnAmbito" defaultChecked />
+              Es un área del cargo
+            </label>
+          )}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
+            <input type="radio" name="tipo" value="" defaultChecked={!funcion?.tipo || funcion.tipo === 'holgura'} />
+            Ninguna: es holgura, la parte del cargo reservada a lo no planificado
+          </label>
           {funcionId && (
             <span style={{ fontSize: 12, color: 'var(--gris)' }}>
               Si cambias el peso, las demás funciones se reacomodan para que siga sumando 100.

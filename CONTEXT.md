@@ -271,9 +271,10 @@ numero de periodos pondria siempre las diarias arriba.
 
 **Intromision**:
 El vinculo que el empleado declara entre un incumplimiento de lo previsto --un
-"no pude" en una ocurrencia o un atraso declarado en un flujo-- y los
-imprevistos que lo causaron. Es opcional, admite varios imprevistos y no
-reemplaza a la razon, que sigue siendo obligatoria. Solo vale con imprevistos
+"no pude" en una ocurrencia o un atraso declarado en un flujo-- y el imprevisto
+que lo causo. Es opcional, admite a lo sumo un imprevisto (antes admitia
+varios; cambio el 29/09/2026) y no reemplaza a la razon, que sigue siendo
+obligatoria. Solo vale con imprevistos
 pedidos antes del vencimiento de esa ocurrencia (en un flujo, desde que estuvo
 al dia por ultima vez): un imprevisto viejo no puede excusar cualquier cosa.
 _Avoid_: excusa, justificacion.
@@ -366,7 +367,8 @@ _Avoid_: problema, falla (senalan a la persona).
 - El **area** no se mide: no se marca, no se cumple y no sale en la descarga.
   Es mas una descripcion del cargo que trabajo, y aun asi reparte ponderacion,
   o sea bono que nadie puede perder (dicho el 28/09/2026). Sin resolver: hay que
-  repensar si un area es una funcion o solo un encabezado del cargo.
+  repensar si un area es una funcion o solo un encabezado del cargo. Mientras
+  tanto, desde el 29/09/2026 la pantalla ya no crea areas nuevas.
 - La ponderacion se repartio **hacia atras**: se sabia lo que gana cada persona y
   se acomodaron porcentajes sobre sus funciones hasta cuadrar cien. O sea que hoy
   la flecha va sueldo -> ponderacion, y el peso de una funcion no es una medida

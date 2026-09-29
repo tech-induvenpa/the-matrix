@@ -22,6 +22,7 @@ export function TarjetaDeImprevisto({
   quienesPiden,
   puedeBorrar,
   puedeMarcar = true,
+  nota,
 }: {
   i: FilaImprevisto;
   hoy: string;
@@ -29,6 +30,8 @@ export function TarjetaDeImprevisto({
   quienesPiden: readonly QuienPide[];
   puedeBorrar: boolean;
   puedeMarcar?: boolean;
+  // Una linea de mas bajo el texto, como la razon de una devolucion.
+  nota?: string;
 }) {
   const faltan = calendario.habilesEntre(hoy, i.vence);
   const retraso = retrasoDe(i.vence, hoy, calendario);
@@ -42,7 +45,8 @@ export function TarjetaDeImprevisto({
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
         <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{i.texto}</span>
         <span style={{ fontSize: 13, opacity: 0.78 }}>
-          pedido por {quienPidio(i, quienesPiden)} ·{' '}
+          {/* Una delegacion es trabajo de su supervisor que le toca hacer a el (ADR 0012). */}
+          {i.delega_funcion ? 'delegado por' : 'pedido por'} {quienPidio(i, quienesPiden)} ·{' '}
           {retraso > 0 ? (
             <strong style={{ color: '#9E3322' }}>
               {retraso} {retraso === 1 ? 'día hábil' : 'días hábiles'} de retraso
@@ -51,6 +55,7 @@ export function TarjetaDeImprevisto({
             comoVence(i.vence, hoy)
           )}
         </span>
+        {nota && <span style={{ fontSize: 12.5, fontWeight: 600, color: '#9E3322' }}>{nota}</span>}
       </span>
 
       <Numero etiqueta="URG" valor={urgenciaDe(faltan)} velo={VELO} />
@@ -146,6 +151,7 @@ export const enPalabras = (c: Cifras) =>
     c.hechos && `${c.hechos} hechos`,
     c.noPude && `${c.noPude} no pude`,
     c.noLoTome && `${c.noLoTome} no tomados`,
+    c.devueltos && `${c.devueltos} devueltos`,
     c.abiertos && `${c.abiertos} abiertos`,
     c.vencidos && `${c.vencidos} vencidos`,
     c.retrasoPromedio && `${c.retrasoPromedio.toFixed(1)} días hábiles de retraso promedio`,
@@ -172,7 +178,7 @@ export function ImprevistosDelMes({
 }) {
   if (imprevistos.length === 0) return null;
 
-  const marcadaEn = (i: FilaImprevisto) => ({ ...i, marcadaEn: i.marcada_en, borradoEn: i.borrado_en });
+  const marcadaEn = (i: FilaImprevisto) => ({ ...i, marcadaEn: i.marcada_en, borradoEn: i.borrado_en, devueltoEn: i.devuelto_en });
   const total = cifrasPor(imprevistos.map(marcadaEn), () => 'todos', hoy, calendario).get('todos');
   const porQuien = cifrasPor(imprevistos.map(marcadaEn), (i) => quienPidio(i, quienesPiden), hoy, calendario);
 
@@ -193,6 +199,11 @@ export function ImprevistosDelMes({
                 {' '}
                 · {quienPidio(i, quienesPiden)} · {fechaCorta(i.pedido_en.slice(0, 10))}
               </span>
+              {i.devuelto_razon && (
+                <span style={{ display: 'block', fontSize: 12.5, color: '#9E3322' }}>
+                  te lo devolvió: “{i.devuelto_razon}”
+                </span>
+              )}
               {(explico.get(i.id) ?? []).length > 0 && (
                 <span style={{ display: 'block', fontSize: 12.5, color: '#8A5A3E' }}>
                   desplazó: {explico.get(i.id)!.join(', ')}
@@ -200,9 +211,16 @@ export function ImprevistosDelMes({
               )}
             </span>
             <span style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
-              {i.resultado ? COMO_SE_MARCO[i.resultado] : retrasoDe(i.vence, hoy, calendario) > 0 ? '🐢 abierto, vencido' : 'abierto'}
+              {i.devuelto_en
+                ? '↩ devuelto'
+                : i.resultado
+                  ? COMO_SE_MARCO[i.resultado]
+                  : retrasoDe(i.vence, hoy, calendario) > 0
+                    ? '🐢 abierto, vencido'
+                    : 'abierto'}
             </span>
-            {i.resultado && (
+            {/* Una devolucion no se deshace: la decidio el supervisor. */}
+            {i.resultado && !i.devuelto_en && (
               <Accion accion={desmarcarImprevisto.bind(null, i.id)}>
                 <Enviar style={{ ...BOTON, height: 28, fontSize: 12.5 }} enviando="…">
                   Deshacer

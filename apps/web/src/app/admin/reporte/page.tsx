@@ -1,4 +1,4 @@
-import { bonosDelMes, imprevistosDelEquipo, reporte } from '@/lib/reporte';
+import { bonosDelMes, delegacionesDelMes, imprevistosDelEquipo, reporte } from '@/lib/reporte';
 import { montoNoCumplido } from '@matriz/dominio';
 import { dolares, fechaCorta, quienPidio } from '@/lib/datos';
 import { enPalabras } from '../../imprevistos';
@@ -10,7 +10,12 @@ import { Ir } from '../../ir';
 // falla mas veces. Eso cambia a quien señala: una diaria de tres puntos con
 // veinte incumplimientos pesa menos que una mensual de veinticinco con uno.
 export default async function Reporte() {
-  const [gente, equipo, bonos] = await Promise.all([reporte(), imprevistosDelEquipo(), bonosDelMes()]);
+  const [gente, equipo, bonos, delegaciones] = await Promise.all([
+    reporte(),
+    imprevistosDelEquipo(),
+    bonosDelMes(),
+    delegacionesDelMes(),
+  ]);
   // Un porcentaje del cargo, en dolares del bono de este mes. Sin bono, nada.
   const enDolares = (id: string, pct: number) => (bonos.has(id) ? ` · ${dolares(montoNoCumplido(pct, bonos.get(id)!))}` : '');
 
@@ -102,6 +107,27 @@ export default async function Reporte() {
       {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14 }}>Todavía no hay nada que mirar.</p>}
 
       <ImprevistosDelEquipo equipo={equipo} bonos={bonos} />
+
+      {/* Lo que los supervisores delegaron este mes (CEB-182). Una funcion
+          delegada una y otra vez es un traspaso que nadie hizo. */}
+      {delegaciones.length > 0 && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: '10px 0 0' }}>Qué se delegó 🤝</h2>
+          {delegaciones.map((d) => (
+            <div
+              key={`${d.supervisor}|${d.funcion}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--suave)', borderRadius: 12, padding: '9px 14px', fontSize: 14 }}
+            >
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{d.supervisor}</span>
+              <span style={{ flexGrow: 1, minWidth: 0 }}>{d.funcion}</span>
+              <span style={{ fontSize: 13, whiteSpace: 'nowrap', color: 'var(--gris)' }}>
+                {d.delegadas} {d.delegadas === 1 ? 'vez' : 'veces'}
+                {d.devueltas > 0 && ` · ${d.devueltas} ${d.devueltas === 1 ? 'devuelta' : 'devueltas'}`}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
     </main>
   );
 }

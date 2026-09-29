@@ -13,7 +13,7 @@ export default async function Panel() {
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Tu gente 👥</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>La gente 👥</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
           {equipo.length} personas, {equipo.reduce((t, e) => t + e.funciones, 0)} funciones repartidas.
         </p>
