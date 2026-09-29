@@ -100,7 +100,7 @@ Prueba: con un empleado A (supervisor S), un empleado B de otro equipo (supervis
 Prueba: comentar una ocurrencia y un imprevisto abiertos → aceptado. Marcarlos → comentar por consulta directa, como titular y como administrador → rechazado. Deshacer la marca de la ocurrencia → aceptado otra vez. Una ocurrencia vencida sin marca → aceptado.
 
 **INV-36 · Un comentario nunca cambia ni desaparece, y su fecha la pone la base.**
-Prueba: como autor y como administrador, intentar por consulta directa editar el texto, el autor o la fecha de un comentario, o borrarlo → sin efecto. Insertar un comentario con una fecha inventada → queda la de la base.
+Prueba: como autor y como administrador, intentar por consulta directa editar el texto, el autor o la fecha de un comentario, o borrarlo → sin efecto. Insertar un comentario con una fecha o un autor inventados → se rechaza: esas columnas no se escriben, como `pedido_en` en el imprevisto. Nunca queda una fecha ni un autor que no pusiera la base.
 
 **INV-37 · "Sin leer" se enciende con el comentario de otro y se apaga al abrir el perfil.**
 Prueba: S comenta en una tarea de A → para A está sin leer, en la tarjeta; para el administrador, sin leer junto al nombre de A; para S, no. A abre el perfil por la acción del servidor → para A ya no está sin leer; para el administrador sigue. A comenta → para A no se enciende nada. A marca la tarea → para el administrador ya no hay nada sin leer en ella.
