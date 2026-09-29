@@ -1,4 +1,7 @@
+import { delFiltro } from '@matriz/dominio';
 import { elCalendario, gente } from '@/lib/administrador';
+import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
+import { Filtrar } from '../filtro';
 import { darDeAlta } from './acciones';
 import { Accion } from '../accion';
 import { Enviar } from '../boton';
@@ -7,17 +10,26 @@ import { Ir } from '../ir';
 
 // El trazador del backoffice: quien asigna entra y ve a su gente. Nada mas.
 // Lo que decide esta pantalla no es lo que muestra, es quien puede verla.
-export default async function Panel() {
-  const [equipo, calendario] = await Promise.all([gente(), elCalendario()]);
+export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
+  const parametros = await searchParams;
+  const [todos, calendario, { opciones, deIds }] = await Promise.all([gente(), elCalendario(), pertenencias()]);
+
+  // El filtro solo acota lo que ya se leyo con la sesion de quien mira (INV-29).
+  const filtro = filtroDe(parametros);
+  const equipo = todos
+    .map((e) => ({ ...e, ...deIds(e.empresaId, e.sedeId) }))
+    .filter((e) => delFiltro(e, e.funciones, (f) => f, filtro) !== null);
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
-          {equipo.length} personas, {equipo.reduce((t, e) => t + e.funciones, 0)} funciones repartidas.
+          {equipo.length} personas, {equipo.reduce((t, e) => t + e.funciones.length, 0)} funciones repartidas.
         </p>
       </header>
+
+      <Filtrar opciones={opciones} valores={parametros} />
 
       <AvisoDeCobertura cobertura={calendario.cobertura} cargadoHasta={calendario.cargadoHasta} enlazar />
 
@@ -37,16 +49,21 @@ export default async function Panel() {
               textDecoration: 'none',
             }}
           >
-            <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>{e.nombre}</span>
+            <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
+              {e.nombre}
+              <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--gris)', marginLeft: 10 }}>{enPalabras(e)}</span>
+            </span>
             <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              {e.funciones} {e.funciones === 1 ? 'función' : 'funciones'}
+              {e.funciones.length} {e.funciones.length === 1 ? 'función' : 'funciones'}
             </span>
           </Ir>
         ))}
 
         {equipo.length === 0 && (
-          <p style={{ color: 'var(--gris)', fontSize: 14 }}>Todavía no hay nadie dado de alta.</p>
+          <p style={{ color: 'var(--gris)', fontSize: 14 }}>
+            {todos.length === 0 ? 'Todavía no hay nadie dado de alta.' : 'Nadie coincide con el filtro.'}
+          </p>
         )}
       </div>
       <section style={{ borderTop: '1px solid rgba(26,23,19,0.10)', paddingTop: 18 }}>
@@ -60,6 +77,19 @@ export default async function Panel() {
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--gris)', flexGrow: 1, minWidth: 200 }}>
               Su correo
               <input name="correo" type="email" required placeholder="carmen@jfs.com" style={CAMPO} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--gris)' }}>
+              De qué empresa
+              <select name="pertenencia" required defaultValue="" style={CAMPO}>
+                <option value="" disabled>
+                  Elegir…
+                </option>
+                {opciones.map((o) => (
+                  <option key={o.valor} value={o.valor}>
+                    {o.etiqueta}
+                  </option>
+                ))}
+              </select>
             </label>
             <Enviar style={BOTON} enviando="Dando de alta…">
               Dar de alta

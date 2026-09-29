@@ -108,7 +108,7 @@ export async function comoAdministrador(correo: string): Promise<SupabaseClient>
 // Cada prueba monta su escenario desde cero: nada de datos heredados.
 export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
-  for (const tabla of ['bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
+  for (const tabla of ['bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'sede', 'administrador']) {
     const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
     // Tragarse este error costo una tarde: una restriccion nueva bloqueaba el
     // borrado, las tablas quedaban con datos de la corrida anterior, y el fallo
@@ -138,13 +138,31 @@ export async function sembrarFuncion(
   return data.id as string;
 }
 
-export async function sembrarEmpleado(nombreBloque: string, correo: string): Promise<string> {
+export async function sembrarEmpleado(
+  nombreBloque: string,
+  correo: string,
+  pertenencia: { empresa_id?: string; sede_id?: string } = {},
+): Promise<string> {
   const servicio = comoServicio();
   const { data, error } = await servicio
     .from('empleado')
-    .insert({ nombre_bloque: nombreBloque, correo })
+    .insert({ nombre_bloque: nombreBloque, correo, ...pertenencia })
     .select('id')
     .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+// Las empresas son fijas y las siembra la migracion (CEB-184): se buscan por
+// nombre. Las sedes no: cada prueba crea las suyas, y vaciar() las borra.
+export async function empresa(nombre: string): Promise<string> {
+  const { data, error } = await comoServicio().from('empresa').select('id').eq('nombre', nombre).single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function sembrarSede(empresaId: string, nombre: string): Promise<string> {
+  const { data, error } = await comoServicio().from('sede').insert({ empresa_id: empresaId, nombre }).select('id').single();
   if (error) throw error;
   return data.id as string;
 }

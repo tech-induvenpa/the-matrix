@@ -1,5 +1,7 @@
 import { bonosDelMes, delegacionesDelMes, imprevistosDelEquipo, reporte } from '@/lib/reporte';
-import { montoNoCumplido } from '@matriz/dominio';
+import { delFiltro, montoNoCumplido } from '@matriz/dominio';
+import { filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
+import { Filtrar } from '../../filtro';
 import { dolares, fechaCorta, quienPidio } from '@/lib/datos';
 import { enPalabras } from '../../imprevistos';
 import { Ir } from '../../ir';
@@ -9,13 +11,30 @@ import { Ir } from '../../ir';
 // Ordenado por cuanto del cargo de cada quien esta sin cumplirse, no por quien
 // falla mas veces. Eso cambia a quien señala: una diaria de tres puntos con
 // veinte incumplimientos pesa menos que una mensual de veinticinco con uno.
-export default async function Reporte() {
-  const [gente, equipo, bonos, delegaciones] = await Promise.all([
+export default async function Reporte({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
+  const parametros = await searchParams;
+  const [todos, delMes, bonos, delegaciones, { opciones, dePersona }] = await Promise.all([
     reporte(),
     imprevistosDelEquipo(),
     bonosDelMes(),
     delegacionesDelMes(),
+    pertenencias(),
   ]);
+
+  // Filtrar no reordena: quien entra conserva su lugar por ponderacion
+  // arrastrada. Si el texto coincide con una funcion, quedan solo esas.
+  const filtro = filtroDe(parametros);
+  const gente = todos.flatMap((p) => {
+    const funciones = delFiltro({ nombre: p.nombre, ...dePersona(p.id) }, p.funciones, (f) => f.texto, filtro);
+    return funciones ? [{ ...p, funciones }] : [];
+  });
+  const equipo = {
+    ...delMes,
+    personas: delMes.personas.flatMap((p) => {
+      const imprevistos = delFiltro({ nombre: p.nombre, ...dePersona(p.id) }, p.imprevistos, (i) => i.texto, filtro);
+      return imprevistos ? [{ ...p, imprevistos }] : [];
+    }),
+  };
   // Un porcentaje del cargo, en dolares del bono de este mes. Sin bono, nada.
   const enDolares = (id: string, pct: number) => (bonos.has(id) ? ` · ${dolares(montoNoCumplido(pct, bonos.get(id)!))}` : '');
 
@@ -28,6 +47,8 @@ export default async function Reporte() {
           cada quien está sin cumplir, que es lo único comparable entre personas y entre cadencias.
         </p>
       </header>
+
+      <Filtrar opciones={opciones} valores={parametros} />
 
       {gente.map((p) => (
         <section key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

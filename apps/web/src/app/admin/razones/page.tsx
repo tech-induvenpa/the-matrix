@@ -1,4 +1,7 @@
+import { delFiltro } from '@matriz/dominio';
 import { razonesDelEquipo } from '@/lib/reporte';
+import { filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
+import { Filtrar } from '../../filtro';
 import { fechaCorta } from '@/lib/datos';
 import { Ir } from '../../ir';
 
@@ -10,13 +13,20 @@ import { Ir } from '../../ir';
 export default async function Razones({
   searchParams,
 }: {
-  searchParams: Promise<{ persona?: string; funcion?: string }>;
+  searchParams: Promise<{ persona?: string; funcion?: string } & ParametrosDelFiltro>;
 }) {
-  const { persona, funcion } = await searchParams;
-  const todas = await razonesDelEquipo();
+  const parametros = await searchParams;
+  const { persona, funcion } = parametros;
+  const [todas, { opciones, dePersona }] = await Promise.all([razonesDelEquipo(), pertenencias()]);
 
+  // Empresa, sede y texto se combinan con persona y funcion (CEB-184). El
+  // texto encuentra a la persona, su empresa o la funcion de la razon.
+  const filtro = filtroDe(parametros);
   const filtradas = todas.filter(
-    (r) => (!persona || r.personaId === persona) && (!funcion || r.funcionId === funcion),
+    (r) =>
+      (!persona || r.personaId === persona) &&
+      (!funcion || r.funcionId === funcion) &&
+      delFiltro({ nombre: r.persona, ...dePersona(r.personaId) }, [r], (x) => x.funcion, filtro) !== null,
   );
 
   const gente = [...new Map(todas.map((r) => [r.personaId, r.persona])).entries()].sort((a, b) =>
@@ -32,6 +42,8 @@ export default async function Razones({
           la función ese día, no a quien la tiene hoy.
         </p>
       </header>
+
+      <Filtrar opciones={opciones} valores={parametros} conservar={{ persona, funcion }} />
 
       <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
         <Filtro href="/admin/razones" activo={!persona && !funcion}>

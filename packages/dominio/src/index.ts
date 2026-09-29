@@ -45,3 +45,5 @@ export { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura
 export type { HechoDeLaHolgura, Tramo } from './descarga';
 export { delegable, delegacionesPorFuncion, estaAbierta, estadoDeLaDelegacion } from './delegacion';
 export type { Delegable, Delegacion, DelegacionesDeUnaFuncion, EstadoDeLaDelegacion } from './delegacion';
+export { delFiltro, leerPertenencia, opcionesDePertenencia } from './filtro-del-equipo';
+export type { Filtrable, FiltroDelEquipo, Opcion } from './filtro-del-equipo';

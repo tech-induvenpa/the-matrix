@@ -12,11 +12,29 @@ el marco de clasificacion detras del orden, nunca una pantalla.
 Una persona de JFS con funciones asignadas y acceso propio a la aplicacion.
 _Avoid_: usuario (es la cuenta, no la persona), colaborador.
 
+**Empresa**:
+Una de las empresas que forman JFS: hoy KIA, Changan, Toyota, Induvenpa y
+Holding. Holding es la del grupo: la de quien no trabaja para una sola. JFS es
+el grupo, no una empresa mas.
+Sirve para saber de donde es cada quien y agrupar por ella. No limita nada: se
+supervisa y se traspasa entre empresas, y el calendario es del grupo.
+Es un dato de la persona hoy: si cambia de empresa, todo su pasado se agrupa
+con la nueva.
+_Avoid_: razon social, filial, cliente (es a quien se le hace el trabajo).
+
+**Sede**:
+Uno de los concesionarios de una empresa que tiene varios; hoy solo KIA y
+Changan, con dos cada una. Una persona sin sede cubre todas las de su empresa,
+asi que aparece al buscar cualquiera de ellas: no tener sede no es un dato que
+falta. Como la empresa, agrupa y no limita nada.
+_Avoid_: sucursal, concesionario (Holding tambien podria tener sedes y no vende
+carros).
+
 **Administrador**:
 Quien asigna: reparte las funciones, las pondera, las puntua y mantiene el
 calendario. Hoy es una sola persona y lo ve todo. Es el unico que ve el
 cumplimiento ponderado y las razones de todos.
-_Avoid_: JFS (es la empresa, no un rol), responsable tecnico (existia para
+_Avoid_: JFS (es el grupo, no un rol), responsable tecnico (existia para
 revisar la traduccion del documento y desaparece con ella), supervisor (es
 otro rol: responde por su gente, no asigna).
 
@@ -215,12 +233,12 @@ aunque venza despues.
 _Avoid_: sprint, meta semanal como numero fijo.
 
 **Dia habil**:
-Un dia en que esta empresa trabaja. Sale de una lista que JFS mantiene, nunca de
+Un dia en que JFS trabaja; es el mismo para todas sus empresas. Sale de una lista que JFS mantiene, nunca de
 un calendario nacional.
 
 **Dia no habil**:
 Un feriado o un dia dentro de las vacaciones colectivas. No existen vacaciones
-individuales: cuando la empresa descansa, descansa entera.
+individuales: cuando el grupo descansa, descansa entero.
 
 **Cobertura del calendario**:
 Hasta que fecha alcanza la lista de dias no habiles. Mas alla de ella el sistema
@@ -312,6 +330,10 @@ _Avoid_: problema, falla (senalan a la persona).
   entra a traves de la **Holgura** de su empleado. Lo
   previsto y lo imprevisto se miden cada uno con sus cifras: el imprevisto
   afecta a lo previsto por intromision (le quita tiempo), nunca por conteo
+- Un **Empleado** pertenece a exactamente una **Empresa**: la que le paga, no
+  para la que trabaja (eso lo dicen sus **Funciones**)
+- Un **Empleado** tiene a lo sumo una **Sede**, y es de su misma **Empresa**;
+  sin sede, cuenta en todas las de su empresa
 - Un **Empleado** tiene a lo sumo un **Supervisor**; un **Supervisor** no tiene
   supervisor
 - Una **Delegacion** une un **Imprevisto** de quien la recibe con una

@@ -1,4 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
+import { delFiltro } from '@matriz/dominio';
+import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
+import { Filtrar } from '../filtro';
 import { esAdministrador } from '@/lib/administrador';
 import { fechaCorta } from '@/lib/datos';
 import { loDeMiGente, type ComoVaUnaFuncion, type PersonaACargo } from '@/lib/supervisor';
@@ -10,18 +13,34 @@ import { NuevoImprevisto, TarjetaDeImprevisto } from '../imprevistos';
 // Que arrastra y desde cuando, que se atraso, que razones dieron y que les
 // esta cayendo. Sin pesos, tasas ni bonos: eso es conversacion de sueldo, y es
 // del administrador (INV-3).
-export default async function TuGente() {
+export default async function TuGente({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
   if (await esAdministrador()) redirect('/admin');
 
-  const { hoy, calendario, gente, quienesPiden, yo } = await loDeMiGente();
+  const parametros = await searchParams;
+  const [{ hoy, calendario, gente: todos, quienesPiden, yo }, { opciones, deIds }] = await Promise.all([
+    loDeMiGente(),
+    pertenencias(),
+  ]);
   // Quien no supervisa no tiene esta pantalla: un 404, como en /admin.
-  if (gente.length === 0) notFound();
+  if (todos.length === 0) notFound();
+
+  // El filtro acota lo que lo_de_mi_gente ya devolvio: nunca trae a nadie que
+  // no este a su cargo (INV-29). Si el texto coincide con funciones, quedan esas.
+  const filtro = filtroDe(parametros);
+  const gente = todos.flatMap((p) => {
+    const conSuEmpresa = { ...p, ...deIds(p.empresaId, p.sedeId) };
+    const funciones = delFiltro(conSuEmpresa, p.funciones, (f) => f.texto, filtro);
+    return funciones ? [{ ...conSuEmpresa, funciones }] : [];
+  });
 
   return (
     <>
       <Navegacion entradas={DEL_SUPERVISOR} salida={salir} />
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
+
+        <Filtrar opciones={opciones} valores={parametros} />
+        {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14 }}>Nadie de tu equipo coincide con el filtro.</p>}
 
         {gente.map((p) => {
           const abiertos = p.imprevistos.filter((i) => !i.resultado).sort((a, b) => a.vence.localeCompare(b.vence));
@@ -31,6 +50,7 @@ export default async function TuGente() {
             <details key={p.id} style={ACORDEON}>
               <summary style={RESUMEN}>
                 <span style={{ fontSize: 20, fontWeight: 700, marginRight: 12 }}>{p.nombre}</span>
+                {p.empresa && <span style={{ fontSize: 13, color: 'var(--gris)', marginRight: 12 }}>{enPalabras(p)}</span>}
                 <span style={{ fontSize: 13, ...(pendientes(p) ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' }) }}>
                   {resumenDe(p, abiertos.length)}
                 </span>

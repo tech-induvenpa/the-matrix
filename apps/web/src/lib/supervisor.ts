@@ -36,6 +36,8 @@ export type Razon = { en: string; funcion: string; quePaso: string; razon: strin
 export type PersonaACargo = {
   id: string;
   nombre: string;
+  empresaId: string | null;
+  sedeId: string | null;
   funciones: ComoVaUnaFuncion[];
   razones: Razon[];
   imprevistos: FilaImprevisto[];
@@ -54,7 +56,7 @@ export async function loDeMiGente() {
 
   const calendario = Calendario.con(dias ?? []);
   const todo = (data ?? {}) as {
-    gente?: { id: string; nombre: string }[];
+    gente?: { id: string; nombre: string; empresa: string | null; sede: string | null }[];
     funciones?: FuncionDeSuGente[];
     marcas?: MarcaDeSuGente[];
     eventos?: EventoDeSuGente[];
@@ -116,6 +118,8 @@ export async function loDeMiGente() {
     return {
       id: p.id,
       nombre: p.nombre,
+      empresaId: p.empresa,
+      sedeId: p.sede,
       funciones: comoVan,
       razones,
       imprevistos: (todo.imprevistos ?? []).filter((i) => i.empleado_id === p.id),

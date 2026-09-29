@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, empresa, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-2 · Un empleado nunca obtiene datos de otro empleado, y quien no es
 // administrador no obtiene datos de nadie mas que de si mismo. Ni funciones, ni
@@ -138,6 +138,7 @@ describe('INV-2: un empleado nunca obtiene datos de otro', () => {
     const { data: nuevo, error } = await jefa.rpc('dar_de_alta', {
       el_nombre: 'CARMEN',
       el_correo: 'Carmen@Prueba.test',
+      la_empresa: await empresa('Holding'),
     });
     expect(error).toBeNull();
     expect(nuevo).toBeTruthy();
@@ -159,7 +160,11 @@ describe('INV-2: un empleado nunca obtiene datos de otro', () => {
   it('un empleado no puede dar de alta a nadie', async () => {
     const ana = await comoEmpleado('ana@prueba.test');
 
-    const { error } = await ana.rpc('dar_de_alta', { el_nombre: 'INTRUSO', el_correo: 'intruso@prueba.test' });
+    const { error } = await ana.rpc('dar_de_alta', {
+      el_nombre: 'INTRUSO',
+      el_correo: 'intruso@prueba.test',
+      la_empresa: await empresa('Holding'),
+    });
 
     expect(error).not.toBeNull();
   });

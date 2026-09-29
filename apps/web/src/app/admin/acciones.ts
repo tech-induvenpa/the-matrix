@@ -1,6 +1,6 @@
 'use server';
 
-import { ADMITE_DIA_TOPE, reescalarA, reescalarACien, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
+import { ADMITE_DIA_TOPE, leerPertenencia, reescalarA, reescalarACien, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { revalidatePath } from 'next/cache';
@@ -376,11 +376,19 @@ export async function darDeAlta(formulario: FormData) {
   const nombre = String(formulario.get('nombre') ?? '').trim();
   const correo = String(formulario.get('correo') ?? '').trim().toLowerCase();
 
+  const { empresa, sede } = leerPertenencia(String(formulario.get('pertenencia') ?? ''));
+
   if (!nombre) return { mensaje: 'Sin nombre no puedo darla de alta.', celebra: false };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) return { mensaje: 'Ese correo no parece un correo.', celebra: false };
+  if (!empresa) return { mensaje: '¿De qué empresa es?', celebra: false };
 
   const supabase = await clienteDelServidor();
-  const { error } = await supabase.rpc('dar_de_alta', { el_nombre: nombre, el_correo: correo });
+  const { error } = await supabase.rpc('dar_de_alta', {
+    el_nombre: nombre,
+    el_correo: correo,
+    la_empresa: empresa,
+    la_sede: sede ?? null,
+  });
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath('/admin');
@@ -445,14 +453,21 @@ export async function editarEmpleado(empleadoId: string, formulario: FormData) {
   const nombre = String(formulario.get('nombre') ?? '').trim();
   const correo = String(formulario.get('correo') ?? '').trim().toLowerCase();
 
+  const { empresa, sede } = leerPertenencia(String(formulario.get('pertenencia') ?? ''));
+
   if (!nombre) return { mensaje: 'Sin nombre no se puede.', celebra: false };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) return { mensaje: 'Ese correo no parece un correo.', celebra: false };
+  if (!empresa) return { mensaje: '¿De qué empresa es?', celebra: false };
 
+  // Empresa y sede van juntas: cambiar de empresa manda la sede nueva, o
+  // ninguna, en el mismo acto (INV-30).
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('editar_empleado', {
     el_empleado: empleadoId,
     el_nombre: nombre,
     el_correo: correo,
+    la_empresa: empresa,
+    la_sede: sede ?? null,
   });
   if (error) return { mensaje: error.message, celebra: false };
 

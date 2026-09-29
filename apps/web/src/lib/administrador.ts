@@ -2,6 +2,7 @@ import { bonoDelMes, Calendario, coberturaDe } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { COLUMNAS_DE_IMPREVISTO, comoCambios, hoyISO, type FilaImprevisto, type QuienPide } from '@/lib/datos';
 import { notFound } from 'next/navigation';
+import { valorDe } from '@/lib/pertenencia';
 
 // Quien asigna. Lo pregunta la base, no la aplicacion: la sesion no lleva el
 // rol encima, asi que no hay nada que falsificar desde el navegador.
@@ -17,7 +18,15 @@ export async function soloAdministrador(): Promise<void> {
   if (!(await esAdministrador())) notFound();
 }
 
-export type EmpleadoDelPanel = { id: string; nombre: string; correo: string; funciones: number };
+export type EmpleadoDelPanel = {
+  id: string;
+  nombre: string;
+  correo: string;
+  empresaId: string | null;
+  sedeId: string | null;
+  // Los textos de lo que tiene hoy: por ellos tambien se le encuentra (CEB-184).
+  funciones: string[];
+};
 
 // La seguridad por fila es la que decide que esto traiga a los nueve y no a
 // uno: la consulta es la misma que haria un empleado.
@@ -26,7 +35,7 @@ export async function gente(): Promise<EmpleadoDelPanel[]> {
 
   const { data } = await supabase
     .from('empleado')
-    .select('id, nombre_bloque, correo, titularidad(count)')
+    .select('id, nombre_bloque, correo, empresa_id, sede_id, titularidad(funcion(texto))')
     .is('titularidad.hasta', null)
     .order('nombre_bloque');
 
@@ -34,7 +43,9 @@ export async function gente(): Promise<EmpleadoDelPanel[]> {
     id: e.id as string,
     nombre: e.nombre_bloque as string,
     correo: e.correo as string,
-    funciones: (e.titularidad as { count: number }[] | null)?.[0]?.count ?? 0,
+    empresaId: (e.empresa_id as string | null) ?? null,
+    sedeId: (e.sede_id as string | null) ?? null,
+    funciones: ((e.titularidad ?? []) as unknown as { funcion: { texto: string } | null }[]).flatMap((t) => (t.funcion ? [t.funcion.texto] : [])),
   }));
 }
 
@@ -85,6 +96,8 @@ export type Cargo = {
   id: string;
   nombre: string;
   correo: string;
+  // Empresa, o empresa/sede: el valor del desplegable (CEB-184).
+  pertenencia: string;
   funciones: FuncionDelCargo[];
   // Lo que el administrador dejo a medias. Vacio si no hay nada pendiente.
   borrador: { funcionId: string; ponderacion: number }[];
@@ -105,7 +118,7 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
 
   const { data: empleado } = await supabase
     .from('empleado')
-    .select('id, nombre_bloque, correo, supervisor_id')
+    .select('id, nombre_bloque, correo, supervisor_id, empresa_id, sede_id')
     .eq('id', empleadoId)
     .maybeSingle();
   if (!empleado) return null;
@@ -158,6 +171,7 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
     id: empleado.id as string,
     nombre: empleado.nombre_bloque as string,
     correo: empleado.correo as string,
+    pertenencia: valorDe(empleado.empresa_id as string | null, empleado.sede_id as string | null),
     funciones,
     borrador: (pendiente ?? []).map((t) => ({
       funcionId: t.funcion_id as string,
