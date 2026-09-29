@@ -20,7 +20,8 @@ const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral
 const PREGUNTAS = [
   { campo: 'quedaTerminado', texto: '¿Se entrega algo concreto y queda terminado?', si: ['entregable'] },
   { campo: 'seAtiendeMientrasHaya', texto: '¿Se atiende mientras haya, sin que exista un “ya está”?', si: ['flujo'] },
-  { campo: 'nombraUnAmbito', texto: '¿Nombra un ámbito del cargo más que un acto?', si: ['area'] },
+  // ponytail: el area ya no se crea desde aqui (29/09/2026): no se mide y esta
+  // por repensar. Las que existen siguen siendo areas hasta que se editen.
 ] as const;
 
 export function Formulario({
@@ -97,6 +98,13 @@ export function Formulario({
               {p.texto}
             </label>
           ))}
+          {/* Un area que ya existe no se vuelve holgura por editarle otra cosa. */}
+          {funcion?.tipo === 'area' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
+              <input type="radio" name="tipo" value="nombraUnAmbito" defaultChecked />
+              Es un área del cargo
+            </label>
+          )}
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
             <input type="radio" name="tipo" value="" defaultChecked={!funcion?.tipo || funcion.tipo === 'holgura'} />
             Ninguna: es holgura, la parte del cargo reservada a lo no planificado
