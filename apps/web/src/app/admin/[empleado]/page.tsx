@@ -28,6 +28,7 @@ export default async function Cargo({
 
   if (!cargo) return null;
 
+  const bonoQueSeVe = bono.pendiente ?? bono.vigente;
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
 
@@ -76,18 +77,36 @@ export default async function Cargo({
       {/* El bono (ADR 0010): el unico monto que el sistema conoce. Un cambio
           rige siempre desde el mes que viene; la base lo decide, no esta pantalla. */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su bono 💵</h2>
-        <p style={{ fontSize: 14, margin: 0 }}>
-          {bono.vigente === null ? 'Sin bono cargado este mes.' : `Este mes: ${dolares(bono.vigente)}.`}
-          {bono.pendiente !== null && ` Desde el mes que viene: ${dolares(bono.pendiente)}.`}
-        </p>
-        <Accion accion={fijarBono.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input name="monto" inputMode="decimal" required placeholder="Nuevo bono en dólares" style={CAMPO} />
-          <Enviar style={BOTON} enviando="Guardando…">
-            Guardar
-          </Enviar>
-          <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>Rige desde el mes que viene.</span>
-        </Accion>
+        {/* El monto que se ve es el ultimo que se fijo: si ya hay uno para el mes
+            que viene, ese, para que editar no parezca no haber hecho nada. */}
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          Su bono 💵
+          <strong>{bonoQueSeVe === null ? '—' : dolares(bonoQueSeVe)}</strong>
+          <Ir
+            href={editar === 'bono' ? '?' : '?editar=bono'}
+            aria-label={editar === 'bono' ? 'Cerrar' : 'Editar el bono'}
+            style={{ fontSize: 14, textDecoration: 'none' }}
+          >
+            {editar === 'bono' ? '✕' : '✏️'}
+          </Ir>
+        </h2>
+        {editar === 'bono' && (
+          <Accion accion={fijarBono.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              name="monto"
+              inputMode="decimal"
+              required
+              autoFocus
+              defaultValue={bonoQueSeVe ?? ''}
+              placeholder="Bono en dólares"
+              style={CAMPO}
+            />
+            <Enviar style={BOTON} enviando="Guardando…">
+              Guardar
+            </Enviar>
+            <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>Rige desde el mes que viene.</span>
+          </Accion>
+        )}
       </section>
 
       {/* Lo que el administrador le pide a ultimo minuto tambien cuenta como
