@@ -8,7 +8,8 @@ import { redirect } from 'next/navigation';
 
 const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
 
-const si = (f: FormData, campo: string) => f.get(campo) === 'si';
+// Una sola respuesta: las preguntas son excluyentes y se eligen como tal.
+const si = (f: FormData, campo: string) => f.get('tipo') === campo;
 
 // El tipo no se elige: sale de lo que se responda sobre el trabajo. Lo decide
 // el dominio, que es donde vive el criterio (ADR 0006).
