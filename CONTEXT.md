@@ -159,7 +159,8 @@ ponderacion reparte el bono, no el sueldo: el sueldo base no depende de lo que
 se cumpla. Por eso el impacto de una funcion en dinero es su ponderacion por
 el bono, nunca por el sueldo entero. Es un monto por mes: un cambio rige siempre
 desde el mes siguiente a cuando se hace y se mantiene hasta el siguiente
-cambio. Nunca parte un mes ni reescribe los anteriores. Es el unico monto que el sistema conoce; el sueldo base no existe
+cambio. Nunca parte un mes ni reescribe los anteriores. El primero es la
+excepcion: rige desde el mes en que se fija, porque no hay nada que partir. Es el unico monto que el sistema conoce; el sueldo base no existe
 en el. Lo ve la persona a quien pertenece y el administrador, nadie mas; solo
 el administrador lo escribe.
 _Avoid_: sueldo (incluye la base, que no se mueve), asignacion, incentivo.

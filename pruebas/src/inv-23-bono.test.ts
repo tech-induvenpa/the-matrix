@@ -69,6 +69,24 @@ describe('INV-23: un cambio rige desde el mes siguiente', () => {
   });
 });
 
+// El primer bono no espera: no hay nada que partir ni reescribir (0023).
+describe('INV-23: el primer bono rige desde el mes en que se fija', () => {
+  it('a quien no tiene bono, el primero le rige este mes; el siguiente cambio, el mes que viene', async () => {
+    const carla = await sembrarEmpleado('CARLA', 'carla@prueba.test');
+    const jefa = await comoAdministrador('jefa@prueba.test');
+    const este = new Date().toISOString().slice(0, 7);
+
+    expect((await jefa.rpc('fijar_bono', { el_empleado: carla, el_monto: 500 })).error).toBeNull();
+    expect((await jefa.rpc('fijar_bono', { el_empleado: carla, el_monto: 550 })).error).toBeNull();
+
+    const { data } = await jefa.from('bono').select('monto, rige_desde').eq('empleado_id', carla).order('rige_desde');
+    expect(data?.map((b) => [b.monto, (b.rige_desde as string).slice(0, 7)])).toEqual([
+      [500, este],
+      [550, mesSiguiente()],
+    ]);
+  });
+});
+
 // INV-24 · Solo el administrador escribe un bono.
 describe('INV-24: solo el administrador escribe un bono', () => {
   it('un empleado no puede fijar ningun bono, tampoco el suyo', async () => {

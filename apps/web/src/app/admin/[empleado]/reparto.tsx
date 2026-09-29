@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { descartarBorrador, guardarBorrador, publicarReparto } from '../acciones';
+import { Ir } from '../../ir';
 
 type Fila = { id: string; texto: string; ponderacion: number };
 
@@ -87,6 +88,10 @@ export function Reparto({
                 }}
               />
               <span style={{ fontSize: 13, color: 'var(--gris)' }}>%</span>
+              {/* Quitarla es archivarla o eliminarla: vive en su panel. */}
+              <Ir href={`?editar=${f.id}`} style={{ fontSize: 12.5, color: '#C62828' }}>
+                quitar
+              </Ir>
             </label>
           ))}
 

@@ -152,6 +152,35 @@ export async function archivarFuncion(funcionId: string, empleadoId: string) {
   return { mensaje: 'Archivada. Su historial sigue ahí y el reparto se reacomodó.', celebra: false };
 }
 
+// Eliminar por completo: para la funcion creada por error. La base la rechaza
+// si ya tiene historia, y entonces lo que corresponde es archivarla (0022).
+export async function eliminarFuncion(funcionId: string, empleadoId: string) {
+  if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+
+  const { data: vigentes } = await supabase
+    .from('titularidad')
+    .select('funcion_id, ponderacion')
+    .eq('empleado_id', empleadoId)
+    .is('hasta', null)
+    .not('publicado_en', 'is', null);
+
+  const quedan = (vigentes ?? [])
+    .filter((t) => t.funcion_id !== funcionId)
+    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+
+  const { error } = await supabase.rpc('eliminar_funcion', {
+    la_funcion: funcionId,
+    quien: empleadoId,
+    pesos: reescalarACien(quedan).map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion })),
+  });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath(`/admin/${empleadoId}`);
+  redirect(`/admin/${empleadoId}`);
+}
+
 // --- El reparto (CEB-132) ---------------------------------------------------
 
 // Guardar no publica. Quien reparte diecisiete funciones necesita poder dejarlo
@@ -437,11 +466,21 @@ export async function fijarBono(empleadoId: string, formulario: FormData) {
   if (!Number.isFinite(monto) || monto < 0) return { mensaje: 'Ese monto no parece un monto.', celebra: false };
 
   const supabase = await clienteDelServidor();
+  // El primero rige desde este mes; un cambio, desde el que viene (0023).
+  const { data: yaRige } = await supabase
+    .from('bono')
+    .select('id')
+    .eq('empleado_id', empleadoId)
+    .lte('rige_desde', `${new Date().toISOString().slice(0, 7)}-01`)
+    .limit(1);
   const { error } = await supabase.rpc('fijar_bono', { el_empleado: empleadoId, el_monto: Math.round(monto * 100) / 100 });
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath(`/admin/${empleadoId}`);
-  return { mensaje: 'Anotado. Rige desde el mes que viene.', celebra: false };
+  return {
+    mensaje: yaRige?.length ? 'Anotado. Rige desde el mes que viene.' : 'Anotado. Es su primer bono: rige desde este mes.',
+    celebra: false,
+  };
 }
 
 // Quien supervisa a quien (CEB-177). La base comprueba que haya un solo nivel

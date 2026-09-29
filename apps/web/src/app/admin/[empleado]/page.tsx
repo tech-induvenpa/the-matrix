@@ -1,7 +1,7 @@
 import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
 import { dolares } from '@/lib/datos';
 import { NuevoImprevisto, TarjetaDeImprevisto } from '../../imprevistos';
-import { archivarFuncion, asignarSupervisor, crearFuncion, editarEmpleado, fijarBono, traspasar } from '../acciones';
+import { archivarFuncion, asignarSupervisor, crearFuncion, eliminarFuncion, editarEmpleado, fijarBono, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { Formulario } from './formulario';
@@ -134,7 +134,9 @@ export default async function Cargo({
             <Enviar style={BOTON} enviando="Guardando…">
               Guardar
             </Enviar>
-            <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>Rige desde el mes que viene.</span>
+            <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>
+              {bono.vigente === null ? 'Es su primer bono: rige desde este mes.' : 'Rige desde el mes que viene.'}
+            </span>
           </Accion>
         )}
       </section>
@@ -236,10 +238,21 @@ export default async function Cargo({
 
                     <Accion accion={archivarFuncion.bind(null, f.id, empleado)}>
                       <Enviar
-                        style={{ marginTop: 12, fontSize: 12.5, color: 'var(--gris)', background: 'none', cursor: 'pointer' }}
+                        style={{ ...BOTON, marginTop: 14, background: 'rgba(198,40,40,0.10)', color: '#C62828' }}
                         enviando="Archivando…"
                       >
-                        Archivar esta función
+                        Archivar esta función: sale de su cargo y conserva su historia
+                      </Enviar>
+                    </Accion>
+
+                    {/* Para la creada por error. Si ya tiene historia, la base la
+                        rechaza y hay que archivarla. */}
+                    <Accion accion={eliminarFuncion.bind(null, f.id, empleado)}>
+                      <Enviar
+                        style={{ marginTop: 6, fontSize: 12.5, color: '#C62828', background: 'none', cursor: 'pointer' }}
+                        enviando="Eliminando…"
+                      >
+                        Eliminarla por completo (solo si se creó por error y no tiene historia)
                       </Enviar>
                     </Accion>
                   </div>
