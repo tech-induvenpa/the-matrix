@@ -208,13 +208,21 @@ export default async function Mes() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--suave)', borderRadius: 20, padding: '22px 24px' }}>
-            <div>
-              <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Dónde más cuentas 🥧</h2>
-              <p style={{ fontSize: 12.5, color: 'var(--gris)', margin: '4px 0 0', maxWidth: 420 }}>
-                El tamaño de cada porción es lo que esa función pesa dentro de tu cargo. Las grandes son por las que
-                te buscan a ti.
-                {bono !== null && <> Tu bono de este mes es de {dolares(bono)}, y así se reparte.</>}
-              </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Dónde más cuentas 🥧</h2>
+                <p style={{ fontSize: 12.5, color: 'var(--gris)', margin: '4px 0 0', maxWidth: 420 }}>
+                  El tamaño de cada porción es lo que esa función pesa dentro de tu cargo. Las grandes son por las que
+                  te buscan a ti.
+                </p>
+              </div>
+              {/* El bono de este mes, que es lo que se reparte abajo (ADR 0010). */}
+              {bono !== null && (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 12.5, color: 'var(--gris)' }}>Tu bono 💵</div>
+                  <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em' }}>{dolares(bono)}</div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
