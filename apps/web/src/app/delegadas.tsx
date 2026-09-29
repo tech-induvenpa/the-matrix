@@ -10,6 +10,7 @@ export type Delegada = {
   funcionId: string;
   periodo: string;
   texto: string;
+  empleadoId: string;
   nombre: string;
   vence: string;
   estado: EstadoDeLaDelegacion;
@@ -20,7 +21,16 @@ export type Delegada = {
 // ellas: no le quita espacio a lo que tiene que hacer el. Primero lo que espera
 // por el -- un "hecho" que revisar, un "no pude" que decidir --, despues lo que
 // espera a su gente.
-export function Delegadas({ delegadas, hoy }: { delegadas: readonly Delegada[]; hoy: string }) {
+export function Delegadas({
+  delegadas,
+  hoy,
+  gente,
+}: {
+  delegadas: readonly Delegada[];
+  hoy: string;
+  // A quien se le puede devolver: su gente de hoy.
+  gente: readonly { id: string; nombre: string }[];
+}) {
   if (delegadas.length === 0) return null;
 
   const orden = (d: Delegada) => (d.estado === 'esperando' ? 1 : 0);
@@ -64,6 +74,16 @@ export function Delegadas({ delegadas, hoy }: { delegadas: readonly Delegada[]; 
                   titulo="Devolver"
                   placeholder="¿Qué le falta? Lo va a leer"
                   estilo={{ ...BOTON, background: '#ffffff', color: 'var(--tinta)', border: 0 }}
+                  extra={
+                    <select name="aQuien" defaultValue={d.empleadoId} aria-label="A quién" style={SELECTOR}>
+                      {gente.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          devolvérsela a {p.nombre}
+                        </option>
+                      ))}
+                      <option value="">me la quedo yo</option>
+                    </select>
+                  }
                 >
                   Devolver
                 </PorQue>
@@ -86,6 +106,15 @@ const FILA = {
   padding: '6px 12px',
   boxSizing: 'border-box',
   flexWrap: 'wrap',
+} as const;
+
+const SELECTOR = {
+  height: 36,
+  borderRadius: 999,
+  border: '1px solid rgba(26,23,19,0.12)',
+  padding: '0 12px',
+  fontSize: 14,
+  background: '#ffffff',
 } as const;
 
 const BOTON = {

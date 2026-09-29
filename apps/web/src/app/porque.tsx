@@ -13,6 +13,7 @@ export function PorQue({
   placeholder,
   estilo,
   opciones = [],
+  extra,
   children,
 }: {
   accion: (formulario: FormData) => Promise<Aviso | undefined>;
@@ -22,6 +23,8 @@ export function PorQue({
   // Los imprevistos que se pueden vincular (intromision). Opcional: la razon
   // se escribe igual, con o sin ellos.
   opciones?: readonly { id: string; texto: string }[];
+  // Campos de mas que viajan con la razon, como a quien se devuelve algo.
+  extra?: ReactNode;
   children: ReactNode;
 }) {
   const [abierto, setAbierto] = useState(false);
@@ -63,6 +66,7 @@ export function PorQue({
               ))}
             </fieldset>
           )}
+          {extra}
           <div style={{ display: 'flex', gap: 6 }}>
             <input name="razon" required autoFocus placeholder={placeholder} style={CAMPO} />
             <Enviar style={BOTON}>Guardar</Enviar>

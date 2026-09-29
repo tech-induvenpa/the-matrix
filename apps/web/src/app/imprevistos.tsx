@@ -22,6 +22,7 @@ export function TarjetaDeImprevisto({
   quienesPiden,
   puedeBorrar,
   puedeMarcar = true,
+  nota,
 }: {
   i: FilaImprevisto;
   hoy: string;
@@ -29,6 +30,8 @@ export function TarjetaDeImprevisto({
   quienesPiden: readonly QuienPide[];
   puedeBorrar: boolean;
   puedeMarcar?: boolean;
+  // Una linea de mas bajo el texto, como la razon de una devolucion.
+  nota?: string;
 }) {
   const faltan = calendario.habilesEntre(hoy, i.vence);
   const retraso = retrasoDe(i.vence, hoy, calendario);
@@ -52,6 +55,7 @@ export function TarjetaDeImprevisto({
             comoVence(i.vence, hoy)
           )}
         </span>
+        {nota && <span style={{ fontSize: 12.5, fontWeight: 600, color: '#9E3322' }}>{nota}</span>}
       </span>
 
       <Numero etiqueta="URG" valor={urgenciaDe(faltan)} velo={VELO} />

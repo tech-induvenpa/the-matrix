@@ -234,4 +234,23 @@ describe('INV-27: devolver un "hecho" exige razon y cuenta en contra', () => {
       (await sesionAna.rpc('delegar', { la_funcion: conciliacion, el_periodo: mes(), a_quien: benito, el_vence: finDelMes() })).error,
     ).toBeNull();
   });
+
+  it('devolver a alguien le delega otra vez en el mismo acto', async () => {
+    const { data: abiertas } = await sesionBenito
+      .from('imprevisto')
+      .select('id')
+      .eq('delega_funcion', conciliacion)
+      .is('resultado', null);
+    const id = abiertas![0]!.id;
+    await sesionBenito.rpc('marcar_imprevisto', { el_imprevisto: id, el_resultado: 'hecho', la_razon: null });
+    expect((await sesionAna.rpc('devolver', { la_delegacion: id, la_razon: 'otra vez', a_quien: benito })).error).toBeNull();
+
+    const { data } = await sesionBenito
+      .from('imprevisto')
+      .select('id')
+      .eq('delega_funcion', conciliacion)
+      .is('resultado', null);
+    expect(data).toHaveLength(1);
+    expect(data![0]!.id).not.toBe(id);
+  });
 });

@@ -52,6 +52,16 @@ export default async function Semana() {
     gente, delegaciones,
   } = await panorama();
 
+  // Una delegacion devuelta vuelve como una nueva: trae la razon de la anterior,
+  // para saber que rehacer (ADR 0012).
+  const devolucionDe = (i: (typeof imprevistos)[number]) =>
+    i.delega_funcion
+      ? imprevistos
+          .filter((j) => j.devuelto_razon && j.delega_funcion === i.delega_funcion && j.delega_periodo === i.delega_periodo)
+          .map((j) => `te la devolvió: “${j.devuelto_razon}”`)
+          .at(-1)
+      : undefined;
+
   // Imprevistos: arriba de los flujos, fuera del plan y de la meta (ADR 0009).
   const imprevistosAbiertos = imprevistos.filter((i) => !i.resultado).sort((a, b) => a.vence.localeCompare(b.vence));
   const paraVincular = imprevistos.map((i) => ({ id: i.id, texto: i.texto, pedidoEn: i.pedido_en, borradoEn: i.borrado_en }));
@@ -108,6 +118,7 @@ export default async function Semana() {
       funcionId: d.delega_funcion,
       periodo: d.delega_periodo,
       texto: textoDe.get(d.delega_funcion) ?? '',
+      empleadoId: d.empleado_id,
       nombre: d.nombre,
       vence: d.vence,
       estado: estadoDeLaDelegacion({ resultado: d.resultado, devueltoEn: d.devuelto_en, borradoEn: null }, false),
@@ -415,7 +426,7 @@ export default async function Semana() {
             />
           )}
 
-          <Delegadas delegadas={delegadas} hoy={hoy} />
+          <Delegadas delegadas={delegadas} hoy={hoy} gente={gente} />
 
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
           {mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) && (
@@ -436,6 +447,7 @@ export default async function Semana() {
                 calendario={calendario}
                 quienesPiden={quienesPiden}
                 puedeBorrar={i.registrado_por === yo}
+                nota={devolucionDe(i)}
               />
             ))}
           </div>

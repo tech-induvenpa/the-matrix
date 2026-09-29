@@ -241,11 +241,16 @@ export async function devolver(delegacionId: string, formulario: FormData): Prom
   if (!razon) return;
 
   const supabase = await clienteDelServidor();
-  const { error } = await supabase.rpc('devolver', { la_delegacion: delegacionId, la_razon: razon });
+  // A la misma persona o a otra, en el mismo acto; vacio, se la queda quien delego.
+  const aQuien = String(formulario.get('aQuien') ?? '') || null;
+  const { error } = await supabase.rpc('devolver', { la_delegacion: delegacionId, la_razon: razon, a_quien: aQuien });
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath('/', 'layout');
-  return { mensaje: 'Devuelta. Puedes delegarla otra vez o hacerla tú.', celebra: false };
+  return {
+    mensaje: aQuien ? 'Devuelta. Ya la tiene otra vez, con tu razón.' : 'Devuelta. Volvió a tu lista.',
+    celebra: false,
+  };
 }
 
 export async function salir() {

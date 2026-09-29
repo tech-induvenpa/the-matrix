@@ -240,12 +240,16 @@ end;
 $$;
 
 -- Solo quien delego, solo un "hecho" y solo mientras su ocurrencia no este
--- marcada: una vez aprobada, esta aprobada.
-create function devolver(la_delegacion uuid, la_razon text) returns void
+-- marcada: una vez aprobada, esta aprobada. Devolver es "a la misma persona o
+-- a otra" (ADR 0012): con `a_quien`, en el mismo acto nace una delegacion
+-- nueva, que vence con la ocurrencia. Sin `a_quien`, el supervisor se la queda.
+create function devolver(la_delegacion uuid, la_razon text, a_quien uuid default null) returns void
   language plpgsql
   security definer
   set search_path = public, pg_temp
 as $$
+declare
+  d imprevisto;
 begin
   update imprevisto i
   set devuelto_en = now(), devuelto_razon = nullif(btrim(la_razon), '')
@@ -255,10 +259,15 @@ begin
     and i.resultado = 'hecho'
     and i.devuelto_en is null
     and i.borrado_en is null
-    and not exists (select 1 from marca m where m.funcion_id = i.delega_funcion and m.periodo = i.delega_periodo);
+    and not exists (select 1 from marca m where m.funcion_id = i.delega_funcion and m.periodo = i.delega_periodo)
+  returning * into d;
 
-  if not found then
+  if d.id is null then
     raise exception 'Esa delegacion no se puede devolver' using errcode = 'insufficient_privilege';
+  end if;
+
+  if a_quien is not null then
+    perform delegar(d.delega_funcion, d.delega_periodo, a_quien, d.vence);
   end if;
 end;
 $$;
@@ -394,7 +403,7 @@ revoke execute on function
   lo_de_mi_gente(),
   puede_pedir(uuid),
   delegar(uuid, text, uuid, date),
-  devolver(uuid, text),
+  devolver(uuid, text, uuid),
   mis_delegaciones()
 from anon, public;
 
@@ -405,6 +414,6 @@ grant execute on function
   lo_de_mi_gente(),
   puede_pedir(uuid),
   delegar(uuid, text, uuid, date),
-  devolver(uuid, text),
+  devolver(uuid, text, uuid),
   mis_delegaciones()
 to authenticated;
