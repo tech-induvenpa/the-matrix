@@ -17,7 +17,20 @@ Quien asigna: reparte las funciones, las pondera, las puntua y mantiene el
 calendario. Hoy es una sola persona y lo ve todo. Es el unico que ve el
 cumplimiento ponderado y las razones de todos.
 _Avoid_: JFS (es la empresa, no un rol), responsable tecnico (existia para
-revisar la traduccion del documento y desaparece con ella), supervisor.
+revisar la traduccion del documento y desaparece con ella), supervisor (es
+otro rol: responde por su gente, no asigna).
+
+**Supervisor**:
+Un empleado que responde por otros: tiene su propio reparto y ademas gente a
+cargo. De ella ve lo que necesita para actuar el mismo dia --sus funciones con
+su estado y su arrastre, sus razones, sus imprevistos y delegaciones-- y le
+pide imprevistos. No ve ponderaciones, tasas, bonos ni montos de nadie: un peso
+es una conversacion de sueldo y esa es del administrador. No reparte, no
+pondera, no traspasa y no toca el bono de nadie.
+Cada empleado tiene a lo sumo un supervisor, y quien supervisa no tiene
+supervisor: hay un solo nivel. Lo decide el administrador. Ve a quien tiene a
+cargo hoy, con todo su pasado; cuando se lo cambian, deja de verlo.
+_Avoid_: jefe, lider, coordinador, responsable.
 
 **Funcion**:
 Una responsabilidad recurrente que alguien tiene a su cargo. Existe por si misma
@@ -71,14 +84,15 @@ Es por donde pesan los imprevistos: ninguno trae peso propio, se miden contra
 la holgura de su empleado. La asigna el administrador en el reparto como
 cualquier ponderacion; quien no tiene holgura recibe imprevistos igual, y
 cuentan, pero no pesan. Se cumple con imprevistos hechos sobre los que se
-esperaba hacer: "no pude" y abiertos vencidos cuentan en contra, "no lo tome"
+esperaba hacer: "no pude", devueltos y abiertos vencidos cuentan en contra, "no lo tome"
 es neutro (rechazar a tiempo no es fallar), y un mes sin imprevistos
 esperables no cuenta ni a favor ni en contra.
 
 **Imprevisto**:
 Trabajo que llega sin estar en el reparto de nadie y se hace una sola vez. No es
 una funcion: no se repite, no tiene periodicidad ni ponderacion, y no se
-traspasa. Vence a mas tardar el dia habil siguiente a cuando se pidio, asi que
+traspasa. Vence a mas tardar el dia habil siguiente a cuando se pidio (salvo
+una **delegacion**, que vence con su ocurrencia), asi que
 su urgencia se calcula igual que la de cualquier ocurrencia y nace alta sin que
 nadie la escriba. No arrastra, porque no tiene serie: si vence sin marca sigue
 abierto en la pantalla de su empleado hasta que alguien lo marque, y cuenta su
@@ -92,6 +106,23 @@ imprevisto borrado no cuenta en ninguna cifra, pero no desaparece: queda quien
 lo borro y cuando. Un imprevisto que vuelve con regularidad es una
 funcion que nadie ha dado de alta.
 _Avoid_: urgente (la urgencia se calcula, no se declara), encargo, comodin.
+
+**Delegacion**:
+Un imprevisto que un supervisor le pide a alguien a su cargo para cumplir una
+ocurrencia de su propio reparto. La ocurrencia sigue siendo del supervisor: no
+es un traspaso, no mueve ponderacion y el supervisor responde por ella. Vence
+cuando vence la ocurrencia, no al dia habil siguiente, porque lo delegado ya
+estaba previsto; lo imprevisto es solo a quien le llega. Quien la recibe la
+marca como cualquier imprevisto, y esa marca no cierra la ocurrencia: el
+supervisor la revisa y marca su ocurrencia el, o la devuelve --a la misma
+persona o a otra--, y eso es una delegacion nueva. Devolver un "hecho" lo
+convierte en **devuelto**, con razon obligatoria, y cuenta en contra como un
+"no pude": si no, marcar hecho algo mal hecho no costaria nada. Si no se cumple, pierden los
+dos: el supervisor su ocurrencia y quien la recibio su holgura.
+Solo se delegan ocurrencias que todavia no vencieron, y cada una tiene a lo sumo
+una delegacion abierta; un flujo no se delega. Una delegacion que se
+repite es un traspaso que nadie ha hecho.
+_Avoid_: traspaso (ese mueve la funcion), reasignacion, encargo.
 
 ### Los tres ejes
 
@@ -215,7 +246,8 @@ _Avoid_: marca (las marcas son de ocurrencias).
 
 **Razon de no ejecucion**:
 El texto que el empleado escribe al marcar "no pude" en una ocurrencia o al
-declarar atrasado un flujo. JFS lo lee, y el empleado sabe que lo lee.
+declarar atrasado un flujo. JFS lo lee, y su supervisor si lo tiene, y el
+empleado sabe quien lo lee.
 
 **Cumplimiento ponderado**:
 Ocurrencias cumplidas (marcadas "hecho") sobre asignadas, pesadas por
@@ -274,6 +306,11 @@ _Avoid_: problema, falla (senalan a la persona).
   entra a traves de la **Holgura** de su empleado. Lo
   previsto y lo imprevisto se miden cada uno con sus cifras: el imprevisto
   afecta a lo previsto por intromision (le quita tiempo), nunca por conteo
+- Un **Empleado** tiene a lo sumo un **Supervisor**; un **Supervisor** no tiene
+  supervisor
+- Una **Delegacion** une un **Imprevisto** de quien la recibe con una
+  **Ocurrencia** de su **Supervisor**; la **Ocurrencia** sigue siendo del
+  supervisor y solo su **Marca** la cierra
 
 ## Example dialogue
 
