@@ -1,4 +1,5 @@
 import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
+import { enPalabras, pertenencias } from '@/lib/pertenencia';
 import { dolares } from '@/lib/datos';
 import { NuevoImprevisto, TarjetaDeImprevisto } from '../../imprevistos';
 import { archivarFuncion, asignarSupervisor, crearFuncion, eliminarFuncion, editarEmpleado, fijarBono, traspasar } from '../acciones';
@@ -24,7 +25,12 @@ export default async function Cargo({
 }) {
   const { empleado } = await params;
   const { editar, peso } = await searchParams;
-  const [cargo, imprevistos, bono] = await Promise.all([cargoDe(empleado), imprevistosDe(empleado), bonoDe(empleado)]);
+  const [cargo, imprevistos, bono, { opciones, dePersona }] = await Promise.all([
+    cargoDe(empleado),
+    imprevistosDe(empleado),
+    bonoDe(empleado),
+    pertenencias(),
+  ]);
 
   if (!cargo) return null;
 
@@ -40,12 +46,12 @@ export default async function Cargo({
       <header>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>{cargo.nombre}</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
-          {cargo.funciones.length} funciones · reparte {suma} de 100
+          {enPalabras(dePersona(empleado)) || 'sin empresa'} · {cargo.funciones.length} funciones · reparte {suma} de 100
           {editar !== 'persona' && (
             <>
               {' · '}
               <Ir href="?editar=persona" style={{ color: 'var(--gris)' }}>
-                ✏️ su nombre y su correo
+                ✏️ su nombre, su correo y su empresa
               </Ir>
             </>
           )}
@@ -61,6 +67,21 @@ export default async function Cargo({
               <label style={{ ...ETIQUETA, flexGrow: 1, minWidth: 220 }}>
                 Su correo — con este entra
                 <input name="correo" type="email" defaultValue={cargo.correo} required style={CAMPO} />
+              </label>
+              {/* Empresa y sede en un solo desplegable: no se puede elegir una
+                  sede de otra empresa, y cambiar de empresa cambia la sede. */}
+              <label style={ETIQUETA}>
+                Su empresa
+                <select name="pertenencia" defaultValue={cargo.pertenencia} required style={CAMPO}>
+                  <option value="" disabled>
+                    Elegir…
+                  </option>
+                  {opciones.map((o) => (
+                    <option key={o.valor} value={o.valor}>
+                      {o.etiqueta}
+                    </option>
+                  ))}
+                </select>
               </label>
               <Enviar style={BOTON} enviando="Guardando…">
                 Guardar

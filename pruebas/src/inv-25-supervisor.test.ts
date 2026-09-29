@@ -95,7 +95,7 @@ describe('INV-28: solo el administrador decide quien supervisa a quien, en un so
 describe('INV-2: la supervisora ve a su gente de hoy, y a nadie mas', () => {
   it('obtiene lo de benito y nada de carla', async () => {
     const { data } = await sesionAna.rpc('lo_de_mi_gente');
-    expect(data.gente).toEqual([{ id: benito, nombre: 'BENITO' }]);
+    expect(data.gente).toEqual([{ id: benito, nombre: 'BENITO', empresa: null, sede: null }]);
     expect(data.funciones.map((f: { id: string }) => f.id)).toEqual([deBenito]);
     expect(data.marcas.map((m: { razon: string }) => m.razon)).toEqual(['sin sistema']);
   });
@@ -111,7 +111,7 @@ describe('INV-2: la supervisora ve a su gente de hoy, y a nadie mas', () => {
     await jefa.rpc('asignar_supervisor', { el_empleado: benito, el_supervisor: null });
     expect((await sesionAna.rpc('lo_de_mi_gente')).data.gente).toEqual([]);
     await jefa.rpc('asignar_supervisor', { el_empleado: benito, el_supervisor: ana });
-    expect((await sesionAna.rpc('lo_de_mi_gente')).data.gente).toEqual([{ id: benito, nombre: 'BENITO' }]);
+    expect((await sesionAna.rpc('lo_de_mi_gente')).data.gente).toEqual([{ id: benito, nombre: 'BENITO', empresa: null, sede: null }]);
   });
 });
 

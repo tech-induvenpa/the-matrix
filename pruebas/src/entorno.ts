@@ -138,12 +138,35 @@ export async function sembrarFuncion(
   return data.id as string;
 }
 
-export async function sembrarEmpleado(nombreBloque: string, correo: string): Promise<string> {
+export async function sembrarEmpleado(
+  nombreBloque: string,
+  correo: string,
+  pertenencia: { empresa_id?: string; sede_id?: string } = {},
+): Promise<string> {
   const servicio = comoServicio();
   const { data, error } = await servicio
     .from('empleado')
-    .insert({ nombre_bloque: nombreBloque, correo })
+    .insert({ nombre_bloque: nombreBloque, correo, ...pertenencia })
     .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+// Las empresas y las sedes son fijas y las siembran las migraciones (CEB-184,
+// CEB-191): se buscan por nombre, y vaciar() no las toca.
+export async function empresa(nombre: string): Promise<string> {
+  const { data, error } = await comoServicio().from('empresa').select('id').eq('nombre', nombre).single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function sede(empresaId: string, nombre: string): Promise<string> {
+  const { data, error } = await comoServicio()
+    .from('sede')
+    .select('id')
+    .eq('empresa_id', empresaId)
+    .eq('nombre', nombre)
     .single();
   if (error) throw error;
   return data.id as string;
