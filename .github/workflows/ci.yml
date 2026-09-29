@@ -18,3 +18,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm test
+
+  # Las invariantes contra un Supabase local de verdad: las migraciones se
+  # prueban aqui antes de llegar a main, donde el deploy de Cloud las aplica
+  # a produccion. Solo auth, rest y kong: lo demas no lo usan las pruebas.
+  # Fuera quedan inv-4 (Google Sheets) e inv-9 (el modelo): piden credenciales
+  # externas y gastan llamadas reales; se corren a mano con `pnpm invariantes`.
+  invariantes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - run: pnpm --filter @matriz/pruebas exec vitest run --exclude src/inv-4-hoja-caida.test.ts --exclude src/inv-9-agente.test.ts
