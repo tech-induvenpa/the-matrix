@@ -117,15 +117,19 @@ export function NuevoImprevisto({
           <option value="hoy">para hoy</option>
           <option value="manana">para mañana</option>
         </select>
-        <select name="pidio" defaultValue={pidioPorDefecto ?? 'otro'} style={CAMPO} aria-label="Quién lo pidió">
-          {quienesPiden.map((q) => (
-            <option key={q.id} value={q.id}>
-              lo pidió {q.nombre}
-            </option>
-          ))}
-          <option value="otro">lo pidió otra persona…</option>
-        </select>
-        <input name="otro" placeholder="¿Quién? (si fue otra persona)" style={{ ...CAMPO, flex: '1 1 180px' }} />
+        {/* "¿Quien?" solo aparece si lo pidio otra persona (ver globals.css). El
+            contenedor no ocupa lugar: los campos siguen en la misma fila. */}
+        <div className="quien-pidio" style={{ display: 'contents' }}>
+          <select name="pidio" defaultValue={pidioPorDefecto ?? 'otro'} style={CAMPO} aria-label="Quién lo pidió">
+            {quienesPiden.map((q) => (
+              <option key={q.id} value={q.id}>
+                lo pidió {q.nombre}
+              </option>
+            ))}
+            <option value="otro">lo pidió otra persona…</option>
+          </select>
+          <input name="otro" placeholder="¿Quién?" style={{ ...CAMPO, flex: '1 1 180px' }} />
+        </div>
         <Enviar style={BOTON}>Anotar</Enviar>
       </Accion>
     </details>

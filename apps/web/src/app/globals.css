@@ -72,3 +72,9 @@ button { font: inherit; cursor: pointer; border: none; }
 @media (prefers-reduced-motion: reduce) {
   .bajando { animation: none; }
 }
+
+/* Registrar un imprevisto: el campo "¿Quien?" solo cuando lo pidio otra
+   persona. CSS y no JavaScript: el formulario sigue siendo de servidor. */
+.quien-pidio:not(:has(option[value="otro"]:checked)) input[name="otro"] {
+  display: none;
+}
