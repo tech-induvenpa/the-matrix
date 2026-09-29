@@ -58,9 +58,14 @@ export function PorQue({
               <legend style={{ fontSize: 12, color: 'var(--gris)', padding: 0, marginBottom: 4 }}>
                 ¿Te lo impidió algún imprevisto?
               </legend>
+              {/* Uno o ninguno: la intromision se atribuye a un solo imprevisto. */}
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+                <input type="radio" name="imprevisto" value="" defaultChecked />
+                Ninguno
+              </label>
               {opciones.map((o) => (
                 <label key={o.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
-                  <input type="checkbox" name="imprevisto" value={o.id} />
+                  <input type="radio" name="imprevisto" value={o.id} />
                   {o.texto}
                 </label>
               ))}

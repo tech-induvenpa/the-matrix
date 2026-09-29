@@ -271,9 +271,10 @@ numero de periodos pondria siempre las diarias arriba.
 
 **Intromision**:
 El vinculo que el empleado declara entre un incumplimiento de lo previsto --un
-"no pude" en una ocurrencia o un atraso declarado en un flujo-- y los
-imprevistos que lo causaron. Es opcional, admite varios imprevistos y no
-reemplaza a la razon, que sigue siendo obligatoria. Solo vale con imprevistos
+"no pude" en una ocurrencia o un atraso declarado en un flujo-- y el imprevisto
+que lo causo. Es opcional, admite a lo sumo un imprevisto (antes admitia
+varios; cambio el 29/09/2026) y no reemplaza a la razon, que sigue siendo
+obligatoria. Solo vale con imprevistos
 pedidos antes del vencimiento de esa ocurrencia (en un flujo, desde que estuvo
 al dia por ultima vez): un imprevisto viejo no puede excusar cualquier cosa.
 _Avoid_: excusa, justificacion.

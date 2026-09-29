@@ -82,7 +82,8 @@ export async function marcarNoPude(
 // Lo que el formulario dice que vincular, filtrado por lo que de verdad se
 // puede. Nadie arma el formulario a mano, pero esta es la frontera.
 async function soloVinculables(formulario: FormData, limite: Limite): Promise<string[]> {
-  const pedidos = formulario.getAll('imprevisto').map(String);
+  // Uno o ninguno ("Ninguno" viaja vacio).
+  const pedidos = formulario.getAll('imprevisto').map(String).filter(Boolean).slice(0, 1);
   if (pedidos.length === 0) return [];
 
   const supabase = await clienteDelServidor();
