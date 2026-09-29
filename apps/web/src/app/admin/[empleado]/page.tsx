@@ -177,7 +177,14 @@ export default async function Cargo({
             puedeBorrar
           />
         ))}
-        <NuevoImprevisto empleadoId={empleado} quienesPiden={imprevistos.quienesPiden} pidioPorDefecto={imprevistos.yo} rotulo="＋ Registrarle un imprevisto" />
+        <NuevoImprevisto
+          empleadoId={empleado}
+          quienesPiden={imprevistos.quienesPiden}
+          pidioPorDefecto={imprevistos.yo}
+          hoy={imprevistos.hoy}
+          calendario={imprevistos.calendario}
+          rotulo="＋ Registrarle un imprevisto"
+        />
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

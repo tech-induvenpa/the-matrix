@@ -80,7 +80,14 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
                 />
               ))}
               {abiertos.length === 0 && <p style={NADA}>Nada abierto.</p>}
-              <NuevoImprevisto empleadoId={p.id} quienesPiden={quienesPiden} pidioPorDefecto={yo} rotulo="＋ Pedirle un imprevisto" />
+              <NuevoImprevisto
+                empleadoId={p.id}
+                quienesPiden={quienesPiden}
+                pidioPorDefecto={yo}
+                hoy={hoy}
+                calendario={calendario}
+                rotulo="＋ Pedirle un imprevisto"
+              />
 
               {p.razones.length > 0 && (
                 <>

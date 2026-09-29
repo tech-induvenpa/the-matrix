@@ -452,7 +452,12 @@ export default async function Semana() {
             ))}
           </div>
           {/* Un supervisor no se pide trabajo a si mismo: no aparece en su lista. */}
-          <NuevoImprevisto empleadoId={empleadoId} quienesPiden={quienesPiden.filter((q) => q.id !== yo)} />
+          <NuevoImprevisto
+            empleadoId={empleadoId}
+            quienesPiden={quienesPiden.filter((q) => q.id !== yo)}
+            hoy={hoy}
+            calendario={calendario}
+          />
 
           {/* Con imprevistos abiertos, los flujos se pliegan pero nunca se van:
               sin el boton de "me atrase" a la vista, el atraso de un flujo deja

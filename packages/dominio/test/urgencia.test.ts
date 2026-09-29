@@ -11,15 +11,14 @@ describe('urgencia calculada', () => {
     expect(calendario.habilesEntre('2026-09-02', '2026-09-09')).toBe(4);
   });
 
-  it('convierte esos dias en un numero del 0 al 9 y en su emoji', () => {
+  it('convierte esos dias en un numero del 0 al 9', () => {
     expect(urgenciaDe(0)).toBe(9);
     expect(urgenciaDe(1)).toBe(8);
     expect(urgenciaDe(8)).toBe(4);
     expect(urgenciaDe(30)).toBe(0);
+  });
 
-    expect(emojiDe(1)).toBe('🔥');
-    expect(emojiDe(3)).toBe('💣');
-    expect(emojiDe(7)).toBe('🧠');
-    expect(emojiDe(8)).toBe('🍃');
+  it('el emoji sale de la urgencia: 🔥 9-8, 💣 7-6, 🧠 5-4, 🍃 3-0', () => {
+    expect([9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map(emojiDe).join('')).toBe('🔥🔥💣💣🧠🧠🍃🍃🍃🍃');
   });
 });

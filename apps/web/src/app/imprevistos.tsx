@@ -1,5 +1,14 @@
-import { cifrasPor, emojiDe, retrasoDe, urgenciaDe, type Calendario, type Cifras } from '@matriz/dominio';
-import { comoVence, fechaCorta, quienPidio, type FilaImprevisto, type QuienPide } from '@/lib/datos';
+import {
+  cifrasPor,
+  cuandoSePidio,
+  emojiDe,
+  opcionesDeUrgencia,
+  retrasoDe,
+  urgenciaDe,
+  type Calendario,
+  type Cifras,
+} from '@matriz/dominio';
+import { comoVence, fechaConDia, fechaCorta, quienPidio, sumarDias, type FilaImprevisto, type QuienPide } from '@/lib/datos';
 import {
   borrarImprevisto,
   desmarcarImprevisto,
@@ -13,8 +22,9 @@ import { PorQue } from './porque';
 import { CIRCULO, Numero } from './tarjeta';
 
 // Un imprevisto: trabajo que llego sin estar en el reparto de nadie (ADR 0009).
-// Su urgencia se calcula como la de cualquier ocurrencia, y por eso nace en 8 o
-// 9 sin que nadie la escriba. Vencido sin marca sigue aqui, con su retraso.
+// Su urgencia se calcula como la de cualquier ocurrencia desde el vencimiento
+// que se eligio al anotarlo (ADR 0013). Vencido sin marca sigue aqui, con su
+// retraso, y con el dia en que se pidio: puede llevar semanas abierto.
 export function TarjetaDeImprevisto({
   i,
   hoy,
@@ -33,20 +43,22 @@ export function TarjetaDeImprevisto({
   // Una linea de mas bajo el texto, como la razon de una devolucion.
   nota?: string;
 }) {
-  const faltan = calendario.habilesEntre(hoy, i.vence);
+  const urgencia = urgenciaDe(calendario.habilesEntre(hoy, i.vence));
   const retraso = retrasoDe(i.vence, hoy, calendario);
+  const pedido = cuandoSePidio(i.pedido_en, hoy);
 
   return (
     <article style={TARJETA}>
       {retraso > 0 && <span style={{ width: 5, alignSelf: 'stretch', borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
 
-      <span style={{ ...CIRCULO, background: VELO }}>{emojiDe(faltan)}</span>
+      <span style={{ ...CIRCULO, background: VELO }}>{emojiDe(urgencia)}</span>
 
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
         <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{i.texto}</span>
         <span style={{ fontSize: 13, opacity: 0.78 }}>
           {/* Una delegacion es trabajo de su supervisor que le toca hacer a el (ADR 0012). */}
-          {i.delega_funcion ? 'delegado por' : 'pedido por'} {quienPidio(i, quienesPiden)} ·{' '}
+          {i.delega_funcion ? 'delegado por' : 'pedido por'} {quienPidio(i, quienesPiden)}{' '}
+          {pedido === 'hoy' ? 'hoy' : `el ${fechaCorta(pedido)}`} ·{' '}
           {retraso > 0 ? (
             <strong style={{ color: '#9E3322' }}>
               {retraso} {retraso === 1 ? 'día hábil' : 'días hábiles'} de retraso
@@ -58,7 +70,7 @@ export function TarjetaDeImprevisto({
         {nota && <span style={{ fontSize: 12.5, fontWeight: 600, color: '#9E3322' }}>{nota}</span>}
       </span>
 
-      <Numero etiqueta="URG" valor={urgenciaDe(faltan)} velo={VELO} />
+      <Numero etiqueta="URG" valor={urgencia} velo={VELO} />
 
       {puedeMarcar && (
         <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
@@ -100,27 +112,36 @@ export function TarjetaDeImprevisto({
 }
 
 // Registrar es de un solo paso y va plegado: la pantalla es para trabajar, no
-// para llenar formularios. Solo "hoy" o "mañana": lo que se necesita para el
-// viernes no es un imprevisto, se planifica.
+// para llenar formularios. Se elige para cuando con la misma escala de urgencia
+// que ya se ve en las tareas (ADR 0013); por defecto 8, manana, como siempre.
 export function NuevoImprevisto({
   empleadoId,
   quienesPiden,
   pidioPorDefecto,
+  hoy,
+  calendario,
   rotulo = '＋ Me cayó un imprevisto',
 }: {
   empleadoId: string;
   quienesPiden: readonly QuienPide[];
   pidioPorDefecto?: string;
+  hoy: string;
+  calendario: Calendario;
   rotulo?: string;
 }) {
+  const cuando = (vence: string) => (vence === hoy ? 'hoy' : vence === sumarDias(hoy, 1) ? 'mañana' : fechaConDia(vence));
+
   return (
     <details style={{ fontSize: 14 }}>
       <summary style={{ cursor: 'pointer', color: 'var(--gris)', fontWeight: 600 }}>{rotulo}</summary>
       <Accion accion={registrarImprevisto.bind(null, empleadoId)} style={FORMULARIO}>
         <input name="texto" required placeholder="¿Qué te pidieron?" style={{ ...CAMPO, flex: '1 1 220px' }} />
-        <select name="plazo" defaultValue="manana" style={CAMPO} aria-label="Para cuándo">
-          <option value="hoy">para hoy</option>
-          <option value="manana">para mañana</option>
+        <select name="urgencia" defaultValue="8" style={CAMPO} aria-label="Urgencia: para cuándo">
+          {opcionesDeUrgencia(hoy, calendario).map((o) => (
+            <option key={o.urgencia} value={o.urgencia}>
+              {o.emoji} {o.urgencia} · {cuando(o.vence)}
+            </option>
+          ))}
         </select>
         {/* "¿Quien?" solo aparece si lo pidio otra persona (ver globals.css). El
             contenedor no ocupa lugar: los campos siguen en la misma fila. */}

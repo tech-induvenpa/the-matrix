@@ -134,9 +134,9 @@ export default async function Mes() {
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12.5, color: 'var(--gris)', flexWrap: 'wrap' }}>
           <span>🔥 hoy o mañana</span>
-          <span>💣 2 a 3 días</span>
-          <span>🧠 4 a 7 días</span>
-          <span>🍃 8 o más</span>
+          <span>💣 2 a 4 días</span>
+          <span>🧠 5 a 9 días</span>
+          <span>🍃 10 o más</span>
         </div>
       </header>
 

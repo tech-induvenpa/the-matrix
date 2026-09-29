@@ -27,7 +27,7 @@ export function Tarjeta({ o, hoy }: { o: Fila; hoy: string }) {
   return (
     <article style={{ ...TARJETA, ...COLOR[o.cuadrante] }}>
       <span title={`Vence en ${o.faltan} días hábiles`} style={{ ...CIRCULO, background: COLOR[o.cuadrante].velo }}>
-        {emojiDe(o.faltan)}
+        {emojiDe(o.urgencia)}
       </span>
 
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
