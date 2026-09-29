@@ -33,7 +33,9 @@ import { esAdministrador } from '@/lib/administrador';
 import { redirect } from 'next/navigation';
 import { DEL_EMPLEADO, DEL_SUPERVISOR, Navegacion } from './navegacion';
 import { NuevoImprevisto, TarjetaDeImprevisto } from './imprevistos';
-import { Delegadas, type Delegada } from './delegadas';
+import { Delegadas, LoQuePedi, type Delegada } from './delegadas';
+import { perfiles } from './perfil';
+import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -43,24 +45,50 @@ const CUANTAS = 5;
 // atras no se arrastra: eso lo recoge el cierre del mes, no la lista del dia.
 const RESCATE = 10;
 
-export default async function Semana() {
+export default async function Semana({ searchParams }: { searchParams: Promise<{ tarea?: string }> }) {
   // Quien asigna no tiene funciones: su sitio es el panel, no una pantalla vacia.
   if (await esAdministrador()) redirect('/admin');
 
-  const {
-    hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
-    gente, delegaciones,
-  } = await panorama();
+  const [
+    {
+      hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
+      gente, delegaciones, pedidos,
+    },
+    { perfil, deOcurrencia },
+  ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
 
   // Una delegacion devuelta vuelve como una nueva: trae la razon de la anterior,
   // para saber que rehacer (ADR 0012).
-  const devolucionDe = (i: (typeof imprevistos)[number]) =>
+  const devueltaAntes = <T extends { id: string; delega_funcion: string | null; delega_periodo: string | null; devuelto_razon: string | null }>(
+    i: T,
+    todas: readonly T[],
+  ) =>
     i.delega_funcion
-      ? imprevistos
-          .filter((j) => j.devuelto_razon && j.delega_funcion === i.delega_funcion && j.delega_periodo === i.delega_periodo)
-          .map((j) => `te la devolvió: “${j.devuelto_razon}”`)
+      ? todas
+          .filter((j) => j.id !== i.id && j.devuelto_razon && j.delega_funcion === i.delega_funcion && j.delega_periodo === i.delega_periodo)
           .at(-1)
       : undefined;
+  const devolucionDe = (i: (typeof imprevistos)[number]) => {
+    const anterior = devueltaAntes(i, imprevistos);
+    return anterior && `te la devolvió: “${anterior.devuelto_razon}”`;
+  };
+
+  // El perfil de cada tarjeta (CEB-198).
+  const perfilDeOcurrencia = (o: { funcionId: string; periodo: string; vence: string }) =>
+    deOcurrencia(o, marcaDe.get(`${o.funcionId}|${o.periodo}`));
+  const perfilDeImprevisto = (i: (typeof imprevistos)[number]) =>
+    perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden, devueltaAntes(i, imprevistos)));
+  const perfilDeDelegada = (d: Delegada) => {
+    const fila = delegaciones.find((x) => x.id === d.id)!;
+    const comoImprevisto = { ...fila, pedido_por: yo, pedido_por_otro: null };
+    const anterior = devueltaAntes(comoImprevisto, delegaciones.map((x) => ({ ...x, pedido_por: yo, pedido_por_otro: null })));
+    return perfil(claveDeImprevisto(d.id), tareaDeImprevisto(comoImprevisto, quienesPiden, anterior));
+  };
+  const perfilDePedido = (p: (typeof pedidos)[number]) =>
+    perfil(
+      claveDeImprevisto(p.id),
+      tareaDeImprevisto({ ...p, pedido_por_otro: null, delega_funcion: null, resultado: null, razon: null, marcada_en: null }, quienesPiden),
+    );
 
   // Imprevistos: arriba de los flujos, fuera del plan y de la meta (ADR 0009).
   const imprevistosAbiertos = imprevistos.filter((i) => !i.resultado).sort((a, b) => a.vence.localeCompare(b.vence));
@@ -385,7 +413,7 @@ export default async function Semana() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             {plan.map((o) => (
-              <Tarjeta key={o.funcionId} o={o} hoy={hoy} />
+              <Tarjeta key={o.funcionId} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
             ))}
           </div>
 
@@ -419,18 +447,19 @@ export default async function Semana() {
               extras={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {siguientes.map((o) => (
-                    <Tarjeta key={o.funcionId} o={o} hoy={hoy} />
+                    <Tarjeta key={o.funcionId} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
                   ))}
                 </div>
               }
             />
           )}
 
-          <Delegadas delegadas={delegadas} hoy={hoy} gente={gente} />
+          <Delegadas delegadas={delegadas} hoy={hoy} gente={gente} perfilDe={perfilDeDelegada} />
+          <LoQuePedi pedidos={pedidos} hoy={hoy} perfilDe={perfilDePedido} />
 
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
           {mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) && (
-            <YaResueltas cerradas={cerradasDeLaSemana} marcaDe={marcaDe} />
+            <YaResueltas cerradas={cerradasDeLaSemana} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />
           )}
         </section>
 
@@ -448,6 +477,7 @@ export default async function Semana() {
                 quienesPiden={quienesPiden}
                 puedeBorrar={i.registrado_por === yo}
                 nota={devolucionDe(i)}
+                perfil={perfilDeImprevisto(i)}
               />
             ))}
           </div>

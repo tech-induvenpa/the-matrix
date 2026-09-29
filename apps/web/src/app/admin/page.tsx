@@ -7,12 +7,19 @@ import { Accion } from '../accion';
 import { Enviar } from '../boton';
 import { AvisoDeCobertura } from './cobertura';
 import { Ir } from '../ir';
+import { perfiles } from '../perfil';
+import { Punto } from '../abrir';
 
 // El trazador del backoffice: quien asigna entra y ve a su gente. Nada mas.
 // Lo que decide esta pantalla no es lo que muestra, es quien puede verla.
 export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
   const parametros = await searchParams;
-  const [todos, calendario, { opciones, deIds }] = await Promise.all([gente(), elCalendario(), pertenencias()]);
+  const [todos, calendario, { opciones, deIds }, { sinLeerDe }] = await Promise.all([
+    gente(),
+    elCalendario(),
+    pertenencias(),
+    perfiles(undefined),
+  ]);
 
   // El filtro solo acota lo que ya se leyo con la sesion de quien mira (INV-29).
   const filtro = filtroDe(parametros);
@@ -51,6 +58,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
           >
             <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
               {e.nombre}
+              {/* Comentarios sin leer en alguna de sus tareas abiertas (CEB-198). */}
+              {sinLeerDe(e.id) && <Punto />}
               <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--gris)', marginLeft: 10 }}>{enPalabras(e)}</span>
             </span>
             <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>

@@ -15,7 +15,7 @@ export type FilaFuncion = {
   fecha_alta: string;
 };
 
-export type FilaMarca = { id: string; funcion_id: string; periodo: string; resultado: string; razon: string | null };
+export type FilaMarca = { id: string; funcion_id: string; periodo: string; resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string };
 export type FilaEvento = { id: string; funcion_id: string; estado: string; razon: string | null; en: string };
 
 export type FilaImprevisto = {
@@ -73,7 +73,11 @@ export type FilaDelegacion = {
   devuelto_en: string | null;
   devuelto_razon: string | null;
   pedido_en: string;
+  marcada_en: string | null;
 };
+
+// Lo que un supervisor le pidio a alguien de otro equipo (CEB-198).
+export type FilaPedido = Pick<FilaImprevisto, 'id' | 'empleado_id' | 'texto' | 'pedido_en' | 'vence' | 'pedido_por'> & { nombre: string };
 
 // Lo que el agente propuso solo vale mientras nadie lo corrija.
 export const tipoDe = (f: FilaFuncion) => f.tipo_corregido ?? f.tipo_generado;
@@ -113,6 +117,7 @@ export async function panorama() {
     { data: bonos },
     { data: gente },
     { data: delegaciones },
+    { data: pedidos },
   ] = await Promise.all([
       supabase
         .from('funcion')
@@ -121,7 +126,7 @@ export async function panorama() {
         )
         .eq('activa', true),
       supabase.from('dia_no_habil').select('desde, hasta'),
-      supabase.from('marca').select('id, funcion_id, periodo, resultado, razon'),
+      supabase.from('marca').select('id, funcion_id, periodo, resultado, razon, marcada_en'),
       supabase.from('evento_flujo').select('id, funcion_id, estado, razon, en'),
       supabase.from('calendario').select('cargado_hasta').maybeSingle(),
       supabase.from('empleado').select('id, nombre_bloque, auth_user_id').maybeSingle(),
@@ -140,6 +145,8 @@ export async function panorama() {
       // Vacio para quien no supervisa (CEB-145).
       supabase.rpc('mi_gente'),
       supabase.rpc('mis_delegaciones'),
+      // Lo que pidio a gente de otros equipos (CEB-198). Vacio para quien no supervisa.
+      supabase.rpc('lo_que_pedi'),
     ]);
 
   // La seguridad por fila hace que solo llegue el suyo.
@@ -171,6 +178,7 @@ export async function panorama() {
     bonos: comoCambios(bonos),
     gente: (gente ?? []) as { id: string; nombre: string }[],
     delegaciones: (delegaciones ?? []) as FilaDelegacion[],
+    pedidos: (pedidos ?? []) as FilaPedido[],
   };
 }
 

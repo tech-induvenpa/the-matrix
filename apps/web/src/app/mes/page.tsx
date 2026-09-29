@@ -19,13 +19,16 @@ import { redirect } from 'next/navigation';
 import { DEL_EMPLEADO, DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
 import { ImprevistosDelMes } from '../imprevistos';
+import { perfiles } from '../perfil';
+import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
-export default async function Mes() {
+export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
-  const { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos, gente } = await panorama();
+  const [{ hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos, gente }, { perfil, deOcurrencia }] =
+    await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
 
   // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
   // cuyo "no pude" o atraso se le vinculo.
@@ -45,6 +48,8 @@ export default async function Mes() {
 
   const cerradas = marcas.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
   const marcaDe = new Map(marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m]));
+  const perfilDeOcurrencia = (o: { funcionId: string; periodo: string; vence: string }) =>
+    deOcurrencia(o, marcaDe.get(`${o.funcionId}|${o.periodo}`));
 
   const ocurrencias = funciones
     .filter((f) => tipoDe(f) === 'entregable')
@@ -157,14 +162,14 @@ export default async function Mes() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {suyas.map((o) => (
-                    <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} />
+                    <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
                   ))}
                 </div>
               </div>
             );
           })}
 
-          {yaResueltas.length > 0 && <YaResueltas cerradas={yaResueltas} marcaDe={marcaDe} />}
+          {yaResueltas.length > 0 && <YaResueltas cerradas={yaResueltas} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />}
 
           {todo.length === 0 && yaResueltas.length === 0 && (
             <p style={{ color: 'var(--gris)', fontSize: 14 }}>Este mes no tienes nada asignado.</p>
@@ -277,6 +282,7 @@ export default async function Mes() {
         quienesPiden={quienesPiden}
         hoy={hoy}
         calendario={calendario}
+        perfilDe={(i) => perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden))}
       />
     </main>
     </>

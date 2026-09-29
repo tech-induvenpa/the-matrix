@@ -20,6 +20,7 @@ import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
 import { CIRCULO, Numero } from './tarjeta';
+import { Titulo, type Perfil } from './perfil';
 
 // Un imprevisto: trabajo que llego sin estar en el reparto de nadie (ADR 0009).
 // Su urgencia se calcula como la de cualquier ocurrencia desde el vencimiento
@@ -33,6 +34,7 @@ export function TarjetaDeImprevisto({
   puedeBorrar,
   puedeMarcar = true,
   nota,
+  perfil,
 }: {
   i: FilaImprevisto;
   hoy: string;
@@ -42,6 +44,7 @@ export function TarjetaDeImprevisto({
   puedeMarcar?: boolean;
   // Una linea de mas bajo el texto, como la razon de una devolucion.
   nota?: string;
+  perfil?: Perfil;
 }) {
   const urgencia = urgenciaDe(calendario.habilesEntre(hoy, i.vence));
   const retraso = retrasoDe(i.vence, hoy, calendario);
@@ -54,7 +57,9 @@ export function TarjetaDeImprevisto({
       <span style={{ ...CIRCULO, background: VELO }}>{emojiDe(urgencia)}</span>
 
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{i.texto}</span>
+        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+          <Titulo perfil={perfil}>{i.texto}</Titulo>
+        </span>
         <span style={{ fontSize: 13, opacity: 0.78 }}>
           {/* Una delegacion es trabajo de su supervisor que le toca hacer a el (ADR 0012). */}
           {i.delega_funcion ? 'delegado por' : 'pedido por'} {quienPidio(i, quienesPiden)}{' '}
@@ -107,6 +112,7 @@ export function TarjetaDeImprevisto({
           </Enviar>
         </Accion>
       )}
+      {perfil?.contenido}
     </article>
   );
 }
@@ -189,6 +195,7 @@ export function ImprevistosDelMes({
   quienesPiden,
   hoy,
   calendario,
+  perfilDe,
 }: {
   imprevistos: readonly FilaImprevisto[];
   // Por imprevisto, los previstos que el empleado dijo que desplazo.
@@ -196,6 +203,7 @@ export function ImprevistosDelMes({
   quienesPiden: readonly QuienPide[];
   hoy: string;
   calendario: Calendario;
+  perfilDe?: (i: FilaImprevisto) => Perfil;
 }) {
   if (imprevistos.length === 0) return null;
 
@@ -212,44 +220,48 @@ export function ImprevistosDelMes({
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {imprevistos.map((i) => (
-          <div key={i.id} style={FILA}>
-            <span style={{ flexGrow: 1, minWidth: 0 }}>
-              {i.texto}
-              <span style={{ color: 'var(--gris)' }}>
-                {' '}
-                · {quienPidio(i, quienesPiden)} · {fechaCorta(i.pedido_en.slice(0, 10))}
+        {imprevistos.map((i) => {
+          const perfil = perfilDe?.(i);
+          return (
+            <div key={i.id} style={{ ...FILA, flexWrap: perfil?.contenido ? 'wrap' : undefined }}>
+              <span style={{ flexGrow: 1, minWidth: 0 }}>
+                <Titulo perfil={perfil}>{i.texto}</Titulo>
+                <span style={{ color: 'var(--gris)' }}>
+                  {' '}
+                  · {quienPidio(i, quienesPiden)} · {fechaCorta(i.pedido_en.slice(0, 10))}
+                </span>
+                {i.devuelto_razon && (
+                  <span style={{ display: 'block', fontSize: 12.5, color: '#9E3322' }}>
+                    te lo devolvió: “{i.devuelto_razon}”
+                  </span>
+                )}
+                {(explico.get(i.id) ?? []).length > 0 && (
+                  <span style={{ display: 'block', fontSize: 12.5, color: '#8A5A3E' }}>
+                    desplazó: {explico.get(i.id)!.join(', ')}
+                  </span>
+                )}
               </span>
-              {i.devuelto_razon && (
-                <span style={{ display: 'block', fontSize: 12.5, color: '#9E3322' }}>
-                  te lo devolvió: “{i.devuelto_razon}”
-                </span>
+              <span style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+                {i.devuelto_en
+                  ? '↩ devuelto'
+                  : i.resultado
+                    ? COMO_SE_MARCO[i.resultado]
+                    : retrasoDe(i.vence, hoy, calendario) > 0
+                      ? '🐢 abierto, vencido'
+                      : 'abierto'}
+              </span>
+              {/* Una devolucion no se deshace: la decidio el supervisor. */}
+              {i.resultado && !i.devuelto_en && (
+                <Accion accion={desmarcarImprevisto.bind(null, i.id)}>
+                  <Enviar style={{ ...BOTON, height: 28, fontSize: 12.5 }} enviando="…">
+                    Deshacer
+                  </Enviar>
+                </Accion>
               )}
-              {(explico.get(i.id) ?? []).length > 0 && (
-                <span style={{ display: 'block', fontSize: 12.5, color: '#8A5A3E' }}>
-                  desplazó: {explico.get(i.id)!.join(', ')}
-                </span>
-              )}
-            </span>
-            <span style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
-              {i.devuelto_en
-                ? '↩ devuelto'
-                : i.resultado
-                  ? COMO_SE_MARCO[i.resultado]
-                  : retrasoDe(i.vence, hoy, calendario) > 0
-                    ? '🐢 abierto, vencido'
-                    : 'abierto'}
-            </span>
-            {/* Una devolucion no se deshace: la decidio el supervisor. */}
-            {i.resultado && !i.devuelto_en && (
-              <Accion accion={desmarcarImprevisto.bind(null, i.id)}>
-                <Enviar style={{ ...BOTON, height: 28, fontSize: 12.5 }} enviando="…">
-                  Deshacer
-                </Enviar>
-              </Accion>
-            )}
-          </div>
-        ))}
+              {perfil?.contenido}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
