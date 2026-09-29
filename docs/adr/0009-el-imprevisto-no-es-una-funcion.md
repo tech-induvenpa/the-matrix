@@ -1,5 +1,7 @@
 # El imprevisto no es una funcion ni una ocurrencia
 
+> El vencimiento "a mas tardar el dia habil siguiente" lo reemplaza el ADR 0013.
+
 CEB-146 nacio como "Urgentes, la funcion comodin": toda persona tendria una
 funcion mas donde caeria el trabajo de ultimo minuto. Tenia la ventaja de
 reusar todo -- plan, marca, arrastre, reporte -- y el costo de romper lo que

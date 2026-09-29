@@ -113,10 +113,13 @@ esperables no cuenta ni a favor ni en contra.
 **Imprevisto**:
 Trabajo que llega sin estar en el reparto de nadie y se hace una sola vez. No es
 una funcion: no se repite, no tiene periodicidad ni ponderacion, y no se
-traspasa. Vence a mas tardar el dia habil siguiente a cuando se pidio (salvo
-una **delegacion**, que vence con su ocurrencia), asi que
-su urgencia se calcula igual que la de cualquier ocurrencia y nace alta sin que
-nadie la escriba. No arrastra, porque no tiene serie: si vence sin marca sigue
+traspasa. Lo que lo hace imprevisto es que se hace una vez y no esta en ningun
+reparto, no que apriete: puede no ser ni urgente ni importante (decidido el
+29/09/2026; antes vencia a mas tardar el dia habil siguiente). Quien lo anota
+dice para cuando lo necesita eligiendo una urgencia, y eso se convierte en su
+vencimiento (una **delegacion** vence con su ocurrencia). Desde ahi su urgencia
+se calcula igual que la de cualquier ocurrencia y sube sola con los dias: lo
+que se escribe es la fecha, nunca el numero. No arrastra, porque no tiene serie: si vence sin marca sigue
 abierto en la pantalla de su empleado hasta que alguien lo marque, y cuenta su
 retraso en dias habiles. Que se acumulen abiertos es el dato: dice que nadie
 les esta haciendo seguimiento. Se marca de tres formas: hecho, "no pude" o
@@ -127,7 +130,9 @@ borra y se registra otro, asi la fecha en que se pidio nunca se mueve. Un
 imprevisto borrado no cuenta en ninguna cifra, pero no desaparece: queda quien
 lo borro y cuando. Un imprevisto que vuelve con regularidad es una
 funcion que nadie ha dado de alta.
-_Avoid_: urgente (la urgencia se calcula, no se declara), encargo, comodin.
+_Avoid_: urgente (la urgencia se calcula, no se declara), encargo, comodin,
+funcion de holgura (la holgura es la porcion del cargo; el imprevisto no es
+una funcion).
 
 **Delegacion**:
 Un imprevisto que un supervisor le pide a alguien a su cargo para cumplir una
@@ -242,7 +247,10 @@ individuales: cuando el grupo descansa, descansa entero.
 
 **Cobertura del calendario**:
 Hasta que fecha alcanza la lista de dias no habiles. Mas alla de ella el sistema
-no calcula fechas, en lugar de suponer que no hay dias libres.
+no calcula fechas, en lugar de suponer que no hay dias libres. La excepcion es
+el vencimiento de un **imprevisto** (decidido el 29/09/2026): mas alla de la
+cobertura cuenta de lunes a viernes, y cuando se cargan dias no habiles nuevos,
+el que cae en uno se corre al habil siguiente sin avisar.
 
 **Cuadrante**:
 Uno de tres: hacer ya, ponle fecha, mantener al dia. El cuarto no existe: toda
