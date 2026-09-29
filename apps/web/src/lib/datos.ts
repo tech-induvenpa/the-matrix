@@ -194,3 +194,9 @@ export function comoVence(vence: string, hoy: string): string {
 
 // La version corta, para las filas del mes.
 export const fechaCorta = (fecha: string) => `${+fecha.slice(8, 10)} ${mesCortoDe(fecha)}`;
+
+// Con el dia de la semana, para el selector de urgencia: "mié 7 oct".
+export const fechaConDia = (fecha: string) =>
+  `${new Intl.DateTimeFormat('es', { weekday: 'short', timeZone: 'UTC' })
+    .format(new Date(`${fecha}T00:00:00Z`))
+    .replace('.', '')} ${fechaCorta(fecha)}`;

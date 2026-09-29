@@ -1,19 +1,29 @@
 import type { Calendario, Fecha } from './calendario';
+import { emojiDe, MARGEN } from './urgencia';
 
-// Un imprevisto es trabajo que llega sin estar en el reparto de nadie (ADR
-// 0009). Vence hoy o el dia habil siguiente a cuando se pidio, sin otra
-// opcion: lo que se necesita para el viernes no es un imprevisto, se planifica.
-export type Plazo = 'hoy' | 'manana';
+// Un imprevisto es trabajo que se hace una sola vez y no esta en el reparto de
+// nadie (ADR 0009). Quien lo anota elige una urgencia de 0 a 9 y se guarda el
+// vencimiento que le corresponde, no el numero (ADR 0013): el tope de su tramo
+// en dias habiles. Desde ahi sube solo, como cualquier ocurrencia.
+export const vencimientoPorUrgencia = (pedido: Fecha, urgencia: number, calendario: Calendario): Fecha =>
+  calendario.sumarHabiles(pedido, MARGEN[urgencia] ?? MARGEN[0]);
 
-const diaSiguiente = (f: Fecha): Fecha => {
-  const d = new Date(`${f}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
+export type OpcionDeUrgencia = { urgencia: number; emoji: string; vence: Fecha };
+
+// Las diez opciones del selector, de 9 a 0. La pantalla solo las pinta.
+export const opcionesDeUrgencia = (hoy: Fecha, calendario: Calendario): OpcionDeUrgencia[] =>
+  [9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((urgencia) => ({
+    urgencia,
+    emoji: emojiDe(urgencia),
+    vence: vencimientoPorUrgencia(hoy, urgencia, calendario),
+  }));
+
+// El dia en que se pidio, o 'hoy'. `pedidoEn` es un instante; el dia se toma
+// en UTC, igual que `hoy` en el resto de la aplicacion.
+export const cuandoSePidio = (pedidoEn: string, hoy: Fecha): Fecha | 'hoy' => {
+  const dia = new Date(pedidoEn).toISOString().slice(0, 10);
+  return dia === hoy ? 'hoy' : dia;
 };
-
-export function vencimientoDe(pedido: Fecha, plazo: Plazo, calendario: Calendario): Fecha {
-  return plazo === 'hoy' ? calendario.habilSiguiente(pedido) : calendario.habilSiguiente(diaSiguiente(pedido));
-}
 
 // No arrastra, porque no tiene serie: cuenta su retraso en dias habiles.
 export const retrasoDe = (vence: Fecha, hoy: Fecha, calendario: Calendario): number =>

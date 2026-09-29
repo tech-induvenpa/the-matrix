@@ -1,28 +1,78 @@
 import { describe, expect, it } from 'vitest';
 import { Calendario } from '../src/calendario';
-import { estadoDe, retrasoDe, vencimientoDe } from '../src/imprevistos';
+import { cuandoSePidio, estadoDe, opcionesDeUrgencia, retrasoDe, vencimientoPorUrgencia } from '../src/imprevistos';
+import { urgenciaDe } from '../src/urgencia';
 
 const sinFeriados = Calendario.con([]);
 
-describe('el vencimiento de un imprevisto', () => {
-  // 2026-09-25 es viernes.
-  it('pedido un viernes para manana vence el lunes', () => {
-    expect(vencimientoDe('2026-09-25', 'manana', sinFeriados)).toBe('2026-09-28');
+describe('el vencimiento de un imprevisto sale de la urgencia elegida', () => {
+  // 2026-09-24 es jueves.
+  it('cada urgencia vence en el tope de su tramo, en dias habiles', () => {
+    const vence = [9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((u) => vencimientoPorUrgencia('2026-09-24', u, sinFeriados));
+    expect(vence).toEqual([
+      '2026-09-24', // 9 · hoy
+      '2026-09-25', // 8 · manana
+      '2026-09-28', // 7 · 2 habiles, salta el fin de semana
+      '2026-09-30', // 6 · 4
+      '2026-10-05', // 5 · 7
+      '2026-10-07', // 4 · 9
+      '2026-10-14', // 3 · 14
+      '2026-10-19', // 2 · 17
+      '2026-10-23', // 1 · 21
+      '2026-11-04', // 0 · 29
+    ]);
   });
 
-  it('para hoy, un dia habil, vence ese mismo dia', () => {
-    expect(vencimientoDe('2026-09-24', 'hoy', sinFeriados)).toBe('2026-09-24');
+  it('pedido un viernes, 8 vence el lunes', () => {
+    expect(vencimientoPorUrgencia('2026-09-25', 8, sinFeriados)).toBe('2026-09-28');
   });
 
-  it('la vispera de un feriado, manana salta el feriado', () => {
+  it('salta los feriados cargados', () => {
     const conFeriado = Calendario.con([{ desde: '2026-10-12', hasta: '2026-10-12' }]);
     // 2026-10-09 es viernes y el lunes 12 es feriado.
-    expect(vencimientoDe('2026-10-09', 'manana', conFeriado)).toBe('2026-10-13');
+    expect(vencimientoPorUrgencia('2026-10-09', 8, conFeriado)).toBe('2026-10-13');
+    expect(vencimientoPorUrgencia('2026-10-09', 7, conFeriado)).toBe('2026-10-14');
   });
 
-  it('pedido un sabado, hoy y manana son el lunes: nunca pasa del habil siguiente', () => {
-    expect(vencimientoDe('2026-09-26', 'hoy', sinFeriados)).toBe('2026-09-28');
-    expect(vencimientoDe('2026-09-26', 'manana', sinFeriados)).toBe('2026-09-28');
+  it('mas alla de lo cargado cuenta de lunes a viernes', () => {
+    // Nada cargado en 2027: del martes 15 de diciembre, 29 habiles son el 26 de
+    // enero. El 25 de diciembre se salta; el 1 de enero, que nadie cargo, cuenta.
+    const soloEste = Calendario.con([{ desde: '2026-12-25', hasta: '2026-12-25' }]);
+    expect(vencimientoPorUrgencia('2026-12-15', 0, soloEste)).toBe('2027-01-26');
+  });
+
+  it('pedido un sabado, 9 y 8 son el lunes', () => {
+    expect(vencimientoPorUrgencia('2026-09-26', 9, sinFeriados)).toBe('2026-09-28');
+    expect(vencimientoPorUrgencia('2026-09-26', 8, sinFeriados)).toBe('2026-09-28');
+  });
+
+  it('la urgencia que se elige es la que la pantalla muestra ese dia', () => {
+    const conFeriado = Calendario.con([{ desde: '2026-10-12', hasta: '2026-10-16' }]);
+    for (const pedido of ['2026-09-24', '2026-09-25', '2026-10-09']) {
+      for (let u = 0; u <= 9; u++) {
+        const vence = vencimientoPorUrgencia(pedido, u, conFeriado);
+        expect(urgenciaDe(conFeriado.habilesEntre(pedido, vence))).toBe(u);
+      }
+    }
+  });
+});
+
+describe('las opciones del selector', () => {
+  it('son diez, de 9 a 0, con su emoji y su fecha; la 8 es manana', () => {
+    const opciones = opcionesDeUrgencia('2026-09-24', sinFeriados);
+    expect(opciones.map((o) => o.urgencia)).toEqual([9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
+    expect(opciones.map((o) => o.emoji).join('')).toBe('🔥🔥💣💣🧠🧠🍃🍃🍃🍃');
+    expect(opciones[1]).toEqual({ urgencia: 8, emoji: '🔥', vence: '2026-09-25' });
+    expect(opciones[9]?.vence).toBe('2026-11-04');
+  });
+});
+
+describe('cuando se pidio', () => {
+  it('hoy, o el dia en UTC', () => {
+    expect(cuandoSePidio('2026-09-29T20:21:23.297+00:00', '2026-09-29')).toBe('hoy');
+    expect(cuandoSePidio('2026-09-29T20:21:23.297+00:00', '2026-10-02')).toBe('2026-09-29');
+    // Las 22 del 29 en Caracas ya son el 30 en UTC.
+    expect(cuandoSePidio('2026-09-29T22:00:00-04:00', '2026-10-02')).toBe('2026-09-30');
   });
 });
 

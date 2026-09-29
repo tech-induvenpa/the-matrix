@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // Para las pruebas que pasan por una accion del servidor (INV-32).
+  resolve: { alias: { '@': new URL('../apps/web/src', import.meta.url).pathname } },
   test: {
     // Estas pruebas hablan con Postgres, con Google y con el modelo: los
     // tiempos son de red, no de calculo.

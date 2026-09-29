@@ -182,8 +182,9 @@ describe('INV-18: una delegacion vence con su ocurrencia, que todavia no vencio'
     expect((await delegar('2099-01-01')).error).not.toBeNull();
   });
 
-  it('un imprevisto sin delegacion sigue sin vencer despues del dia habil siguiente', async () => {
-    const lejos = new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10);
+  it('un imprevisto sin delegacion sigue sin vencer despues de 29 dias habiles', async () => {
+    // Noventa dias corridos son mas de 29 habiles aun con las colectivas.
+    const lejos = new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10);
     const { error } = await sesionAna.from('imprevisto').insert({ empleado_id: benito, texto: 'x', vence: lejos, pedido_por_otro: 'yo' });
     expect(error).not.toBeNull();
   });

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
-import { Calendario, vencimientoDe, vinculables, type Limite, type Plazo } from '@matriz/dominio';
+import { Calendario, vencimientoPorUrgencia, vinculables, type Limite } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { proyectarRazones } from '@/lib/razones';
 import { hoyISO } from '@/lib/datos';
@@ -143,11 +143,12 @@ export async function deshacerMarca(funcionId: string, periodo: string): Promise
   return { mensaje: 'Deshecho. Vuelve a tu lista.', celebra: false };
 }
 
-// Imprevistos (CEB-146). Vencen hoy o el habil siguiente: el vencimiento lo
-// calcula el dominio y la base lo vuelve a comprobar (INV-18).
+// Imprevistos (CEB-146). Quien anota elige la urgencia (ADR 0013): el
+// vencimiento lo calcula el dominio y la base lo vuelve a comprobar (INV-18).
 export async function registrarImprevisto(empleadoId: string, formulario: FormData): Promise<Aviso | undefined> {
   const texto = String(formulario.get('texto') ?? '').trim();
-  const plazo: Plazo = formulario.get('plazo') === 'hoy' ? 'hoy' : 'manana';
+  const elegida = Number(formulario.get('urgencia') || 8);
+  const urgencia = Number.isInteger(elegida) && elegida >= 0 && elegida <= 9 ? elegida : 8;
   const pidio = String(formulario.get('pidio') ?? '');
   const otro = String(formulario.get('otro') ?? '').trim();
   if (!texto || (pidio === 'otro' && !otro)) return;
@@ -157,7 +158,7 @@ export async function registrarImprevisto(empleadoId: string, formulario: FormDa
   const { error } = await supabase.from('imprevisto').insert({
     empleado_id: empleadoId,
     texto,
-    vence: vencimientoDe(hoyISO(), plazo, Calendario.con(dias ?? [])),
+    vence: vencimientoPorUrgencia(hoyISO(), urgencia, Calendario.con(dias ?? [])),
     pedido_por: pidio === 'otro' ? null : pidio,
     pedido_por_otro: pidio === 'otro' ? otro : null,
   });

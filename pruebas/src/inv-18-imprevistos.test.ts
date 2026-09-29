@@ -1,6 +1,6 @@
-import { Calendario, vencimientoDe } from '@matriz/dominio';
+import { Calendario, vencimientoPorUrgencia } from '@matriz/dominio';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { comoAdministrador, comoEmpleado, sembrarEmpleado, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, vaciar } from './entorno';
 
 // Los imprevistos (CEB-146, ADR 0009): trabajo que llega sin estar en el
 // reparto de nadie. Estas pruebas corren con sesiones reales, porque lo que
@@ -26,50 +26,60 @@ beforeAll(async () => {
   benito = await sembrarEmpleado('BENITO', 'benito@prueba.test');
 });
 
-// INV-18 · Ningun imprevisto vence despues del dia habil siguiente a cuando se
-// pidio. Ni por la interfaz ni por la base.
-describe('INV-18: un imprevisto vence hoy o el habil siguiente', () => {
+// INV-18 (reescrito, ADR 0013) · Un imprevisto vence entre el dia en que se
+// pidio y 29 dias habiles despues. Ni por la interfaz ni por la base.
+describe('INV-18: un imprevisto vence entre hoy y 29 habiles despues', () => {
+  // Aqui si hace falta el calendario de la base: en 29 habiles caen feriados.
+  let delaBase: Calendario;
+  beforeAll(async () => {
+    const { data } = await comoServicio().from('dia_no_habil').select('desde, hasta');
+    delaBase = Calendario.con(data ?? []);
+  });
+
+  const insertar = async (texto: string, vence: string) => {
+    const sesion = await comoEmpleado('ana@prueba.test');
+    return (await sesion.from('imprevisto').insert({ empleado_id: ana, texto, vence, pedido_por_otro: 'Un cliente' })).error;
+  };
+
   it('para manana se acepta', async () => {
-    const sesion = await comoEmpleado('ana@prueba.test');
-    const { error } = await sesion.from('imprevisto').insert({
-      empleado_id: ana,
-      texto: 'Cuadre de caja',
-      vence: vencimientoDe(hoy(), 'manana', calendario),
-      pedido_por_otro: 'Un cliente',
-    });
-    expect(error).toBeNull();
+    expect(await insertar('Cuadre de caja', vencimientoPorUrgencia(hoy(), 8, delaBase))).toBeNull();
   });
 
-  it('dos habiles despues se rechaza, con sesion de empleado', async () => {
-    const sesion = await comoEmpleado('ana@prueba.test');
-    const pasado = calendario.habilSiguiente(sumarDias(vencimientoDe(hoy(), 'manana', calendario), 1));
-    const { error } = await sesion.from('imprevisto').insert({
-      empleado_id: ana, texto: 'Para el viernes', vence: pasado, pedido_por_otro: 'Un cliente',
-    });
-    expect(error).not.toBeNull();
+  it('a 29 habiles se acepta; a 30 se rechaza', async () => {
+    expect(await insertar('Informe trimestral', delaBase.sumarHabiles(hoy(), 29))).toBeNull();
+    expect(await insertar('Demasiado lejos', delaBase.sumarHabiles(hoy(), 30))).not.toBeNull();
   });
 
-  it('dos habiles despues se rechaza tambien para el administrador', async () => {
+  it('a 30 habiles se rechaza tambien para el administrador', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
-    const pasado = calendario.habilSiguiente(sumarDias(vencimientoDe(hoy(), 'manana', calendario), 1));
     const { error } = await jefa.from('imprevisto').insert({
-      empleado_id: ana, texto: 'Para el viernes', vence: pasado, pedido_por_otro: 'Un cliente',
+      empleado_id: ana, texto: 'Demasiado lejos', vence: delaBase.sumarHabiles(hoy(), 30), pedido_por_otro: 'Un cliente',
     });
     expect(error).not.toBeNull();
   });
 
-  it('antes de cuando se pidio tampoco: no se registran imprevistos hacia atras', async () => {
+  it('antes de cuando se pidio tampoco: ni ayer, ni hacia atras', async () => {
+    expect(await insertar('De ayer', sumarDias(hoy(), -1))).not.toBeNull();
+    expect(await insertar('Del mes pasado', sumarDias(hoy(), -30))).not.toBeNull();
+  });
+
+  // Los dias se cuentan en la base igual que en el dominio, tambien mas alla
+  // de la cobertura del calendario, donde solo se saltan los fines de semana.
+  it('la base suma dias habiles como el dominio, dentro y fuera de lo cargado', async () => {
     const sesion = await comoEmpleado('ana@prueba.test');
-    const { error } = await sesion.from('imprevisto').insert({
-      empleado_id: ana, texto: 'Del mes pasado', vence: sumarDias(hoy(), -30), pedido_por_otro: 'Un cliente',
-    });
-    expect(error).not.toBeNull();
+    for (const desde of [hoy(), '2031-03-06']) {
+      for (const n of [0, 1, 2, 7, 29]) {
+        const { data, error } = await sesion.rpc('sumar_habiles', { f: desde, n });
+        expect(error).toBeNull();
+        expect(data).toBe(delaBase.sumarHabiles(desde, n));
+      }
+    }
   });
 
   it('la fecha en que se pidio la pone la base, no quien registra', async () => {
     const sesion = await comoEmpleado('ana@prueba.test');
     const { error } = await sesion.from('imprevisto').insert({
-      empleado_id: ana, texto: 'Pedido hace un mes', vence: vencimientoDe(hoy(), 'hoy', calendario),
+      empleado_id: ana, texto: 'Pedido hace un mes', vence: vencimientoPorUrgencia(hoy(), 9, calendario),
       pedido_por_otro: 'Un cliente', pedido_en: '2026-01-05T10:00:00Z',
     });
     expect(error).not.toBeNull();
@@ -92,7 +102,7 @@ describe('INV-2: los imprevistos de uno no los ve otro', () => {
   it('Benito no puede registrarle un imprevisto a Ana', async () => {
     const sesion = await comoEmpleado('benito@prueba.test');
     const { error } = await sesion.from('imprevisto').insert({
-      empleado_id: ana, texto: 'Colado', vence: vencimientoDe(hoy(), 'hoy', calendario), pedido_por_otro: 'Nadie',
+      empleado_id: ana, texto: 'Colado', vence: vencimientoPorUrgencia(hoy(), 9, calendario), pedido_por_otro: 'Nadie',
     });
     expect(error).not.toBeNull();
   });
@@ -106,7 +116,7 @@ describe('INV-2: los imprevistos de uno no los ve otro', () => {
   it('quien lo pidio es un administrador o un "otro", nunca los dos ni ninguno', async () => {
     const sesion = await comoEmpleado('benito@prueba.test');
     const { error } = await sesion.from('imprevisto').insert({
-      empleado_id: benito, texto: 'Sin origen', vence: vencimientoDe(hoy(), 'hoy', calendario),
+      empleado_id: benito, texto: 'Sin origen', vence: vencimientoPorUrgencia(hoy(), 9, calendario),
     });
     expect(error).not.toBeNull();
   });
@@ -117,7 +127,7 @@ async function registrar(correo: string, empleadoId: string, texto: string): Pro
   const sesion = await comoEmpleado(correo);
   const { data, error } = await sesion
     .from('imprevisto')
-    .insert({ empleado_id: empleadoId, texto, vence: vencimientoDe(hoy(), 'hoy', calendario), pedido_por_otro: 'Un cliente' })
+    .insert({ empleado_id: empleadoId, texto, vence: vencimientoPorUrgencia(hoy(), 9, calendario), pedido_por_otro: 'Un cliente' })
     .select('id')
     .single();
   if (error) throw error;

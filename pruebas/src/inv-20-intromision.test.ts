@@ -1,4 +1,4 @@
-import { Calendario, vencimientoDe } from '@matriz/dominio';
+import { Calendario, vencimientoPorUrgencia } from '@matriz/dominio';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
@@ -19,7 +19,7 @@ async function registrar(correo: string, empleadoId: string, texto: string): Pro
   const sesion = await comoEmpleado(correo);
   const { data, error } = await sesion
     .from('imprevisto')
-    .insert({ empleado_id: empleadoId, texto, vence: vencimientoDe(hoy(), 'hoy', calendario), pedido_por_otro: 'Un cliente' })
+    .insert({ empleado_id: empleadoId, texto, vence: vencimientoPorUrgencia(hoy(), 9, calendario), pedido_por_otro: 'Un cliente' })
     .select('id')
     .single();
   if (error) throw error;

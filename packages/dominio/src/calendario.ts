@@ -46,6 +46,19 @@ export class Calendario {
     return dias;
   }
 
+  // La fecha que esta 'dias' habiles despues de 'desde': la inversa de
+  // habilesEntre. Con cero, el habil siguiente o igual. Solo conoce los dias no
+  // habiles que se le dieron; mas alla cuenta de lunes a viernes (ADR 0013).
+  sumarHabiles(desde: Fecha, dias: number): Fecha {
+    if (dias === 0) return this.habilSiguiente(desde);
+    let f = desde;
+    for (let n = 0; n < dias; ) {
+      f = sumarDias(f, 1);
+      if (this.esHabil(f)) n++;
+    }
+    return f;
+  }
+
   esHabil(fecha: Fecha): boolean {
     const dia = enUTC(fecha).getUTCDay();
     if (dia === 0 || dia === 6) return false;
