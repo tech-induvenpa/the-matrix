@@ -123,4 +123,4 @@ Prueba: un empleado y una supervisora intentan cambiar su propia empresa, la de 
 - **Holding** existe para que nadie quede sin empresa: la gente del grupo tiene un empleador y un filtro, y no hay un caso "sin empresa" que cuidar en cada pantalla.
 - **Sede** y no *sucursal* ni *concesionario*: Holding también podría tener sedes y no vende carros.
 - El glosario decía "Día hábil: un día en que esta empresa trabaja" y "cuando la empresa descansa, descansa entera". Ahora dice el grupo: con cinco empresas, "esta empresa" era ambiguo.
-- "Auto Bengala" aparece en nombres de funciones: es a quien se le hace el trabajo, no una empresa del grupo.
+- Las sedes (CEB-191): KIA · 212, KIA · Centro, Changan · Caracas y Changan · Auto Bengala. Toyota e Induvenpa tienen sede única, así que no tienen ninguna cargada. "Cierre Auto Bengala" es una función sobre esa sede de Changan.

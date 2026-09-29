@@ -2,7 +2,7 @@
 // sesiones de verdad canjeadas por /auth/confirmar. Siembra, pide las paginas
 // con la cookie de cada quien y mira quien aparece en el HTML.
 // Uso: WEB=http://localhost:3107 npx tsx pruebas/src/qa-ceb-184.mts
-import { comoAdministrador, comoServicio, empresa, sembrarEmpleado, sembrarFuncion, sembrarSede, vaciar } from './entorno';
+import { comoAdministrador, comoServicio, empresa, sembrarEmpleado, sembrarFuncion, sede, vaciar } from './entorno';
 
 const WEB = process.env.WEB ?? 'http://localhost:3107';
 const servicio = comoServicio();
@@ -10,14 +10,14 @@ const servicio = comoServicio();
 await vaciar();
 const kia = await empresa('KIA');
 const toyota = await empresa('Toyota');
-const valencia = await sembrarSede(kia, 'Valencia');
-const maracay = await sembrarSede(kia, 'Maracay');
+const kia212 = await sede(kia, '212');
+const kiaCentro = await sede(kia, 'Centro');
 
-const ana = await sembrarEmpleado('ANA', 'ana@prueba.test', { empresa_id: kia, sede_id: valencia });
-const benito = await sembrarEmpleado('BENITO', 'benito@prueba.test', { empresa_id: kia, sede_id: maracay });
+const ana = await sembrarEmpleado('ANA', 'ana@prueba.test', { empresa_id: kia, sede_id: kia212 });
+const benito = await sembrarEmpleado('BENITO', 'benito@prueba.test', { empresa_id: kia, sede_id: kiaCentro });
 const carla = await sembrarEmpleado('CARLA', 'carla@prueba.test', { empresa_id: kia });
 const dario = await sembrarEmpleado('DARIO', 'dario@prueba.test', { empresa_id: toyota });
-await sembrarEmpleado('ELENA', 'elena@prueba.test', { empresa_id: kia, sede_id: valencia });
+await sembrarEmpleado('ELENA', 'elena@prueba.test', { empresa_id: kia, sede_id: kia212 });
 const f = (texto: string) => ({ hash_identidad: `h-${texto}`, texto, importancia: 5, periodicidad: 'mensual', tipo_generado: 'entregable', fecha_alta: '2026-01-01' });
 await sembrarFuncion(benito, f('Cierre Auto Bengala'));
 const conciliacion = await sembrarFuncion(dario, f('Conciliación bancaria'));
@@ -76,23 +76,23 @@ const sesionElena = await sesion('elena@prueba.test');
 let p = await pagina(jefa, '/admin');
 criterio('boot: /admin responde 200 al administrador', p.status === 200, String(p.status));
 esperar('El equipo sin filtro muestra a todos', p.html, ['ANA', 'BENITO', 'CARLA', 'DARIO', 'ELENA']);
-criterio('El equipo muestra empresa y sede de cada quien', p.html.includes('KIA · Valencia') && />Toyota</.test(p.html));
+criterio('El equipo muestra empresa y sede de cada quien', p.html.includes('KIA · 212') && />Toyota</.test(p.html));
 criterio('el alta pide la empresa (desplegable obligatorio)', /<select[^>]*name="pertenencia"[^>]*required/.test(p.html));
-criterio('las opciones ofrecen sedes solo de KIA', p.html.includes('KIA · Maracay') && !p.html.includes('Toyota · '));
+criterio('las opciones ofrecen sedes solo donde las hay (no Toyota)', p.html.includes('KIA · Centro') && !p.html.includes('Toyota · '));
 criterio('sin filtro no hay "quitar filtro"', !p.html.includes('quitar filtro'));
 esperar('filtrar KIA', (await pagina(jefa, `/admin?en=${kia}`)).html, ['ANA', 'BENITO', 'CARLA', 'ELENA']);
-esperar('filtrar KIA · Valencia trae a los de Valencia y a la sin sede', (await pagina(jefa, `/admin?en=${kia}/${valencia}`)).html, ['ANA', 'CARLA', 'ELENA']);
+esperar('filtrar KIA · 212 trae a los de 212 y a la sin sede', (await pagina(jefa, `/admin?en=${kia}/${kia212}`)).html, ['ANA', 'CARLA', 'ELENA']);
 esperar('filtrar Toyota', (await pagina(jefa, `/admin?en=${toyota}`)).html, ['DARIO']);
 esperar('buscar "CONCILIACION" (sin tilde ni minusculas)', (await pagina(jefa, '/admin?q=CONCILIACION')).html, ['DARIO']);
 esperar('KIA + "cierre"', (await pagina(jefa, `/admin?en=${kia}&q=cierre`)).html, ['BENITO', 'ELENA']);
-esperar('buscar por nombre de sede', (await pagina(jefa, '/admin?q=maracay')).html, ['BENITO']);
+esperar('buscar por nombre de sede', (await pagina(jefa, '/admin?q=centro')).html, ['BENITO']);
 p = await pagina(jefa, `/admin?en=${toyota}`);
 criterio('filtrando hay "quitar filtro" y el desplegable conserva la eleccion', p.html.includes('quitar filtro') && new RegExp(`value="${toyota}" selected`).test(p.html));
 
 // La ficha (CEB-185, CEB-186)
 p = await pagina(jefa, `/admin/${benito}?editar=persona`);
-criterio('la ficha muestra su empresa y sede', p.html.includes('KIA · Maracay'));
-criterio('la ficha edita empresa y sede con la actual elegida', new RegExp(`value="${kia}/${maracay}" selected`).test(p.html));
+criterio('la ficha muestra su empresa y sede', p.html.includes('KIA · Centro'));
+criterio('la ficha edita empresa y sede con la actual elegida', new RegExp(`value="${kia}/${kiaCentro}" selected`).test(p.html));
 
 // Que se arrastra y Razones (CEB-188)
 forma = FORMA.reporte;
@@ -116,7 +116,7 @@ forma = FORMA.supervisor;
 p = await pagina(sesionAna, '/equipo');
 criterio('boot: /equipo responde 200 a la supervisora', p.status === 200, String(p.status));
 esperar('la supervisora ve a su gente y no a la vecina', p.html, ['BENITO', 'CARLA', 'DARIO']);
-criterio('la supervisora ve la empresa de su gente', p.html.includes('KIA · Maracay'));
+criterio('la supervisora ve la empresa de su gente', p.html.includes('KIA · Centro'));
 esperar('supervisora filtra KIA', (await pagina(sesionAna, `/equipo?en=${kia}`)).html, ['BENITO', 'CARLA']);
 p = await pagina(sesionAna, '/equipo?q=elena');
 esperar('buscar a la vecina no la trae', p.html, []);

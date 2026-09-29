@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { delFiltro, type FiltroDelEquipo } from '@matriz/dominio';
-import { comoAdministrador, comoEmpleado, comoServicio, empresa, sembrarEmpleado, sembrarFuncion, sembrarSede, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, empresa, sembrarEmpleado, sembrarFuncion, sede, vaciar } from './entorno';
 
 // Cada empleado pertenece a una empresa del grupo (CEB-184). KIA con dos sedes
 // y gente en cada una, alguien de KIA sin sede, alguien de Toyota, y una
@@ -9,13 +9,13 @@ import { comoAdministrador, comoEmpleado, comoServicio, empresa, sembrarEmpleado
 
 let kia: string;
 let toyota: string;
-let valencia: string;
-let maracay: string;
-let ana: string; // KIA · Valencia, supervisora
-let benito: string; // KIA · Maracay, a cargo de ana
+let kia212: string;
+let kiaCentro: string;
+let ana: string; // KIA · 212, supervisora
+let benito: string; // KIA · Centro, a cargo de ana
 let carla: string; // KIA sin sede, a cargo de ana
 let dario: string; // Toyota, a cargo de ana
-let elena: string; // KIA · Valencia, vecina: nadie la supervisa
+let elena: string; // KIA · 212, vecina: nadie la supervisa
 let jefa: SupabaseClient;
 let sesionAna: SupabaseClient;
 let sesionElena: SupabaseClient;
@@ -33,14 +33,14 @@ beforeAll(async () => {
   await vaciar();
   kia = await empresa('KIA');
   toyota = await empresa('Toyota');
-  valencia = await sembrarSede(kia, 'Valencia');
-  maracay = await sembrarSede(kia, 'Maracay');
+  kia212 = await sede(kia, '212');
+  kiaCentro = await sede(kia, 'Centro');
 
-  ana = await sembrarEmpleado('ANA', 'ana@prueba.test', { empresa_id: kia, sede_id: valencia });
-  benito = await sembrarEmpleado('BENITO', 'benito@prueba.test', { empresa_id: kia, sede_id: maracay });
+  ana = await sembrarEmpleado('ANA', 'ana@prueba.test', { empresa_id: kia, sede_id: kia212 });
+  benito = await sembrarEmpleado('BENITO', 'benito@prueba.test', { empresa_id: kia, sede_id: kiaCentro });
   carla = await sembrarEmpleado('CARLA', 'carla@prueba.test', { empresa_id: kia });
   dario = await sembrarEmpleado('DARIO', 'dario@prueba.test', { empresa_id: toyota });
-  elena = await sembrarEmpleado('ELENA', 'elena@prueba.test', { empresa_id: kia, sede_id: valencia });
+  elena = await sembrarEmpleado('ELENA', 'elena@prueba.test', { empresa_id: kia, sede_id: kia212 });
   await sembrarFuncion(benito, entregable('Cierre Auto Bengala'));
   await sembrarFuncion(dario, entregable('Conciliación bancaria'));
   await sembrarFuncion(elena, entregable('Cierre de caja'));
@@ -112,8 +112,8 @@ describe('INV-29: filtrar y buscar solo acotan lo que ya se ve', () => {
 
   it('por sede: los de esa sede y los de su empresa sin sede', async () => {
     const gente = await loQueVeLaJefa();
-    expect(quienes(gente, { empresa: kia, sede: valencia })).toEqual([ana, carla, elena].sort());
-    expect(quienes(gente, { empresa: kia, sede: maracay })).toEqual([benito, carla].sort());
+    expect(quienes(gente, { empresa: kia, sede: kia212 })).toEqual([ana, carla, elena].sort());
+    expect(quienes(gente, { empresa: kia, sede: kiaCentro })).toEqual([benito, carla].sort());
   });
 
   it('buscar el texto de una funcion trae solo a quien la tiene, sin mayusculas ni tildes', async () => {
@@ -126,7 +126,7 @@ describe('INV-29: filtrar y buscar solo acotan lo que ya se ve', () => {
     const gente = await loQueVeAna();
     expect(gente.map((p) => p.id).sort()).toEqual([benito, carla, dario].sort());
     expect(quienes(gente, { empresa: kia })).toEqual([benito, carla].sort());
-    expect(quienes(gente, { empresa: kia, sede: valencia })).toEqual([carla]);
+    expect(quienes(gente, { empresa: kia, sede: kia212 })).toEqual([carla]);
     expect(quienes(gente, { texto: 'elena' })).toEqual([]);
     expect(quienes(gente, { texto: 'cierre de caja' })).toEqual([]);
   });
@@ -138,7 +138,7 @@ describe('INV-30: la sede de una persona siempre es de su empresa', () => {
       el_nombre: 'FABIO',
       el_correo: 'fabio@prueba.test',
       la_empresa: toyota,
-      la_sede: valencia,
+      la_sede: kia212,
     });
     expect(error).not.toBeNull();
   });
@@ -151,10 +151,10 @@ describe('INV-30: la sede de una persona siempre es de su empresa', () => {
   it('editar a una sede de otra empresa, o cambiar de empresa conservando la sede, se rechaza', async () => {
     const editar = (la_empresa: string, la_sede: string | null) =>
       jefa.rpc('editar_empleado', { el_empleado: benito, el_nombre: 'BENITO', el_correo: 'benito@prueba.test', la_empresa, la_sede });
-    expect((await editar(toyota, maracay)).error).not.toBeNull();
+    expect((await editar(toyota, kiaCentro)).error).not.toBeNull();
     // Cambiar de empresa sin sede la deja limpia.
     expect((await editar(toyota, null)).error).toBeNull();
-    expect((await editar(kia, maracay)).error).toBeNull();
+    expect((await editar(kia, kiaCentro)).error).toBeNull();
   });
 
   it('ni la llave de servicio deja una sede cruzada', async () => {
@@ -187,8 +187,8 @@ describe('INV-31: solo el administrador escribe la empresa y la sede de alguien'
 
     const { data } = await comoServicio().from('empleado').select('id, empresa_id, sede_id').in('id', [elena, benito]).order('nombre_bloque');
     expect(data).toEqual([
-      { id: benito, empresa_id: kia, sede_id: maracay },
-      { id: elena, empresa_id: kia, sede_id: valencia },
+      { id: benito, empresa_id: kia, sede_id: kiaCentro },
+      { id: elena, empresa_id: kia, sede_id: kia212 },
     ]);
   });
 
@@ -198,10 +198,10 @@ describe('INV-31: solo el administrador escribe la empresa y la sede de alguien'
       el_nombre: 'CARLA',
       el_correo: 'carla@prueba.test',
       la_empresa: kia,
-      la_sede: maracay,
+      la_sede: kiaCentro,
     });
     expect(error).toBeNull();
     const { data } = await comoServicio().from('empleado').select('empresa_id, sede_id').eq('id', carla).single();
-    expect(data).toEqual({ empresa_id: kia, sede_id: maracay });
+    expect(data).toEqual({ empresa_id: kia, sede_id: kiaCentro });
   });
 });
