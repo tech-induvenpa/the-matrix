@@ -247,6 +247,10 @@ export async function guardarBorrador(empleadoId: string, formulario: FormData) 
   );
   if (error) return { mensaje: error.message, celebra: false };
 
+  // "Publicar" viaja en el mismo formulario: primero se guarda lo que esta en
+  // pantalla, y eso es lo que se publica.
+  if (formulario.get('publicar') === 'si') return publicarReparto(empleadoId);
+
   revalidatePath(`/admin/${empleadoId}`);
   const suma = sumaDe(propuestos);
   return {

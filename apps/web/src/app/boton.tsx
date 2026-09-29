@@ -11,16 +11,23 @@ export function Enviar({
   children,
   style,
   enviando = 'Guardando…',
+  name,
+  value,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   enviando?: string;
+  // Para un formulario con dos botones: el que se pulso viaja con el envio.
+  name?: string;
+  value?: string;
 }) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
+      name={name}
+      value={value}
       disabled={pending}
       aria-busy={pending}
       style={{

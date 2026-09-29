@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
-import { descartarBorrador, guardarBorrador, publicarReparto } from '../acciones';
+import { descartarBorrador, guardarBorrador } from '../acciones';
 import { Ir } from '../../ir';
 
 type Fila = { id: string; texto: string; ponderacion: number };
@@ -105,23 +105,30 @@ export function Reparto({
               </span>
             </div>
           )}
+
+          {/* Publicar viaja en el mismo formulario: publica lo que esta en
+              pantalla, no el ultimo borrador guardado. Antes publicaba lo
+              guardado, y con cambios sin guardar decia "suma 0" mostrando 100. */}
+          {hayQueHacerAlgo && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Enviar
+                name="publicar"
+                value="si"
+                style={{ ...BOTON, background: falta === 0 ? 'var(--tinta)' : 'rgba(26,23,19,0.25)', color: '#fff' }}
+                enviando="Publicando…"
+              >
+                Publicar
+              </Enviar>
+              <span style={{ fontSize: 12, color: 'var(--gris)' }}>
+                {falta === 0 ? 'Desde ese momento es lo que ve en su pantalla.' : 'Tiene que sumar 100 para poder publicar.'}
+              </span>
+            </div>
+          )}
         </div>
       </Accion>
 
       {hayQueHacerAlgo && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Accion accion={publicarReparto.bind(null, empleadoId)}>
-            <Enviar
-              style={{ ...BOTON, background: falta === 0 ? 'var(--tinta)' : 'rgba(26,23,19,0.25)', color: '#fff' }}
-              enviando="Publicando…"
-            >
-              Publicar
-            </Enviar>
-          </Accion>
-
-          <span style={{ fontSize: 12, color: 'var(--gris)' }}>
-            {falta === 0 ? 'Desde ese momento es lo que ve en su pantalla.' : 'Tiene que sumar 100 para poder publicar.'}
-          </span>
 
           {hayBorrador && (
             <Accion accion={descartarBorrador.bind(null, empleadoId)}>
