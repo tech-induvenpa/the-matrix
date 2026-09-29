@@ -9,9 +9,12 @@ import { Ir } from './ir';
 export function Navegacion({
   entradas,
   salida,
+  personas = [],
 }: {
   entradas: { href: string; texto: string; externo?: boolean; porMes?: boolean }[];
   salida?: () => Promise<void>;
+  // Quienes pueden elegirse en la descarga. Solo el administrador las recibe.
+  personas?: readonly { id: string; nombre: string }[];
 }) {
   const donde = usePathname();
 
@@ -62,6 +65,19 @@ export function Navegacion({
                       ))}
                     </select>
                   </label>
+                  {personas.length > 0 && (
+                    <fieldset style={PERSONAS}>
+                      <legend style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500, padding: 0, marginBottom: 4 }}>
+                        ¿De quién? <span style={{ fontWeight: 400 }}>Sin marcar, de todos.</span>
+                      </legend>
+                      {personas.map((p) => (
+                        <label key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, fontWeight: 500 }}>
+                          <input type="checkbox" name="persona" value={p.id} />
+                          {p.nombre}
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
                   <button type="submit" style={BOTON}>
                     Descargar
                   </button>
@@ -137,6 +153,18 @@ const PANEL = {
   background: '#ffffff',
   boxShadow: '0 10px 30px rgba(26,23,19,0.18)',
   minWidth: 220,
+} as const;
+
+const PERSONAS = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 5,
+  border: 'none',
+  margin: 0,
+  padding: 0,
+  maxHeight: 220,
+  overflowY: 'auto',
+  color: 'var(--tinta)',
 } as const;
 
 const SELECTOR = {

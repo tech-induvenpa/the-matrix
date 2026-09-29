@@ -68,6 +68,8 @@ export async function GET(request: NextRequest) {
   const pedido = request.nextUrl.searchParams.get('mes') ?? '';
   const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedido) && pedido <= hoy.slice(0, 7) ? pedido : hoy.slice(0, 7);
   const meses = [mes];
+  // De quien: las personas marcadas en el menu, o todas si no se marco ninguna.
+  const personas = request.nextUrl.searchParams.getAll('persona');
   const desde = `${mes}-01`;
 
   const supabase = await clienteDelServidor();
@@ -115,6 +117,7 @@ export async function GET(request: NextRequest) {
 
     const funcionId = f.id as string;
     const empleadoId = t.empleado_id as string;
+    if (personas.length > 0 && !personas.includes(empleadoId)) continue;
     const persona = (t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '';
     const ponderacion = t.ponderacion as number;
     const diaTope = (f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined) as number | undefined;
