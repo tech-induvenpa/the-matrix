@@ -7,6 +7,7 @@ import { Calendario, vencimientoPorUrgencia, vinculables, type Limite } from '@m
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { proyectarRazones } from '@/lib/razones';
 import { hoyISO } from '@/lib/datos';
+import { deClave } from '@/lib/comentarios';
 
 // La razon vuelve al documento DESPUES de guardar y DESPUES de responder
 // (INV-4). Si Google esta caido, el empleado ya vio su marca guardada y no
@@ -253,6 +254,29 @@ export async function devolver(delegacionId: string, formulario: FormData): Prom
     mensaje: aQuien ? 'Devuelta. Ya la tiene otra vez, con tu razón.' : 'Devuelta. Volvió a tu lista.',
     celebra: false,
   };
+}
+
+// Un comentario en una tarea sin marcar (CEB-198). Quien lo escribe y cuando
+// los pone la base; si la tarea ya se marco o no es de su circulo, la base lo
+// rechaza (INV-34, INV-35).
+export async function comentar(clave: string, formulario: FormData): Promise<Aviso | undefined> {
+  const texto = String(formulario.get('texto') ?? '').trim();
+  if (!texto) return;
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.from('comentario').insert({ ...deClave(clave), texto });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return { mensaje: 'Comentado.', celebra: false };
+}
+
+// Abrir el perfil apaga lo sin leer, con la hora de la base (INV-37).
+export async function verTarea(clave: string): Promise<void> {
+  const { funcion_id, periodo, imprevisto_id } = deClave(clave);
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('ver_tarea', { la_funcion: funcion_id, el_periodo: periodo, el_imprevisto: imprevisto_id });
+  if (!error) revalidatePath('/', 'layout');
 }
 
 export async function salir() {

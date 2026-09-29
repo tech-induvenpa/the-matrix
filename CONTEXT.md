@@ -79,6 +79,31 @@ _Avoid_: instancia, repeticion.
 La ocurrencia vista desde la pantalla del empleado. Palabra de interfaz, no del
 modelo.
 
+**Perfil de la tarea**:
+Lo que se ve al abrir una ocurrencia o un imprevisto: su historia en una sola
+linea de tiempo. Hoy la forman quien la pidio o la delego (un imprevisto), la
+devolucion que la origino (una delegacion), sus **comentarios**, el
+**vencimiento** solo si paso sin marca, y al final su **marca** con su razon. Una ocurrencia no tiene evento de nacimiento: es
+calculada.
+Se abre igual despues de marcada, pero entonces solo se lee.
+_Avoid_: detalle, ficha, hilo (el hilo es solo la parte de los comentarios).
+
+**Comentario**:
+Lo que alguien escribe en una ocurrencia o un imprevisto mientras siguen sin
+marcar, con quien lo escribio y cuando. Lo escriben y lo leen el titular, su
+supervisor y el administrador; en un imprevisto, ademas quien lo pidio. Quien
+escribe sabe quien lo lee. No se edita ni se borra: un error se corrige con
+otro comentario, asi lo que se dijo antes de la marca nunca cambia despues.
+Un comentario de otro que no has visto esta **sin leer** hasta que abres el
+perfil de su tarea; una tarea marcada ya no tiene nada sin leer. Una
+delegacion y la ocurrencia que cumple tienen comentarios separados: quien la
+recibe no ve las tareas de su supervisor. En un **traspaso**, los comentarios
+de la ocurrencia abierta se van con ella: el contexto es parte del trabajo, y
+los lee el circulo de hoy, no el de cuando se escribieron. Deshacer la marca reabre los comentarios; una
+delegacion devuelta es un imprevisto nuevo y empieza sin ninguno. Un flujo no
+tiene comentarios: no se marca, asi que no tiene un antes y un despues.
+_Avoid_: nota, observacion, razon (esa acompana a la marca y es obligatoria).
+
 **Responsabilidad**:
 Encuadre, no entidad. Se usa al hablarle al empleado de por que algo pesa lo que
 pesa; nunca como nombre de una funcion en el modelo.
@@ -344,6 +369,9 @@ _Avoid_: problema, falla (senalan a la persona).
   sin sede, cuenta en todas las de su empresa
 - Un **Empleado** tiene a lo sumo un **Supervisor**; un **Supervisor** no tiene
   supervisor
+- Una **Ocurrencia** o un **Imprevisto** tiene muchos **Comentarios**; un
+  **Flujo**, ninguno. El **Administrador** no es titular de nada: comenta en
+  tareas ajenas
 - Una **Delegacion** une un **Imprevisto** de quien la recibe con una
   **Ocurrencia** de su **Supervisor**; la **Ocurrencia** sigue siendo del
   supervisor y solo su **Marca** la cierra

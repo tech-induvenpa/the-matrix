@@ -1,6 +1,6 @@
 import { bonoDelMes, Calendario, coberturaDe } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { COLUMNAS_DE_IMPREVISTO, comoCambios, hoyISO, type FilaImprevisto, type QuienPide } from '@/lib/datos';
+import { comoCambios, hoyISO, type QuienPide } from '@/lib/datos';
 import { notFound } from 'next/navigation';
 import { valorDe } from '@/lib/pertenencia';
 
@@ -212,19 +212,13 @@ export async function elCalendario() {
   };
 }
 
-// Los imprevistos abiertos de una persona, para su ficha. El administrador
-// aparece por defecto como quien lo pidio: es el caso en que registra el.
-export async function imprevistosDe(empleadoId: string) {
+// Lo que la ficha necesita para registrarle un imprevisto y mostrar sus
+// tareas. El administrador aparece por defecto como quien lo pidio: es el caso
+// en que registra el. Las tareas abiertas llegan por tareasAbiertasDe (CEB-198).
+export async function imprevistosDe() {
   const supabase = await clienteDelServidor();
-  const [{ data: dias }, { data: filas }, { data: quienes }, { data: usuario }] = await Promise.all([
+  const [{ data: dias }, { data: quienes }, { data: usuario }] = await Promise.all([
     supabase.from('dia_no_habil').select('desde, hasta'),
-    supabase
-      .from('imprevisto')
-      .select(COLUMNAS_DE_IMPREVISTO)
-      .eq('empleado_id', empleadoId)
-      .is('borrado_en', null)
-      .is('resultado', null)
-      .order('vence'),
     supabase.rpc('quienes_piden'),
     supabase.auth.getUser(),
   ]);
@@ -232,7 +226,6 @@ export async function imprevistosDe(empleadoId: string) {
   return {
     hoy: hoyISO(),
     calendario: Calendario.con(dias ?? []),
-    abiertos: (filas ?? []) as FilaImprevisto[],
     quienesPiden: (quienes ?? []) as QuienPide[],
     yo: usuario.user?.id ?? '',
   };

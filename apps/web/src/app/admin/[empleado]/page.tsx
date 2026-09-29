@@ -1,7 +1,10 @@
 import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
 import { enPalabras, pertenencias } from '@/lib/pertenencia';
 import { dolares } from '@/lib/datos';
-import { NuevoImprevisto, TarjetaDeImprevisto } from '../../imprevistos';
+import { NuevoImprevisto } from '../../imprevistos';
+import { tareasAbiertasDe } from '@/lib/tareas';
+import { perfiles } from '../../perfil';
+import { ListaDeTareas } from '../../lista';
 import { archivarFuncion, asignarSupervisor, crearFuncion, eliminarFuncion, editarEmpleado, fijarBono, traspasar } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
@@ -21,18 +24,20 @@ export default async function Cargo({
   searchParams,
 }: {
   params: Promise<{ empleado: string }>;
-  searchParams: Promise<{ editar?: string; peso?: string }>;
+  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string }>;
 }) {
   const { empleado } = await params;
-  const { editar, peso } = await searchParams;
-  const [cargo, imprevistos, bono, { opciones, dePersona }] = await Promise.all([
+  const { editar, peso, tarea } = await searchParams;
+  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil] = await Promise.all([
     cargoDe(empleado),
-    imprevistosDe(empleado),
+    imprevistosDe(),
     bonoDe(empleado),
     pertenencias(),
+    perfiles(tarea),
   ]);
 
   if (!cargo) return null;
+  const tareas = await tareasAbiertasDe(empleado, imprevistos.hoy, imprevistos.calendario);
 
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
@@ -162,21 +167,19 @@ export default async function Cargo({
         )}
       </section>
 
-      {/* Lo que el administrador le pide a ultimo minuto tambien cuenta como
-          imprevisto (CEB-151). Se marca desde la pantalla de la persona. */}
+      {/* Sus tareas abiertas, ocurrencias e imprevistos juntos (CEB-198): se
+          comentan desde su perfil y las marca ella. Lo que el administrador le
+          pide a ultimo minuto tambien cuenta como imprevisto (CEB-151). */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Imprevistos abiertos 🌪️</h2>
-        {imprevistos.abiertos.map((i) => (
-          <TarjetaDeImprevisto
-            key={i.id}
-            i={i}
-            hoy={imprevistos.hoy}
-            calendario={imprevistos.calendario}
-            quienesPiden={imprevistos.quienesPiden}
-            puedeMarcar={false}
-            puedeBorrar
-          />
-        ))}
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Sus tareas abiertas 🌪️</h2>
+        <ListaDeTareas
+          lista={tareas}
+          hoy={imprevistos.hoy}
+          calendario={imprevistos.calendario}
+          quienesPiden={imprevistos.quienesPiden}
+          perfiles={conPerfil}
+          puedeBorrar={() => true}
+        />
         <NuevoImprevisto
           empleadoId={empleado}
           quienesPiden={imprevistos.quienesPiden}

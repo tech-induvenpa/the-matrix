@@ -4,6 +4,7 @@ import { delegar, deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
+import { Titulo, type Perfil } from './perfil';
 
 export type Fila = {
   funcionId: string;
@@ -22,16 +23,19 @@ export type Fila = {
 };
 
 // La misma tarjeta en la semana y en el mes: una funcion no cambia de cara
-// segun por donde la mires, y dos tarjetas distintas era mantener dos.
-export function Tarjeta({ o, hoy }: { o: Fila; hoy: string }) {
+// segun por donde la mires, y dos tarjetas distintas era mantener dos. De
+// solo lectura en la lista de otra persona: marca el titular (CEB-198).
+export function Tarjeta({ o, hoy, perfil, soloLectura = false }: { o: Fila; hoy: string; perfil?: Perfil; soloLectura?: boolean }) {
   return (
-    <article style={{ ...TARJETA, ...COLOR[o.cuadrante] }}>
+    <article style={{ ...TARJETA, ...COLOR[o.cuadrante], flexWrap: perfil?.contenido ? 'wrap' : undefined }}>
       <span title={`Vence en ${o.faltan} días hábiles`} style={{ ...CIRCULO, background: COLOR[o.cuadrante].velo }}>
         {emojiDe(o.urgencia)}
       </span>
 
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{o.texto}</span>
+        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+          <Titulo perfil={perfil}>{o.texto}</Titulo>
+        </span>
         <span style={{ fontSize: 13, opacity: 0.78 }}>{comoVence(o.vence, hoy)}</span>
       </span>
 
@@ -40,49 +44,52 @@ export function Tarjeta({ o, hoy }: { o: Fila; hoy: string }) {
         <Numero etiqueta="URG" valor={o.urgencia} velo={COLOR[o.cuadrante].velo} />
       </span>
 
-      <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-        <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
-          <Enviar style={HECHO} enviando="Marcando…">
-            <span style={{ color: '#2E7D32', display: 'flex' }}>
-              <Check />
-            </span>
-            ¡Hecho!
-          </Enviar>
-        </Accion>
+      {!soloLectura && (
+        <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+          <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
+            <Enviar style={HECHO} enviando="Marcando…">
+              <span style={{ color: '#2E7D32', display: 'flex' }}>
+                <Check />
+              </span>
+              ¡Hecho!
+            </Enviar>
+          </Accion>
 
-        <PorQue
-          accion={marcarNoPude.bind(null, o.funcionId, o.periodo, o.vence)}
-          opciones={o.vinculables}
-          titulo="No pude"
-          placeholder="¿Qué pasó? Así lo entendemos luego"
-          estilo={{ ...REDONDO, color: '#C62828' }}
-        >
-          <Equis />
-        </PorQue>
+          <PorQue
+            accion={marcarNoPude.bind(null, o.funcionId, o.periodo, o.vence)}
+            opciones={o.vinculables}
+            titulo="No pude"
+            placeholder="¿Qué pasó? Así lo entendemos luego"
+            estilo={{ ...REDONDO, color: '#C62828' }}
+          >
+            <Equis />
+          </PorQue>
 
-        {o.delegarA && o.delegarA.length > 0 && (
-          <details style={{ position: 'relative' }}>
-            <summary title="Delegar" aria-label="Delegar" style={{ ...REDONDO, listStyle: 'none', color: 'var(--tinta)', fontSize: 17 }}>
-              🤝
-            </summary>
-            <Accion accion={delegar.bind(null, o.funcionId, o.periodo, o.vence)} style={DELEGAR}>
-              <select name="aQuien" required defaultValue="" style={SELECTOR} aria-label="A quién">
-                <option value="" disabled>
-                  ¿A quién?
-                </option>
-                {o.delegarA.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
+          {o.delegarA && o.delegarA.length > 0 && (
+            <details style={{ position: 'relative' }}>
+              <summary title="Delegar" aria-label="Delegar" style={{ ...REDONDO, listStyle: 'none', color: 'var(--tinta)', fontSize: 17 }}>
+                🤝
+              </summary>
+              <Accion accion={delegar.bind(null, o.funcionId, o.periodo, o.vence)} style={DELEGAR}>
+                <select name="aQuien" required defaultValue="" style={SELECTOR} aria-label="A quién">
+                  <option value="" disabled>
+                    ¿A quién?
                   </option>
-                ))}
-              </select>
-              <Enviar style={{ ...HECHO, height: 34, background: 'var(--tinta)', color: '#fff' }} enviando="…">
-                Delegar
-              </Enviar>
-            </Accion>
-          </details>
-        )}
-      </span>
+                  {o.delegarA.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </select>
+                <Enviar style={{ ...HECHO, height: 34, background: 'var(--tinta)', color: '#fff' }} enviando="…">
+                  Delegar
+                </Enviar>
+              </Accion>
+            </details>
+          )}
+        </span>
+      )}
+      {perfil?.contenido}
     </article>
   );
 }
@@ -205,7 +212,7 @@ export const REDONDO = {
   cursor: 'pointer',
 } as const;
 
-type Resuelta = { funcionId: string; periodo: string; texto: string };
+type Resuelta = { funcionId: string; periodo: string; texto: string; vence: string };
 type Marca = { resultado: string; razon?: string | null };
 
 // Lo ya cerrado, igual en la semana y en el mes: tachado, con lo que se dijo si
@@ -213,9 +220,11 @@ type Marca = { resultado: string; razon?: string | null };
 export function YaResueltas({
   cerradas,
   marcaDe,
+  perfilDe,
 }: {
   cerradas: readonly Resuelta[];
   marcaDe: Map<string, Marca>;
+  perfilDe?: (o: Resuelta) => Perfil;
 }) {
   return (
     <>
@@ -230,9 +239,10 @@ export function YaResueltas({
         {cerradas.map((o) => {
           const marca = marcaDe.get(`${o.funcionId}|${o.periodo}`);
           const pudo = marca?.resultado === 'hecho';
+          const perfil = perfilDe?.(o);
 
           return (
-            <div key={`${o.funcionId}|${o.periodo}`} style={RESUELTA}>
+            <div key={`${o.funcionId}|${o.periodo}`} style={{ ...RESUELTA, flexWrap: perfil?.contenido ? 'wrap' : undefined }}>
               <span style={{ color: pudo ? '#5E9E62' : '#C97B72', flexShrink: 0, display: 'flex' }}>
                 {pudo ? <Check /> : <Equis />}
               </span>
@@ -245,7 +255,7 @@ export function YaResueltas({
                   textDecorationColor: 'rgba(110,101,90,0.55)',
                 }}
               >
-                {o.texto}
+                <Titulo perfil={perfil}>{o.texto}</Titulo>
               </span>
               <span style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>
                 {pudo ? 'lista' : `no pude: ${marca?.razon ?? ''}`}
@@ -255,6 +265,7 @@ export function YaResueltas({
                   Deshacer
                 </Enviar>
               </Accion>
+              {perfil?.contenido}
             </div>
           );
         })}

@@ -55,3 +55,5 @@ export { delegable, delegacionesPorFuncion, estaAbierta, estadoDeLaDelegacion } 
 export type { Delegable, Delegacion, DelegacionesDeUnaFuncion, EstadoDeLaDelegacion } from './delegacion';
 export { delFiltro, leerPertenencia, opcionesDePertenencia } from './filtro-del-equipo';
 export type { Filtrable, FiltroDelEquipo, Opcion } from './filtro-del-equipo';
+export { haySinLeer, lineaDeTiempo, listaDeTareas, loLeen, sinLeer } from './perfil';
+export type { Comentario, EnLaLista, EventoDelPerfil, MarcaDelPerfil, TareaDelPerfil, TipoDeEvento } from './perfil';

@@ -7,19 +7,24 @@ import { fechaCorta } from '@/lib/datos';
 import { loDeMiGente, type ComoVaUnaFuncion, type PersonaACargo } from '@/lib/supervisor';
 import { DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
-import { NuevoImprevisto, TarjetaDeImprevisto } from '../imprevistos';
+import { NuevoImprevisto } from '../imprevistos';
+import { tareasAbiertasDe } from '@/lib/tareas';
+import { perfiles } from '../perfil';
+import { claveDeLaTarea, ListaDeTareas } from '../lista';
+import { Punto } from '../abrir';
 
 // El equipo (CEB-145): lo que un supervisor necesita para actuar el mismo dia.
 // Que arrastra y desde cuando, que se atraso, que razones dieron y que les
 // esta cayendo. Sin pesos, tasas ni bonos: eso es conversacion de sueldo, y es
 // del administrador (INV-3).
-export default async function TuGente({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
+export default async function TuGente({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { tarea?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
   const parametros = await searchParams;
-  const [{ hoy, calendario, gente: todos, quienesPiden, yo }, { opciones, deIds }] = await Promise.all([
+  const [{ hoy, calendario, gente: todos, quienesPiden, yo }, { opciones, deIds }, conPerfil] = await Promise.all([
     loDeMiGente(),
     pertenencias(),
+    perfiles(parametros.tarea),
   ]);
   // Quien no supervisa no tiene esta pantalla: un 404, como en /admin.
   if (todos.length === 0) notFound();
@@ -32,6 +37,10 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
     const funciones = delFiltro(conSuEmpresa, p.funciones, (f) => f.texto, filtro);
     return funciones ? [{ ...conSuEmpresa, funciones }] : [];
   });
+
+  // Sus tareas abiertas, ocurrencias e imprevistos juntos (CEB-198).
+  // ponytail: una lectura por persona; un equipo es de pocas.
+  const tareas = new Map(await Promise.all(gente.map(async (p) => [p.id, await tareasAbiertasDe(p.id, hoy, calendario)] as const)));
 
   return (
     <>
@@ -47,9 +56,13 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
           return (
             // Un acordeon por persona: `details` nativo, sin JavaScript. Cerrado,
             // el resumen ya dice si hay algo que mirar.
-            <details key={p.id} style={ACORDEON}>
+            // Abierto si el perfil de la URL es de una de sus tareas.
+            <details key={p.id} style={ACORDEON} open={tareas.get(p.id)?.some((t) => claveDeLaTarea(t) === parametros.tarea)}>
               <summary style={RESUMEN}>
-                <span style={{ fontSize: 20, fontWeight: 700, marginRight: 12 }}>{p.nombre}</span>
+                <span style={{ fontSize: 20, fontWeight: 700, marginRight: 12 }}>
+                  {p.nombre}
+                  {conPerfil.sinLeerDe(p.id) && <Punto />}
+                </span>
                 {p.empresa && <span style={{ fontSize: 13, color: 'var(--gris)', marginRight: 12 }}>{enPalabras(p)}</span>}
                 <span style={{ fontSize: 13, ...(pendientes(p) ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' }) }}>
                   {resumenDe(p, abiertos.length)}
@@ -67,19 +80,15 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
                 {p.funciones.length === 0 && <p style={NADA}>Todavía no tiene funciones publicadas.</p>}
               </div>
 
-              <h3 style={SUBTITULO}>Lo que le cayó</h3>
-              {abiertos.map((i) => (
-                <TarjetaDeImprevisto
-                  key={i.id}
-                  i={i}
-                  hoy={hoy}
-                  calendario={calendario}
-                  quienesPiden={quienesPiden}
-                  puedeMarcar={false}
-                  puedeBorrar={false}
-                />
-              ))}
-              {abiertos.length === 0 && <p style={NADA}>Nada abierto.</p>}
+              <h3 style={SUBTITULO}>Sus tareas abiertas</h3>
+              <ListaDeTareas
+                lista={tareas.get(p.id) ?? []}
+                hoy={hoy}
+                calendario={calendario}
+                quienesPiden={quienesPiden}
+                perfiles={conPerfil}
+                puedeBorrar={() => false}
+              />
               <NuevoImprevisto
                 empleadoId={p.id}
                 quienesPiden={quienesPiden}
