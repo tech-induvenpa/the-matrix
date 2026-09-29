@@ -143,6 +143,12 @@ describe('INV-26: registra y delega solo en su gente, solo lo suyo que no vencio
     expect(aCarla.error).not.toBeNull();
   });
 
+  it('no se registra un imprevisto pedido por si misma', async () => {
+    const { data: yo } = await sesionAna.auth.getUser();
+    const { error } = await sesionAna.from('imprevisto').insert({ empleado_id: ana, texto: 'x', vence: hoy(), pedido_por: yo.user!.id });
+    expect(error).not.toBeNull();
+  });
+
   it('aparece en la lista de quien lo pidio de cualquiera', async () => {
     const { data } = await sesionCarla.rpc('quienes_piden');
     expect((data as { nombre: string }[]).map((q) => q.nombre)).toContain('ANA');

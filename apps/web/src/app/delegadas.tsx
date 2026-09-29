@@ -45,6 +45,7 @@ export function Delegadas({ delegadas, hoy }: { delegadas: readonly Delegada[]; 
                 {/* La ocurrencia ya volvio a su lista: desde alli la hace, la
                     marca "no pude" o la delega otra vez. */}
                 {d.estado === 'no_pudo' && `${d.nombre} no pudo: “${d.razon ?? ''}” · volvió a tu lista`}
+                {d.estado === 'no_tomada' && `${d.nombre} no la tomó: “${d.razon ?? ''}” · volvió a tu lista`}
                 {d.estado === 'esperando' && `Delegada a ${d.nombre} · ${comoVence(d.vence, hoy)}`}
               </span>
             </span>

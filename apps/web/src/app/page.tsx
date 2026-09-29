@@ -113,9 +113,11 @@ export default async function Semana() {
       estado: estadoDeLaDelegacion({ resultado: d.resultado, devueltoEn: d.devuelto_en, borradoEn: null }, false),
       razon: d.razon,
     }))
-    .filter((d) => d.estado === 'esperando' || d.estado === 'para_revisar' || d.estado === 'no_pudo');
+    // "No pudo" y "no la tomo" se quedan a la vista con su razon: la ocurrencia
+    // volvio a su lista, pero tiene que saber por que.
+    .filter((d) => ['esperando', 'para_revisar', 'no_pudo', 'no_tomada'].includes(d.estado));
   const enManosDeOtro = new Set(
-    delegadas.filter((d) => d.estado !== 'no_pudo').map((d) => `${d.funcionId}|${d.periodo}`),
+    delegadas.filter((d) => d.estado === 'esperando' || d.estado === 'para_revisar').map((d) => `${d.funcionId}|${d.periodo}`),
   );
   const aQuienDelegar = (o: { funcionId: string; periodo: string; vence: string }) => {
     const d = ultimaDelegacion.get(`${o.funcionId}|${o.periodo}`);
@@ -437,7 +439,8 @@ export default async function Semana() {
               />
             ))}
           </div>
-          <NuevoImprevisto empleadoId={empleadoId} quienesPiden={quienesPiden} />
+          {/* Un supervisor no se pide trabajo a si mismo: no aparece en su lista. */}
+          <NuevoImprevisto empleadoId={empleadoId} quienesPiden={quienesPiden.filter((q) => q.id !== yo)} />
 
           {/* Con imprevistos abiertos, los flujos se pliegan pero nunca se van:
               sin el boton de "me atrase" a la vista, el atraso de un flujo deja

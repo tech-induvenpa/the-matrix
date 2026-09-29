@@ -167,6 +167,12 @@ begin
     raise exception 'Solo un administrador o un supervisor aparece como quien lo pidio'
       using errcode = 'check_violation';
   end if;
+  -- Nadie se pide trabajo a si mismo: un supervisor no aparece como quien le
+  -- pidio un imprevisto a el.
+  if new.pedido_por is not null
+     and new.pedido_por = (select auth_user_id from empleado where id = new.empleado_id) then
+    raise exception 'Nadie se pide un imprevisto a si mismo' using errcode = 'check_violation';
+  end if;
   return new;
 end;
 $$;
