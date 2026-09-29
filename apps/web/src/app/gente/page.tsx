@@ -6,7 +6,7 @@ import { DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
 import { NuevoImprevisto, TarjetaDeImprevisto } from '../imprevistos';
 
-// Tu gente (CEB-145): lo que un supervisor necesita para actuar el mismo dia.
+// La gente (CEB-145): lo que un supervisor necesita para actuar el mismo dia.
 // Que arrastra y desde cuando, que se atraso, que razones dieron y que les
 // esta cayendo. Sin pesos, tasas ni bonos: eso es conversacion de sueldo, y es
 // del administrador (INV-3).
@@ -21,7 +21,7 @@ export default async function TuGente() {
     <>
       <Navegacion entradas={DEL_SUPERVISOR} salida={salir} />
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 28 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Tu gente 👥</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>La gente 👥</h1>
 
         {gente.map((p) => {
           const abiertos = p.imprevistos.filter((i) => !i.resultado).sort((a, b) => a.vence.localeCompare(b.vence));

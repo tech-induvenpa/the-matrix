@@ -121,10 +121,10 @@ export const DEL_EMPLEADO = [
 
 // Un supervisor es un empleado con gente a cargo (CEB-145): su menu es el de
 // cualquiera, mas su gente.
-export const DEL_SUPERVISOR = [...DEL_EMPLEADO, { href: '/gente', texto: 'Tu gente' }];
+export const DEL_SUPERVISOR = [...DEL_EMPLEADO, { href: '/gente', texto: 'La gente' }];
 
 export const DEL_ADMINISTRADOR = [
-  { href: '/admin', texto: 'Tu gente' },
+  { href: '/admin', texto: 'La gente' },
   { href: '/admin/reporte', texto: 'Qué se arrastra' },
   { href: '/admin/razones', texto: 'Qué dijeron' },
   { href: '/admin/calendario', texto: 'El calendario' },
