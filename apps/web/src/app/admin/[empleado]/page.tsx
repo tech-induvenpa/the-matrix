@@ -76,15 +76,15 @@ export default async function Cargo({
       {/* Quien responde por esta persona (CEB-145). Un solo nivel: quien
           supervisa a alguien no tiene supervisor. */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su supervisor 👥</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su responsable 👥</h2>
         {cargo.supervisa.length > 0 ? (
           <p style={{ fontSize: 14, margin: 0 }}>
-            Supervisa a {cargo.supervisa.map((p) => p.nombre).join(', ')}. Quien supervisa no tiene supervisor.
+            Es responsable de {cargo.supervisa.map((p) => p.nombre).join(', ')}. Quien es responsable de alguien no tiene responsable.
           </p>
         ) : (
           <Accion accion={asignarSupervisor.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select name="supervisor" defaultValue={cargo.supervisorId ?? ''} style={CAMPO} aria-label="Su supervisor">
-              <option value="">Sin supervisor</option>
+            <select name="supervisor" defaultValue={cargo.supervisorId ?? ''} style={CAMPO} aria-label="Su responsable">
+              <option value="">Sin responsable</option>
               {cargo.puedenSupervisar.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nombre}

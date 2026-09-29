@@ -30,7 +30,10 @@ pondera, no traspasa y no toca el bono de nadie.
 Cada empleado tiene a lo sumo un supervisor, y quien supervisa no tiene
 supervisor: hay un solo nivel. Lo decide el administrador. Ve a quien tiene a
 cargo hoy, con todo su pasado; cuando se lo cambian, deja de verlo.
-_Avoid_: jefe, lider, coordinador, responsable.
+En pantalla se le dice **responsable**, y a su gente, **equipo** (decidido el
+29/09/2026): son terminos intercambiables, y el modelo sigue diciendo
+supervisor.
+_Avoid_: jefe, lider, coordinador.
 
 **Funcion**:
 Una responsabilidad recurrente que alguien tiene a su cargo. Existe por si misma
@@ -41,7 +44,8 @@ responsabilidad como entidad.
 **Titular**:
 El empleado que tiene una funcion a su cargo ahora. Una funcion tiene un titular
 a la vez y guarda todos los que tuvo.
-_Avoid_: dueno, responsable (el responsable tecnico era otra cosa), asignado.
+_Avoid_: dueno, responsable (el responsable tecnico era otra cosa, y en pantalla
+responsable es el **supervisor**), asignado.
 
 **Traspaso**:
 Cambiar de titular una funcion sin partirle el historial. Lo que se traspasa es

@@ -498,5 +498,5 @@ export async function asignarSupervisor(empleadoId: string, formulario: FormData
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath(`/admin/${empleadoId}`);
-  return { mensaje: supervisor ? 'Anotado. Ya responde por esta persona.' : 'Anotado. Sin supervisor.', celebra: false };
+  return { mensaje: supervisor ? 'Anotado. Ya responde por esta persona.' : 'Anotado. Sin responsable.', celebra: false };
 }
