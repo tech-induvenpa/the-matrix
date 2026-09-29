@@ -28,7 +28,6 @@ export default async function Cargo({
 
   if (!cargo) return null;
 
-  const bonoQueSeVe = bono.pendiente ?? bono.vigente;
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
 
@@ -77,11 +76,12 @@ export default async function Cargo({
       {/* El bono (ADR 0010): el unico monto que el sistema conoce. Un cambio
           rige siempre desde el mes que viene; la base lo decide, no esta pantalla. */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* El monto que se ve es el ultimo que se fijo: si ya hay uno para el mes
-            que viene, ese, para que editar no parezca no haber hecho nada. */}
+        {/* Siempre el bono que rige hoy. Si ya hay otro para el mes que viene,
+            va al lado como una nota, para que editar no parezca no haber hecho
+            nada. */}
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'baseline', gap: 10 }}>
           Su bono 💵
-          <strong>{bonoQueSeVe === null ? '—' : dolares(bonoQueSeVe)}</strong>
+          <strong>{bono.vigente === null ? '—' : dolares(bono.vigente)}</strong>
           <Ir
             href={editar === 'bono' ? '?' : '?editar=bono'}
             aria-label={editar === 'bono' ? 'Cerrar' : 'Editar el bono'}
@@ -89,6 +89,11 @@ export default async function Cargo({
           >
             {editar === 'bono' ? '✕' : '✏️'}
           </Ir>
+          {bono.pendiente !== null && (
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gris)' }}>
+              a partir del mes que viene: {dolares(bono.pendiente)}
+            </span>
+          )}
         </h2>
         {editar === 'bono' && (
           <Accion accion={fijarBono.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -97,7 +102,7 @@ export default async function Cargo({
               inputMode="decimal"
               required
               autoFocus
-              defaultValue={bonoQueSeVe ?? ''}
+              defaultValue={bono.pendiente ?? bono.vigente ?? ''}
               placeholder="Bono en dólares"
               style={CAMPO}
             />
