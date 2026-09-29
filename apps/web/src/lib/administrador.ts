@@ -75,6 +75,8 @@ export type FuncionDelCargo = {
   ponderacion: number;
   tipo: string | null;
   diaTope: number | null;
+  // Solo esta en el borrador: todavia no la ve nadie, y publicada pesa cero.
+  sinPublicar?: boolean;
 };
 
 export type Companero = { id: string; nombre: string };
@@ -124,14 +126,23 @@ export async function cargoDe(empleadoId: string): Promise<Cargo | null> {
 
   const { data: pendiente } = await supabase
     .from('titularidad')
-    .select('funcion_id, ponderacion')
+    .select('funcion_id, ponderacion, funcion!inner(id, texto, periodicidad, importancia, tipo_generado, tipo_corregido, dia_tope_generado, dia_tope_corregido)')
     .eq('empleado_id', empleadoId)
-    .is('publicado_en', null);
+    .is('publicado_en', null)
+    .eq('funcion.activa', true);
 
-  const funciones = ((data ?? []) as Record<string, unknown>[])
+  // Una funcion recien creada solo existe en el borrador: sin esto no aparecia
+  // en el reparto, y a una persona nueva no habia a que darle peso.
+  const publicadas = new Set(((data ?? []) as Record<string, unknown>[]).map((t) => (t.funcion as { id: string }).id));
+  const soloEnBorrador = ((pendiente ?? []) as Record<string, unknown>[])
+    .filter((t) => !publicadas.has(t.funcion_id as string))
+    .map((t): Record<string, unknown> => ({ ...t, ponderacion: 0, sinPublicar: true }));
+
+  const funciones = [...((data ?? []) as Record<string, unknown>[]), ...soloEnBorrador]
     .map((t) => {
       const f = t.funcion as Record<string, unknown>;
       return {
+        sinPublicar: t.sinPublicar === true,
         id: f.id as string,
         texto: f.texto as string,
         periodicidad: f.periodicidad as string,

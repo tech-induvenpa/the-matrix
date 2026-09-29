@@ -174,6 +174,7 @@ export default async function Cargo({
                 <div style={FILA}>
                   <span style={{ flexGrow: 1, minWidth: 0, fontSize: 14 }}>{f.texto}</span>
                   <span style={{ fontSize: 12.5, color: 'var(--gris)', whiteSpace: 'nowrap' }}>
+                    {f.sinPublicar && <strong style={{ color: '#8A7A3E' }}>sin publicar · </strong>}
                     {f.tipo ?? 'sin tipo'} · {f.periodicidad}
                     {f.diaTope ? ` · día ${f.diaTope}` : ''}
                   </span>
