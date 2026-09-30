@@ -1,6 +1,8 @@
 # El imprevisto no es una funcion ni una ocurrencia
 
 > El vencimiento "a mas tardar el dia habil siguiente" lo reemplaza el ADR 0013.
+> Que la holgura la asigne el administrador como una funcion mas lo reemplaza
+> el ADR 0014: ahora se llama cotidianidad y es el resto del cargo.
 
 CEB-146 nacio como "Urgentes, la funcion comodin": toda persona tendria una
 funcion mas donde caeria el trabajo de ultimo minuto. Tenia la ventaja de
