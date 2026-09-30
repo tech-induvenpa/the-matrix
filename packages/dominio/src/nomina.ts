@@ -4,6 +4,7 @@ import type { Periodicidad } from './ocurrencias';
 import type { Resultado } from './imprevistos';
 import { ocurrenciasEntre } from './ocurrencias';
 import { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura } from './descarga';
+import { comoSeCerro, type Reapertura, type Recierre } from './cierre-del-mes';
 
 // La nomina: cuanto del bono le corresponde a una persona en un mes, con su
 // fundamento (ADR 0016). Se lee como un estado de cuenta: el bono, un
@@ -115,4 +116,33 @@ export function conceptoDe(l: ParteDelCargo): string {
       ? `${l.sinCumplir} de ${l.veces} días hábiles con atraso`
       : `${l.sinCumplir} de ${l.veces} ${l.tipo === 'cotidianidad' ? 'imprevistos ' : ''}sin cumplir`;
   return `${l.parte} (${l.ponderacion}%): ${cuanto}`;
+}
+
+// Las reaperturas de un mes, como se leen en su nomina (CEB-232): cuando,
+// quien, por que, como se volvio a cerrar y que cambio. El total de antes se
+// guarda al reabrir; el de despues es el de antes de la siguiente reapertura
+// o, en la ultima, el de ahora. Sin bono al reabrir, no hay total de antes.
+export type ReaperturaDeLaNomina = {
+  en: string;
+  quien: string;
+  razon: string;
+  recierre: Recierre;
+  antes: number | null;
+  despues: number;
+};
+
+export function reaperturasDeLaNomina(
+  reaperturas: readonly (Reapertura & { totalAntes: number | null })[],
+  totalAhora: number,
+  ahora: string,
+): ReaperturaDeLaNomina[] {
+  const enOrden = [...reaperturas].sort((a, b) => a.en.localeCompare(b.en));
+  return enOrden.map((r, i) => ({
+    en: r.en,
+    quien: r.quien,
+    razon: r.razon,
+    recierre: comoSeCerro(r, ahora),
+    antes: r.totalAntes,
+    despues: enOrden[i + 1]?.totalAntes ?? totalAhora,
+  }));
 }

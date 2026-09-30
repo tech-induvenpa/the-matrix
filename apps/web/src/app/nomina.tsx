@@ -1,6 +1,7 @@
 import { conceptoDe } from '@matriz/dominio';
 import { dolares } from '@/lib/datos';
 import type { NominaDelMes } from '@/lib/nomina';
+import { enCaracas } from '@/lib/cierre-del-mes';
 
 // La nomina como estado de cuenta (ADR 0016): el bono, un descuento por cada
 // parte del cargo que no se cumplio entera, y el total a pagar. La misma para
@@ -29,6 +30,22 @@ export function EstadoDeCuenta({ datos }: { datos: NominaDelMes & { nomina: NonN
         <span>= Total a pagar</span>
         <span style={MONTO}>{dolares(nomina.total, { centavos: true })}</span>
       </div>
+      {/* Las correcciones tambien se ven (CEB-232): cada reapertura, en orden. */}
+      {datos.reaperturas.map((r) => (
+        <p key={r.en} style={REAPERTURA}>
+          Se reabrió el {enCaracas(r.en)} ({r.quien}): “{r.razon}”.{' '}
+          {r.recierre.como === 'a_mano'
+            ? `Se volvió a cerrar a mano el ${enCaracas(r.recierre.en)}.`
+            : r.recierre.como === 'solo'
+              ? `Se volvió a cerrar solo el ${enCaracas(r.recierre.en)}, a las veinticuatro horas.`
+              : `Sigue reabierto hasta el ${enCaracas(r.recierre.en)}.`}{' '}
+          {r.antes === null
+            ? `Total a pagar después: ${dolares(r.despues, { centavos: true })}.`
+            : r.antes === r.despues
+              ? `El total no cambió: ${dolares(r.despues, { centavos: true })}.`
+              : `Total a pagar antes: ${dolares(r.antes, { centavos: true })}; después: ${dolares(r.despues, { centavos: true })}.`}
+        </p>
+      ))}
     </div>
   );
 }
@@ -45,6 +62,8 @@ export const ultimosMeses = (hoy: string) =>
       texto: new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d),
     };
   });
+
+const REAPERTURA = { fontSize: 12.5, color: 'var(--gris)', margin: '6px 0 0', lineHeight: 1.4 } as const;
 
 const FILA = { display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13.5, lineHeight: 1.35 } as const;
 

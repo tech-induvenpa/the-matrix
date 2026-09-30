@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Calendario } from '../src/calendario';
 import { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura } from '../src/descarga';
 import { ocurrenciasEntre } from '../src/ocurrencias';
-import { conceptoDe, nominaDe, partesDelMes, type FuncionDeLaNomina, type ImprevistoDeLaNomina } from '../src/nomina';
+import { conceptoDe, nominaDe, partesDelMes, reaperturasDeLaNomina, type FuncionDeLaNomina, type ImprevistoDeLaNomina } from '../src/nomina';
 
 // La nomina: cuanto del bono le corresponde a una persona en un mes, con su
 // fundamento (ADR 0016). Se lee como un estado de cuenta.
@@ -148,5 +148,48 @@ describe('la nomina de un mes', () => {
     const suma = (filas: number[]) => Math.round(filas.reduce((t, f) => t + f, 0) * 100) / 100;
 
     expect(nomina.lineas.map((l) => l.descuento)).toEqual([suma(filasCaja), suma(filasFlujo), suma(filasCotidianidad)]);
+  });
+});
+
+// Las reaperturas se ven en la nomina (CEB-232): cuando, quien, por que, como
+// se volvio a cerrar y que cambio en el total.
+describe('las reaperturas en la nomina', () => {
+  const reapertura = (en: string, totalAntes: number | null, cerradaEn: string | null = null) => ({
+    mes: '2026-09',
+    razon: 'Se cayo el sistema',
+    quien: 'Jefa',
+    en,
+    cerradaEn,
+    totalAntes,
+  });
+  const AHORA = '2026-10-20T00:00:00.000Z';
+
+  it('un mes que nunca se reabrio no dice nada', () => {
+    expect(reaperturasDeLaNomina([], 420.91, AHORA)).toEqual([]);
+  });
+
+  it('una reapertura dice el total antes y el de ahora', () => {
+    expect(reaperturasDeLaNomina([reapertura('2026-10-02T14:00:00.000Z', 400, '2026-10-02T16:00:00.000Z')], 420.91, AHORA)).toEqual([
+      {
+        en: '2026-10-02T14:00:00.000Z',
+        quien: 'Jefa',
+        razon: 'Se cayo el sistema',
+        recierre: { como: 'a_mano', en: '2026-10-02T16:00:00.000Z' },
+        antes: 400,
+        despues: 420.91,
+      },
+    ]);
+  });
+
+  it('dos reaperturas salen las dos, en orden, y el despues de una es el antes de la siguiente', () => {
+    const lista = reaperturasDeLaNomina(
+      [reapertura('2026-10-08T12:00:00.000Z', 410), reapertura('2026-10-02T14:00:00.000Z', 400, '2026-10-02T16:00:00.000Z')],
+      420.91,
+      AHORA,
+    );
+    expect(lista.map((r) => [r.en, r.recierre.como, r.antes, r.despues])).toEqual([
+      ['2026-10-02T14:00:00.000Z', 'a_mano', 400, 410],
+      ['2026-10-08T12:00:00.000Z', 'solo', 410, 420.91],
+    ]);
   });
 });

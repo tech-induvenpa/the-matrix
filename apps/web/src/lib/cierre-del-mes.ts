@@ -8,15 +8,16 @@ import type { QuienPide } from '@/lib/datos';
 
 // Las reaperturas, de la mas vieja a la mas nueva, con quien reabrio en
 // palabras. Solo el administrador reabre, y quienes_piden lo nombra.
-export async function lasReaperturas(): Promise<Reapertura[]> {
+export async function lasReaperturas(): Promise<(Reapertura & { id: string })[]> {
   const supabase = await clienteDelServidor();
   const [{ data }, { data: quienes }] = await Promise.all([
-    supabase.from('reapertura').select('mes, razon, quien, en, cerrada_en').order('en'),
+    supabase.from('reapertura').select('id, mes, razon, quien, en, cerrada_en').order('en'),
     supabase.rpc('quienes_piden'),
   ]);
   const nombreDe = (id: string) => ((quienes ?? []) as QuienPide[]).find((q) => q.id === id)?.nombre ?? 'El administrador';
 
   return (data ?? []).map((r) => ({
+    id: r.id as string,
     mes: r.mes as string,
     razon: r.razon as string,
     quien: nombreDe(r.quien as string),
