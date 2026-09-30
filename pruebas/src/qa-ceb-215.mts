@@ -44,7 +44,11 @@ void nueva;
 // Lo cerrado este mes: un "no pude" en el cierre (no corta su arrastre), un
 // imprevisto marcado "no pude" y otro borrado, que no cuenta en nada.
 const mes = hoy.slice(0, 7);
-await servicio.from('marca').insert({ funcion_id: cierre, periodo: mes, resultado: 'no_pude', razon: 'RAZON-DEL-CIERRE', marcada_en: `${mes}-01T15:00:00Z` });
+const { data: noPude } = await servicio
+  .from('marca')
+  .insert({ funcion_id: cierre, periodo: mes, resultado: 'no_pude', razon: 'RAZON-DEL-CIERRE', marcada_en: `${mes}-01T15:00:00Z` })
+  .select('id')
+  .single();
 // Quien los registra y quien borra: la base pide un usuario de verdad.
 const quien = (await (await comoAdministrador('jefa@prueba.test')).auth.getUser()).data.user!.id;
 const imprevisto = (texto: string, extra: Record<string, unknown> = {}) => ({
@@ -62,6 +66,8 @@ const { data: marcado, error: sinMarcado } = await servicio
   .select('id')
   .single();
 if (sinMarcado) throw sinMarcado;
+// El "no pude" del cierre se lo llevo ese imprevisto: intromision.
+await servicio.from('intromision').insert({ imprevisto_id: marcado!.id, marca_id: noPude!.id });
 await servicio.from('imprevisto').insert(
   imprevisto('IMPREVISTO-BORRADO', {
     resultado: 'no_pude',
@@ -136,6 +142,21 @@ for (const [quien, cookie, ruta] of [
   html = texto((await pagina(cookie, `${ruta}?tarea=i:${marcado!.id}`)).html);
   criterio(`${quien}: al abrir una se ve su historia, sin poder comentar`, html.includes('No pude: “RAZON-DEL-IMPREVISTO”') && !html.includes('Escribe un comentario'));
 }
+
+// CEB-221 · El tablero: cuanto del cargo esta sin cumplir.
+// Ana: el cierre (30) arrastra 4 periodos, uno desplazado (7,5); su cotidianidad
+// (40) tuvo un imprevisto esperado y no lo cumplio (40). Total, 70.
+html = texto((await pagina(cJefa, '/admin')).html);
+criterio('jefa: la barra de ana dice cuanto esta sin cumplir y cuanto se desplazo', html.includes('70% sin cumplir') && html.includes('7,5% lo desplazó lo no planificado'));
+criterio('jefa: con su monto', html.includes('$863,8'));
+criterio('jefa: la barra lleva a su perfil', html.includes(`href="/admin/${ana}"`));
+criterio('jefa: alguien nuevo, plegado al final', /<details class="nuevo-item"><summary>＋ Alguien nuevo/.test(html));
+html = texto((await pagina(cJefa, '/admin?q=zzzz')).html);
+criterio('jefa: el filtro acota el tablero', !html.includes('70% sin cumplir'));
+html = texto((await pagina(cSara, '/equipo')).html);
+criterio('sara: la misma barra, sin montos', html.includes('70% sin cumplir') && !/\$\d/.test(html) && html.includes(`href="/equipo/${ana}"`));
+criterio('sara: solo su gente', !html.includes('CARLA'));
+criterio('sara: no da de alta a nadie', !html.includes('Alguien nuevo'));
 
 console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');
 process.exit(fallos ? 1 : 0);

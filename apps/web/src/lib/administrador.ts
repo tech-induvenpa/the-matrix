@@ -243,3 +243,17 @@ export async function bonoDe(empleadoId: string) {
   const proximo = bonoDelMes(historial, siguiente);
   return { vigente, pendiente: proximo !== vigente ? proximo : null };
 }
+
+// El bono de este mes de cada persona, para poner dolares junto a los
+// porcentajes del reporte (ADR 0010). Quien no tiene bono no aparece.
+export async function bonosDelMes(): Promise<Map<string, number>> {
+  const supabase = await clienteDelServidor();
+  const { data } = await supabase.from('bono').select('empleado_id, monto, rige_desde');
+  const mes = hoyISO().slice(0, 7);
+  const bonos = new Map<string, number>();
+  for (const id of new Set((data ?? []).map((b) => b.empleado_id as string))) {
+    const bono = bonoDelMes(comoCambios((data ?? []).filter((b) => b.empleado_id === id)), mes);
+    if (bono !== null) bonos.set(id, bono);
+  }
+  return bonos;
+}
