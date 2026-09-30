@@ -118,3 +118,6 @@ button { font: inherit; cursor: pointer; border: none; }
 .nuevo-item > summary::-webkit-details-marker { display: none; }
 .nuevo-item > summary:hover { border-color: rgba(26, 23, 19, 0.35); color: var(--tinta); }
 .nuevo-item[open] > summary { border-style: solid; color: var(--tinta); }
+
+/* El fondo detras de un <dialog> abierto (ver confirmar.tsx). */
+dialog::backdrop { background: rgba(26, 23, 19, 0.35); }

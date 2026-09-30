@@ -19,6 +19,7 @@ import {
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
+import { Confirmar } from './confirmar';
 import { CIRCULO, Numero } from './tarjeta';
 import { Titulo, type Perfil } from './perfil';
 
@@ -104,13 +105,16 @@ export function TarjetaDeImprevisto({
       )}
 
       {puedeBorrar && (
-        <Accion accion={borrarImprevisto.bind(null, i.id)}>
-          <Enviar style={{ ...REDONDO, fontSize: 13 }} enviando="…">
-            <span title="Borrar: lo registré por error" aria-label="Borrar">
-              🗑
-            </span>
-          </Enviar>
-        </Accion>
+        <Confirmar
+          accion={borrarImprevisto.bind(null, i.id)}
+          titulo="Borrar: lo registré por error"
+          pregunta={`¿Borrar «${i.texto}»?`}
+          detalle="Al borrar la tarea no impacta en su ponderación y desaparece de su lista."
+          si="Borrar"
+          estilo={{ ...REDONDO, fontSize: 13 }}
+        >
+          🗑
+        </Confirmar>
       )}
       {perfil?.contenido}
     </article>
