@@ -331,7 +331,38 @@ empleado sabe quien lo lee.
 **Cumplimiento ponderado**:
 Ocurrencias cumplidas (marcadas "hecho") sobre asignadas, pesadas por
 ponderacion. Un "no pude" libera el lugar en el plan, pero no cumple. Es peso salarial
-expresado en porcentaje, asi que lo ve JFS y no el empleado.
+expresado en porcentaje. El empleado lo ve de si mismo, en dolares, en su
+**nomina** (decidido el 30/09/2026, ADR 0016; antes no lo veia).
+
+**Nomina**:
+Cuanto del bono le corresponde a una persona en un mes, con su fundamento: el
+bono que regia ese mes por su cumplimiento ponderado, parte por parte --cada
+funcion por lo que se cumplio de ella, y la cotidianidad por sus imprevistos
+hechos sobre los esperados--. No incluye el sueldo base, que el sistema no
+conoce: en este glosario, nomina es solo la parte variable. Se lee como un
+estado de cuenta: el bono del mes, un descuento por cada parte del cargo que
+no se cumplio entera --con cuanto pesa y cuanto no se cumplio--, y el total a
+pagar. Cada descuento va en centavos y el total es el bono menos los
+descuentos, asi que siempre cuadra. Mientras el mes
+esta abierto es provisional y se mueve con cada marca; al **cierre del mes**
+queda fija y es lo que se comparte con finanzas. La ve la persona, en vivo, y el
+administrador; el supervisor no, porque no ve montos. Sin bono ese mes no hay
+nomina. Quien cambia de empresa en el mes aparece entero en la de su empresa al
+cierre: la nomina, como el bono, nunca parte un mes.
+_Avoid_: liquidacion, pago, sueldo (los tres sugieren el monto completo).
+
+**Cierre del mes**:
+El momento en que un mes deja de moverse: a las 23:59, hora de Caracas, de su
+ultimo dia habil. Es automatico y es un corte duro: lo que no se marco antes
+cuenta como no cumplido, aunque se haya hecho, y desde ahi nada de ese mes se
+marca, se deshace ni se devuelve. Casi todo lo mensual vence ese mismo dia, asi
+que se marca ese dia o se pierde: es a proposito.
+Solo el administrador puede reabrir un mes cerrado, y siempre con una razon.
+Se reabre para todos, nunca para una persona sola: reabierto, el mes vuelve al
+uso normal, y todos marcan, deshacen y devuelven como antes. Se vuelve a cerrar cuando el administrador lo decide o, si se le
+olvida, solo, veinticuatro horas despues de reabrirlo. Cada reapertura queda
+registrada --quien, cuando, por que y que cambio-- y se ve en la nomina.
+_Avoid_: cierre (a secas, se confunde con la funcion "Cierre de caja"), corte.
 
 **Arrastre**:
 Periodos seguidos en que una funcion no se cumplio, por "no pude" o por vencer
