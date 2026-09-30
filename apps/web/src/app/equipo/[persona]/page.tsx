@@ -11,6 +11,7 @@ import { ListaDeTareas } from '../../lista';
 import { Punto } from '../../abrir';
 import { Ir } from '../../ir';
 import { ComoVa } from '../../como-va';
+import { CerradasDelMes } from '../../cerradas';
 
 // El perfil de una persona del equipo, para su supervisor (CEB-217): las dos
 // columnas del perfil del administrador (admin/[empleado]), sin editar y sin
@@ -26,7 +27,7 @@ export default async function SuPerfil({
   if (await esAdministrador()) redirect('/admin');
 
   const [{ persona }, { tarea }] = await Promise.all([params, searchParams]);
-  const [{ hoy, calendario, gente, quienesPiden, yo }, { deIds }, conPerfil] = await Promise.all([
+  const [{ hoy, calendario, datos, gente, quienesPiden, yo }, { deIds }, conPerfil] = await Promise.all([
     loDeMiGente(),
     pertenencias(),
     perfiles(tarea),
@@ -104,6 +105,7 @@ export default async function SuPerfil({
               rotulo="＋ Nueva tarea"
               fila
             />
+            <CerradasDelMes datos={datos} empleadoId={p.id} hoy={hoy} quienesPiden={quienesPiden} perfiles={conPerfil} abierta={tarea} />
           </section>
         </div>
       </main>
