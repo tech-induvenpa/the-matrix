@@ -2,7 +2,7 @@ import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
 import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
 import { datosDelEquipo, lasDelegaciones } from '@/lib/equipo';
 import { barrasDe, cargasDe, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
-import { Carga, DesdeCuando, MasDelegadas, Patrones, SinCumplir } from '../tablero';
+import { Carga, DesdeCuando, MasDelegadas, Resumen, SinCumplir } from '../tablero';
 import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../filtro';
 import { darDeAlta } from './acciones';
@@ -47,8 +47,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   const montoDe = (id: string, peso: number) => (bonos.has(id) ? montoNoCumplido(peso, bonos.get(id)!) : null);
 
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <Patrones />
+    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
@@ -60,10 +59,13 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
 
       <AvisoDeCobertura cobertura={calendario.cobertura} cargadoHasta={calendario.cargadoHasta} enlazar />
 
-      <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
-      <DesdeCuando lineas={lineas} hoy={calendario.hoy} perfilDe={(id) => `/admin/${id}`} />
-      <Carga cargas={cargas} perfilDe={(id) => `/admin/${id}`} />
-      <MasDelegadas repetidas={repetidas} perfilDe={(funcionId) => `/admin/${titularDe.get(funcionId)}`} />
+      <Resumen barras={barras} lineas={lineas} cargas={cargas} montoDe={montoDe} />
+      <div className="tablero">
+        <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
+        <DesdeCuando lineas={lineas} hoy={calendario.hoy} perfilDe={(id) => `/admin/${id}`} />
+        <Carga cargas={cargas} perfilDe={(id) => `/admin/${id}`} />
+        <MasDelegadas repetidas={repetidas} perfilDe={(funcionId) => `/admin/${titularDe.get(funcionId)}`} />
+      </div>
 
       <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
 

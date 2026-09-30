@@ -11,7 +11,7 @@ import { salir } from '../acciones';
 import { perfiles } from '../perfil';
 import { Punto } from '../abrir';
 import { Ir } from '../ir';
-import { Carga, DesdeCuando, MasDelegadas, Patrones, SinCumplir } from '../tablero';
+import { Carga, DesdeCuando, MasDelegadas, Resumen, SinCumplir } from '../tablero';
 
 // El equipo (CEB-215): el mismo tablero que ve el administrador, con su gente
 // y sin montos (ADR 0015). Debajo, la lista de personas: cada una lleva a su
@@ -45,16 +45,18 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   return (
     <>
       <Navegacion entradas={DEL_SUPERVISOR} salida={salir} />
-      <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <Patrones />
+      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
 
         <Filtrar opciones={opciones} valores={parametros} />
 
-        <SinCumplir barras={barras} perfilDe={(id) => `/equipo/${id}`} />
-        <DesdeCuando lineas={lineas} hoy={hoy} perfilDe={(id) => `/equipo/${id}`} />
-        <Carga cargas={cargas} perfilDe={(id) => `/equipo/${id}`} />
-        <MasDelegadas repetidas={repetidas} />
+        <Resumen barras={barras} lineas={lineas} cargas={cargas} />
+        <div className="tablero">
+          <SinCumplir barras={barras} perfilDe={(id) => `/equipo/${id}`} />
+          <DesdeCuando lineas={lineas} hoy={hoy} perfilDe={(id) => `/equipo/${id}`} />
+          <Carga cargas={cargas} perfilDe={(id) => `/equipo/${id}`} />
+          <MasDelegadas repetidas={repetidas} />
+        </div>
 
         <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
         {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14, margin: 0 }}>Nadie de tu equipo coincide con el filtro.</p>}
