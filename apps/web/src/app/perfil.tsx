@@ -77,6 +77,17 @@ function PerfilDeTarea({
   return (
     <div style={PANEL}>
       <AlAbrir clave={clave} />
+      {/* Arriba, junto a lo ultimo que se dijo. Marcada, solo se lee: lo que se
+          dijo antes de la marca no cambia despues. */}
+      {!tarea.marca && (
+        <Accion accion={comentar.bind(null, clave)} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+          <textarea name="texto" required rows={2} placeholder="Escribe un comentario" aria-label="Comentario" style={CAJA} />
+          <Enviar style={BOTON} enviando="…">
+            Comentar
+          </Enviar>
+        </Accion>
+      )}
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--gris)' }}>{loLeen(lectores)}</p>
       {eventos.length === 0 && <p style={{ margin: 0, color: 'var(--gris)', fontSize: 13.5 }}>Todavía nadie ha dicho nada.</p>}
       <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
         {eventos.map((e, n) => (
@@ -87,17 +98,6 @@ function PerfilDeTarea({
           </li>
         ))}
       </ol>
-
-      {/* Marcada, solo se lee: lo que se dijo antes de la marca no cambia despues. */}
-      {!tarea.marca && (
-        <Accion accion={comentar.bind(null, clave)} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-          <textarea name="texto" required rows={2} placeholder="Escribe un comentario" aria-label="Comentario" style={CAJA} />
-          <Enviar style={BOTON} enviando="…">
-            Comentar
-          </Enviar>
-        </Accion>
-      )}
-      <p style={{ margin: 0, fontSize: 12, color: 'var(--gris)' }}>{loLeen(lectores)}</p>
     </div>
   );
 }

@@ -83,7 +83,8 @@ modelo.
 Lo que se ve al abrir una ocurrencia o un imprevisto: su historia en una sola
 linea de tiempo. Hoy la forman quien la pidio o la delego (un imprevisto), la
 devolucion que la origino (una delegacion), sus **comentarios**, el
-**vencimiento** solo si paso sin marca, y al final su **marca** con su razon. Una ocurrencia no tiene evento de nacimiento: es
+**vencimiento** solo si paso sin marca, y su **marca** con su razon. Se lee
+de lo mas reciente a lo mas viejo: la marca, si la hay, arriba. Una ocurrencia no tiene evento de nacimiento: es
 calculada.
 Se abre igual despues de marcada, pero entonces solo se lee.
 _Avoid_: detalle, ficha, hilo (el hilo es solo la parte de los comentarios).

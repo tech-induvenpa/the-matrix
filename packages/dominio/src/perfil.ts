@@ -46,9 +46,10 @@ const evento = (tipo: TipoDeEvento, cuando: string, quien?: string, texto?: stri
   ...(texto !== undefined && { texto }),
 });
 
-// Una ocurrencia no tiene evento de nacimiento: es calculada. El vencimiento
-// solo aparece si paso sin marca, al final de su dia: lo que se dijo ese dia
-// fue antes de vencer. La marca va al final: despues de ella no se comenta.
+// Lo mas reciente arriba: se abre el perfil para ver que paso ultimo. Una
+// ocurrencia no tiene evento de nacimiento: es calculada. El vencimiento solo
+// aparece si paso sin marca, al final de su dia: lo que se dijo ese dia fue
+// antes de vencer. La marca va primero: despues de ella no se comenta.
 export function lineaDeTiempo(tarea: TareaDelPerfil, comentarios: readonly Comentario[], hoy: Fecha): EventoDelPerfil[] {
   const eventos: EventoDelPerfil[] = comentarios.map((c) => evento('comentario', c.escritoEn, c.autorNombre, c.texto));
 
@@ -58,10 +59,10 @@ export function lineaDeTiempo(tarea: TareaDelPerfil, comentarios: readonly Comen
   }
   if (!tarea.marca && tarea.vence < hoy) eventos.push(evento('vencio', `${tarea.vence}T23:59:59.999Z`));
 
-  eventos.sort((a, b) => a.cuando.localeCompare(b.cuando));
+  eventos.sort((a, b) => b.cuando.localeCompare(a.cuando));
 
   if (tarea.marca) {
-    eventos.push(evento(tarea.marca.resultado, tarea.marca.marcadaEn, undefined, tarea.marca.razon ?? undefined));
+    eventos.unshift(evento(tarea.marca.resultado, tarea.marca.marcadaEn, undefined, tarea.marca.razon ?? undefined));
   }
   return eventos;
 }

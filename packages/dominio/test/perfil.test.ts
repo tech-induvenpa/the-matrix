@@ -17,15 +17,15 @@ describe('la linea de tiempo del perfil', () => {
     expect(tipos({ tipo: 'ocurrencia', vence: '2026-09-20', marca: null })).toEqual(['💬 comentario']);
   });
 
-  it('ordena por fecha, con autor y texto en cada comentario', () => {
+  it('lo mas reciente arriba, con autor y texto en cada comentario', () => {
     const eventos = lineaDeTiempo(
       { tipo: 'ocurrencia', vence: '2026-09-20', marca: null },
       [comentario('Benito', '2026-09-15T09:00:00Z', 'segundo'), comentario('Ana', '2026-09-14T09:00:00Z', 'primero')],
       hoy,
     );
     expect(eventos.map((e) => [e.quien, e.texto])).toEqual([
-      ['Ana', 'primero'],
       ['Benito', 'segundo'],
+      ['Ana', 'primero'],
     ]);
   });
 
@@ -36,22 +36,23 @@ describe('la linea de tiempo del perfil', () => {
       hoy,
     );
     expect(vencida.map((e) => e.emoji)).toEqual(['💬', '⏰', '💬']);
+    expect(vencida.map((e) => e.cuando.slice(0, 10))).toEqual(['2026-09-15', '2026-09-14', '2026-09-14']);
 
     // Todavia no vence, o vence hoy: nada.
     expect(tipos({ tipo: 'ocurrencia', vence: hoy, marca: null })).toEqual(['💬 comentario']);
     // Marcada, aunque sea tarde: la marca cuenta la historia.
     expect(
       tipos({ tipo: 'ocurrencia', vence: '2026-09-14', marca: { resultado: 'hecho', razon: null, marcadaEn: '2026-09-15T12:00:00Z' } }),
-    ).toEqual(['💬 comentario', '✅ hecho']);
+    ).toEqual(['✅ hecho', '💬 comentario']);
   });
 
-  it('la marca va al final, con su razon', () => {
+  it('la marca va primero, con su razon', () => {
     const eventos = lineaDeTiempo(
       { tipo: 'ocurrencia', vence: '2026-09-20', marca: { resultado: 'no_pude', razon: 'sin sistema', marcadaEn: '2026-09-15T12:00:00Z' } },
       [comentario('Ana', '2026-09-14T10:00:00Z')],
       hoy,
     );
-    expect(eventos.at(-1)).toEqual({ tipo: 'no_pude', emoji: '❌', cuando: '2026-09-15T12:00:00Z', texto: 'sin sistema' });
+    expect(eventos[0]).toEqual({ tipo: 'no_pude', emoji: '❌', cuando: '2026-09-15T12:00:00Z', texto: 'sin sistema' });
   });
 
   const imprevisto = {
@@ -69,7 +70,7 @@ describe('la linea de tiempo del perfil', () => {
   });
 
   it('una delegacion con quien la delego, y si viene de una devuelta, la razon', () => {
-    expect(tipos({ ...imprevisto, delegacion: true })).toEqual(['🤝 delegado', '💬 comentario']);
+    expect(tipos({ ...imprevisto, delegacion: true })).toEqual(['💬 comentario', '🤝 delegado']);
     const eventos = lineaDeTiempo(
       { ...imprevisto, delegacion: true, devolucion: { por: 'Ana', razon: 'falta la firma', en: '2026-09-13T08:00:00Z' } },
       [],
@@ -84,7 +85,7 @@ describe('la linea de tiempo del perfil', () => {
   it('🙅 para lo que no se tomo', () => {
     expect(
       tipos({ ...imprevisto, marca: { resultado: 'no_lo_tome', razon: 'no es mio', marcadaEn: '2026-09-15T00:00:00Z' } }, []),
-    ).toEqual(['📥 pedido', '🙅 no_lo_tome']);
+    ).toEqual(['🙅 no_lo_tome', '📥 pedido']);
   });
 });
 
