@@ -10,6 +10,11 @@ const mesSiguiente = () => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 7);
 };
 
+// Los bonos sembrados rigen desde este mes: si rigieran desde uno ya cerrado,
+// la base pediria su foto del cierre antes de dejar cambiar un bono o un peso
+// (ADR 0017), y eso lo prueba INV-46.
+const esteMes = () => new Date().toISOString().slice(0, 7);
+
 let ana: string;
 let benito: string;
 
@@ -18,8 +23,8 @@ beforeAll(async () => {
   ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
   benito = await sembrarEmpleado('BENITO', 'benito@prueba.test');
   await comoServicio().from('bono').insert([
-    { empleado_id: ana, monto: 1000, rige_desde: '2026-01-01' },
-    { empleado_id: benito, monto: 800, rige_desde: '2026-01-01' },
+    { empleado_id: ana, monto: 1000, rige_desde: `${esteMes()}-01` },
+    { empleado_id: benito, monto: 800, rige_desde: `${esteMes()}-01` },
   ]);
 });
 
@@ -63,7 +68,7 @@ describe('INV-23: un cambio rige desde el mes siguiente', () => {
 
     const { data } = await jefa.from('bono').select('monto, rige_desde').eq('empleado_id', ana).order('rige_desde');
     expect(data?.map((b) => [b.monto, (b.rige_desde as string).slice(0, 7)])).toEqual([
-      [1000, '2026-01'],
+      [1000, esteMes()],
       [1150, mesSiguiente()],
     ]);
   });

@@ -81,7 +81,7 @@ describe('la nomina de un mes', () => {
   it('un flujo descuenta sus dias habiles atrasados sobre los del mes entero', () => {
     const nomina = nominaDe(1000, partes([conciliacion([{ estado: 'atrasado', en: '2026-09-28T10:00:00Z' }])], []))!;
     // lunes 28, martes 29, miercoles 30: tres de veintidos.
-    expect(nomina.lineas).toEqual([{ parte: 'Conciliación', tipo: 'flujo', ponderacion: 20, sinCumplir: 3, veces: 22, descuento: 27.27 }]);
+    expect(nomina.lineas).toEqual([{ funcionId: 'conciliacion', parte: 'Conciliación', tipo: 'flujo', ponderacion: 20, sinCumplir: 3, veces: 22, descuento: 27.27 }]);
     expect(nomina.total).toBe(972.73);
   });
 

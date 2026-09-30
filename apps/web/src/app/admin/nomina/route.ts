@@ -1,9 +1,9 @@
-import { Calendario, conceptoDe, estadoDelMes } from '@matriz/dominio';
+import { Calendario, conceptoDe, estadoDelMes, nominaDeLaFoto } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { escapar } from '@/lib/datos';
 import { ahoraEnLaBase, lasReaperturas } from '@/lib/cierre-del-mes';
-import { nombreDelMes, nominaDelMes } from '@/lib/nomina';
+import { comoFoto, nombreDelMes, tomarLasFotos } from '@/lib/nomina';
 import { SIN_EMPRESA, TODAS } from '@/lib/nomina-por-empresa';
 import { NextResponse, type NextRequest } from 'next/server';
 
@@ -16,10 +16,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 // La empresa puede ser una, todas (un solo archivo, con la columna EMPRESA
 // al frente) o ninguna: quien no tiene empresa asignada tambien cobra.
 //
-// Solo de meses cerrados: el mes en curso es provisional. Quien no tiene bono
-// ese mes no aparece. La empresa es la de hoy: quien cambio de empresa en el
-// mes aparece entero en la de su empresa al cierre (la nomina, como el bono,
-// nunca parte un mes).
+// Solo de meses cerrados: el mes en curso es provisional. Sale de la foto del
+// cierre (ADR 0017), asi que no cambia aunque despues cambie un peso, un bono
+// o una empresa. Quien no tiene bono ese mes no aparece. La empresa es la de
+// la foto: quien cambio de empresa en el mes aparece entero en la de su
+// empresa al cierre (la nomina, como el bono, nunca parte un mes).
 const CABECERA = ['PERSONA', 'CONCEPTO', 'MONTO'];
 
 
@@ -37,33 +38,38 @@ export async function GET(request: NextRequest) {
   const supabase = await clienteDelServidor();
   const todas = empresaId === TODAS;
   const ninguna = empresaId === SIN_EMPRESA;
-  const deLaEmpresa = supabase.from('empleado').select('id, nombre_bloque, empresa(nombre)').order('nombre_bloque');
-  const [{ data: dias }, { data: empresa }, { data: gente }, reaperturas, ahora] = await Promise.all([
+  const [{ data: dias }, { data: empresa }, reaperturas, ahora] = await Promise.all([
     supabase.from('dia_no_habil').select('desde, hasta'),
     todas || ninguna ? Promise.resolve({ data: null }) : supabase.from('empresa').select('nombre').eq('id', empresaId).maybeSingle(),
-    todas ? deLaEmpresa : ninguna ? deLaEmpresa.is('empresa_id', null) : deLaEmpresa.eq('empresa_id', empresaId),
     lasReaperturas(),
     ahoraEnLaBase(),
   ]);
   if (!todas && !ninguna && !empresa) return new NextResponse(null, { status: 404 });
-  const nombreDeEmpresa = (e: Record<string, unknown>) => ((e.empresa as { nombre?: string } | null)?.nombre ?? 'Sin empresa');
-  // En el de todas, agrupado por empresa y, dentro, por nombre.
-  const ordenada = todas
-    ? [...(gente ?? [])].sort((a, b) => nombreDeEmpresa(a).localeCompare(nombreDeEmpresa(b)) || String(a.nombre_bloque).localeCompare(String(b.nombre_bloque)))
-    : (gente ?? []);
 
   const estado = estadoDelMes(mes, Calendario.con(dias ?? []), ahora, reaperturas);
   if (estado.estado !== 'cerrado') return new NextResponse('Ese mes todavía no cerró: su nómina es provisional.', { status: 409 });
 
+  // La primera vez que hace falta, la foto se toma aqui.
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return new NextResponse(sinFoto, { status: 409 });
+  const deLaFoto = supabase.from('foto_del_cierre').select('empresa_id, bono, total, partes, empleado(nombre_bloque), empresa(nombre)').eq('mes', mes);
+  const { data: fotos } = await (todas ? deLaFoto : ninguna ? deLaFoto.is('empresa_id', null) : deLaFoto.eq('empresa_id', empresaId));
+
+  const nombreDeEmpresa = (f: Record<string, unknown>) => ((f.empresa as { nombre?: string } | null)?.nombre ?? 'Sin empresa');
+  const persona = (f: Record<string, unknown>) => (f.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '';
+  // En el de todas, agrupado por empresa y, dentro, por nombre.
+  const ordenada = [...((fotos ?? []) as Record<string, unknown>[])].sort(
+    (a, b) => (todas ? nombreDeEmpresa(a).localeCompare(nombreDeEmpresa(b)) : 0) || persona(a).localeCompare(persona(b)),
+  );
+
   const filas: string[][] = [];
-  for (const e of ordenada) {
-    const { nomina } = await nominaDelMes(e.id as string, mes);
+  for (const f of ordenada) {
+    const nomina = nominaDeLaFoto(comoFoto(f));
     if (!nomina) continue;
-    const persona = e.nombre_bloque as string;
-    const al = (fila: string[]) => filas.push(todas ? [nombreDeEmpresa(e), ...fila] : fila);
-    al([persona, `Bono de ${nombreDelMes(mes)}`, monto(nomina.bono)]);
-    for (const l of nomina.lineas) al([persona, conceptoDe(l), monto(-l.descuento)]);
-    al([persona, 'Total a pagar', monto(nomina.total)]);
+    const al = (fila: string[]) => filas.push(todas ? [nombreDeEmpresa(f), ...fila] : fila);
+    al([persona(f), `Bono de ${nombreDelMes(mes)}`, monto(nomina.bono)]);
+    for (const l of nomina.lineas) al([persona(f), conceptoDe(l), monto(-l.descuento)]);
+    al([persona(f), 'Total a pagar', monto(nomina.total)]);
   }
 
   const csv = [todas ? ['EMPRESA', ...CABECERA] : CABECERA, ...filas].map((f) => f.map(escapar).join(';')).join('\n');

@@ -3,13 +3,17 @@ import {
   Calendario,
   cotidianidadDe,
   estadoDelMes,
+  fotoDelCierre,
   nominaDe,
+  nominaDeLaFoto,
   partesDelMes,
   tareasDelMes,
   merecenFuegos,
   reaperturasDeLaNomina,
   type EstadoDelMes,
+  type FotoDelCierre,
   type Nomina,
+  type ParteDelCargo,
   type Periodicidad,
   type ReaperturaDeLaNomina,
   type Resultado,
@@ -17,6 +21,7 @@ import {
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { comoCambios, hoyISO, sumarDias } from '@/lib/datos';
 import { ahoraEnLaBase, lasReaperturas } from '@/lib/cierre-del-mes';
+import { esAdministrador } from '@/lib/administrador';
 
 // Con sus reaperturas, si las hubo (CEB-232).
 export type NominaDelMes = {
@@ -37,10 +42,42 @@ export type NominaDelMes = {
 // ninguna nomina.
 export async function nominaDelMes(empleadoId: string, mes: string): Promise<NominaDelMes> {
   const supabase = await clienteDelServidor();
+
+  const [{ data: dias }, reaperturas, { data: totales }, ahora] = await Promise.all([
+    supabase.from('dia_no_habil').select('desde, hasta'),
+    lasReaperturas(),
+    supabase.from('total_al_reabrir').select('reapertura_id, total').eq('empleado_id', empleadoId),
+    ahoraEnLaBase(),
+  ]);
+
+  const calendario = Calendario.con(dias ?? []);
+  const estado = estadoDelMes(mes, calendario, ahora, reaperturas);
+
+  // Un mes cerrado se lee de su foto (ADR 0017). Si todavia no la tiene, nada
+  // de ese mes se movio desde el cierre -- la base no lo deja --, y en vivo
+  // sale lo mismo.
+  const { nomina, partes } =
+    (estado.estado === 'cerrado' ? await laFoto(empleadoId, mes) : null) ?? (await enVivo(empleadoId, mes, calendario));
+
+  const tareas = tareasDelMes(partes);
+  if (!nomina) return { mes, nomina: null, estado, reaperturas: [], tareas };
+  const totalAntes = (id: string) => {
+    const t = (totales ?? []).find((x) => x.reapertura_id === id);
+    return t ? Number(t.total) : null;
+  };
+  const suyas = reaperturas.filter((r) => r.mes === mes).map((r) => ({ ...r, totalAntes: totalAntes(r.id) }));
+
+  return { mes, nomina, estado, reaperturas: reaperturasDeLaNomina(suyas, nomina.total, ahora), tareas };
+}
+
+type Cuenta = { bono: number | null; nomina: Nomina | null; partes: readonly ParteDelCargo[] };
+
+// La cuenta en vivo, con el reparto y el bono de hoy.
+async function enVivo(empleadoId: string, mes: string, calendario: Calendario): Promise<Cuenta> {
+  const supabase = await clienteDelServidor();
   const hoy = hoyISO();
 
-  const [{ data: dias }, { data: titularidades }, { data: imprevistos }, { data: bonos }, reaperturas, { data: totales }, ahora] = await Promise.all([
-    supabase.from('dia_no_habil').select('desde, hasta'),
+  const [{ data: titularidades }, { data: imprevistos }, { data: bonos }] = await Promise.all([
     supabase
       .from('titularidad')
       .select(
@@ -55,13 +92,8 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
       .eq('empleado_id', empleadoId)
       .gte('vence', `${mes}-01`),
     supabase.from('bono').select('monto, rige_desde').eq('empleado_id', empleadoId),
-    lasReaperturas(),
-    supabase.from('total_al_reabrir').select('reapertura_id, total').eq('empleado_id', empleadoId),
-    ahoraEnLaBase(),
   ]);
 
-  const calendario = Calendario.con(dias ?? []);
-  const estado = estadoDelMes(mes, calendario, ahora, reaperturas);
   const bono = bonoDelMes(comoCambios(bonos), mes);
   const activas = ((titularidades ?? []) as Record<string, unknown>[])
     .map((t) => ({ ponderacion: t.ponderacion as number, f: t.funcion as Record<string, unknown> }))
@@ -110,16 +142,65 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
     })),
   });
 
-  const tareas = tareasDelMes(partes);
-  if (bono === null) return { mes, nomina: null, estado, reaperturas: [], tareas };
-  const nomina = nominaDe(bono, partes)!;
-  const totalAntes = (id: string) => {
-    const t = (totales ?? []).find((x) => x.reapertura_id === id);
-    return t ? Number(t.total) : null;
-  };
-  const suyas = reaperturas.filter((r) => r.mes === mes).map((r) => ({ ...r, totalAntes: totalAntes(r.id) }));
+  return { bono, nomina: nominaDe(bono, partes), partes };
+}
 
-  return { mes, nomina, estado, reaperturas: reaperturasDeLaNomina(suyas, nomina.total, ahora), tareas };
+// La foto de un mes cerrado, si la tiene. Si no, y quien mira es el
+// administrador, la toma: es la primera vez que hace falta.
+async function laFoto(empleadoId: string, mes: string): Promise<Cuenta | null> {
+  const supabase = await clienteDelServidor();
+  const leer = () => supabase.from('foto_del_cierre').select('empresa_id, bono, total, partes').eq('mes', mes).eq('empleado_id', empleadoId).maybeSingle();
+
+  let { data } = await leer();
+  if (!data && (await esAdministrador())) {
+    await tomarLasFotos();
+    ({ data } = await leer());
+  }
+  if (!data) return null;
+
+  const foto = comoFoto(data);
+  return { bono: foto.bono, nomina: nominaDeLaFoto(foto), partes: foto.partes };
+}
+
+// Una fila de foto_del_cierre, con sus montos como numeros.
+export const comoFoto = (f: Record<string, unknown>): FotoDelCierre => ({
+  empresaId: (f.empresa_id as string | null) ?? null,
+  bono: f.bono === null ? null : Number(f.bono),
+  total: f.total === null ? null : Number(f.total),
+  partes: f.partes as FotoDelCierre['partes'],
+});
+
+// Las fotos que faltan (ADR 0017): la de cada mes cerrado que todavia no la
+// tiene, con la nomina de cada persona en vivo, que es la del cierre porque
+// desde entonces nada de ese mes se movio. Solo el administrador: la base
+// rechaza a cualquier otro. Se llama al leer un mes cerrado y antes de todo
+// lo que la base no deja hacer sin foto -- publicar pesos, fijar un bono,
+// cambiar una empresa, reabrir --.
+// Devuelve por que no se pudo, si no se pudo.
+// ponytail: una nomina por persona y por mes, una tras otra; son decenas, y
+// casi siempre falta un solo mes.
+export async function tomarLasFotos(): Promise<string | null> {
+  const supabase = await clienteDelServidor();
+  const { data: meses } = await supabase.rpc('meses_sin_foto');
+  if (!meses?.length) return null;
+
+  const [{ data: dias }, { data: personas }] = await Promise.all([
+    supabase.from('dia_no_habil').select('desde, hasta'),
+    supabase.from('empleado').select('id, empresa_id'),
+  ]);
+  const calendario = Calendario.con(dias ?? []);
+
+  for (const mes of meses as string[]) {
+    const fotos = [];
+    for (const p of personas ?? []) {
+      const { bono, partes } = await enVivo(p.id as string, mes, calendario);
+      const foto = fotoDelCierre({ empresaId: (p.empresa_id as string | null) ?? null, bono, partes });
+      fotos.push({ empleado_id: p.id, empresa_id: foto.empresaId, bono: foto.bono, total: foto.total, partes: foto.partes });
+    }
+    const { error } = await supabase.rpc('tomar_foto_del_cierre', { el_mes: mes, fotos });
+    if (error) return `No se pudo tomar la foto del cierre de ${nombreDelMes(mes)}: ${error.message}`;
+  }
+  return null;
 }
 
 export const nombreDelMes = (mes: string) =>
