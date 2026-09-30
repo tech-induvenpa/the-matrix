@@ -5,6 +5,7 @@ import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
 import { Titulo, type Perfil } from './perfil';
+import { BotonDeHistoria } from './abrir';
 
 export type Fila = {
   funcionId: string;
@@ -89,6 +90,7 @@ export function Tarjeta({ o, hoy, perfil, soloLectura = false }: { o: Fila; hoy:
           )}
         </span>
       )}
+      {perfil && <BotonDeHistoria clave={perfil.clave} velo={COLOR[o.cuadrante].velo} />}
       {perfil?.contenido}
     </article>
   );

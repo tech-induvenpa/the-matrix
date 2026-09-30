@@ -22,6 +22,7 @@ import { PorQue } from './porque';
 import { Confirmar } from './confirmar';
 import { CIRCULO, Numero } from './tarjeta';
 import { Titulo, type Perfil } from './perfil';
+import { BotonDeHistoria } from './abrir';
 
 // Un imprevisto: trabajo que llego sin estar en el reparto de nadie (ADR 0009).
 // Su urgencia se calcula como la de cualquier ocurrencia desde el vencimiento
@@ -116,6 +117,7 @@ export function TarjetaDeImprevisto({
           🗑
         </Confirmar>
       )}
+      {perfil && <BotonDeHistoria clave={perfil.clave} velo={VELO} />}
       {perfil?.contenido}
     </article>
   );

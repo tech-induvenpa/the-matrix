@@ -69,3 +69,46 @@ export function AlAbrir({ clave }: { clave: string }) {
 
   return null;
 }
+
+// El mismo abrir y cerrar que el titulo, como boton al final de la tarjeta: un
+// chevron que gira cuando la historia esta abierta.
+export function BotonDeHistoria({ clave, velo }: { clave: string; velo: string }) {
+  const parametros = useSearchParams();
+  const abierto = parametros.get('tarea') === clave;
+
+  return (
+    <Link
+      href={conTarea(parametros, abierto ? null : clave)}
+      scroll={false}
+      aria-expanded={abierto}
+      aria-label={abierto ? 'Cerrar su historia' : 'Ver su historia'}
+      title={abierto ? 'Cerrar su historia' : 'Ver su historia y comentarla'}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 34,
+        height: 34,
+        borderRadius: 999,
+        background: velo,
+        color: 'inherit',
+        flexShrink: 0,
+      }}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        style={{ transform: abierto ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s ease' }}
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </Link>
+  );
+}
