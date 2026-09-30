@@ -108,10 +108,10 @@ describe('INV-24: solo el administrador escribe un bono', () => {
   // tampoco cambiarian y la prueba pasaria sin probar nada. Asi paso hasta el
   // 28/09/2026, con los pesos mal armados.
   it('un traspaso no toca ningun bono', async () => {
-    // Ana reparte 30/70; Benito, 100 en una sola.
+    // Ana reparte 30/60; Benito, 90 en una sola (la cotidianidad en el piso).
     const cierre = await sembrarFuncion(ana, { texto: 'Cierre', periodicidad: 'mensual', importancia: 9, tipo_generado: 'entregable', ponderacion: 30 });
-    const pagos = await sembrarFuncion(ana, { texto: 'Pagos', periodicidad: 'semanal', importancia: 5, tipo_generado: 'entregable', ponderacion: 70 });
-    const compras = await sembrarFuncion(benito, { texto: 'Compras', periodicidad: 'semanal', importancia: 6, tipo_generado: 'entregable', ponderacion: 100 });
+    const pagos = await sembrarFuncion(ana, { texto: 'Pagos', periodicidad: 'semanal', importancia: 5, tipo_generado: 'entregable', ponderacion: 60 });
+    const compras = await sembrarFuncion(benito, { texto: 'Compras', periodicidad: 'semanal', importancia: 6, tipo_generado: 'entregable', ponderacion: 90 });
     const antes = (await comoServicio().from('bono').select('*').order('id')).data;
 
     const jefa = await comoAdministrador('jefa@prueba.test');
@@ -120,8 +120,8 @@ describe('INV-24: solo el administrador escribe un bono', () => {
       de_quien: ana,
       a_quien: benito,
       peso_nuevo: 25,
-      pesos_de_quien_entrega: [{ funcion_id: pagos, ponderacion: 100 }],
-      pesos_de_quien_recibe: [{ funcion_id: compras, ponderacion: 75 }],
+      pesos_de_quien_entrega: [{ funcion_id: pagos, ponderacion: 86 }],
+      pesos_de_quien_recibe: [{ funcion_id: compras, ponderacion: 65 }],
     });
     expect(error).toBeNull();
 

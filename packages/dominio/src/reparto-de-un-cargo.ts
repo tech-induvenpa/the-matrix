@@ -1,28 +1,34 @@
-// El reparto: las funciones de una persona con sus ponderaciones, tomadas como
-// un todo que suma cien. Nadie cambia el peso de una funcion suelta -- se
-// redistribuye el cien de alguien (ADR 0008).
+// El reparto: las funciones de una persona con sus ponderaciones y su
+// cotidianidad, tomadas como un todo que suma cien. Nadie cambia el peso de una
+// funcion suelta -- se redistribuye el cien de alguien (ADR 0008). La
+// cotidianidad no se guarda: es lo que queda, y nunca baja del piso (ADR 0014).
 
 export type Peso = { funcionId: string; ponderacion: number };
 
 export type Veredicto =
   | { publicable: true }
-  | { publicable: false; motivo: 'no_suma_cien'; suma: number; falta: number }
-  | { publicable: false; motivo: 'peso_imposible' }
-  | { publicable: false; motivo: 'cargo_vacio' };
+  | { publicable: false; motivo: 'bajo_el_piso'; suma: number; sobra: number }
+  | { publicable: false; motivo: 'peso_imposible' };
+
+// Todo imprevisto pesa por la cotidianidad de su empleado, asi que siempre
+// tiene que haber algo: diez es la decision de negocio (ADR 0014).
+export const PISO_DE_COTIDIANIDAD = 10;
 
 export const sumaDe = (pesos: readonly Peso[]) => pesos.reduce((t, p) => t + p.ponderacion, 0);
+
+export const cotidianidadDe = (pesos: readonly Peso[]) => 100 - sumaDe(pesos);
 
 // Publicar es lo que hace vigente un reparto. Guardar no: quien reparte
 // diecisiete funciones necesita poder dejarlo a medias e irse a almorzar, y si
 // la pantalla no dejara guardar sin cuadrar, la aritmetica se haria en Excel.
+// Un cargo sin funciones es todo cotidianidad, y eso tambien se publica.
 export function sePuedePublicar(pesos: readonly Peso[]): Veredicto {
-  if (pesos.length === 0) return { publicable: false, motivo: 'cargo_vacio' };
-
   if (pesos.some((p) => !Number.isInteger(p.ponderacion) || p.ponderacion < 0 || p.ponderacion > 100))
     return { publicable: false, motivo: 'peso_imposible' };
 
   const suma = sumaDe(pesos);
-  if (suma !== 100) return { publicable: false, motivo: 'no_suma_cien', suma, falta: 100 - suma };
+  const tope = 100 - PISO_DE_COTIDIANIDAD;
+  if (suma > tope) return { publicable: false, motivo: 'bajo_el_piso', suma, sobra: suma - tope };
 
   return { publicable: true };
 }

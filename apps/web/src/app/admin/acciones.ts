@@ -1,12 +1,23 @@
 'use server';
 
-import { ADMITE_DIA_TOPE, leerPertenencia, reescalarA, reescalarACien, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
+import { ADMITE_DIA_TOPE, leerPertenencia, PISO_DE_COTIDIANIDAD, proponerReparto, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
+
+// Ninguna funcion puede pesar tanto que deje la cotidianidad bajo el piso.
+const TOPE = 100 - PISO_DE_COTIDIANIDAD;
+
+// Todo lo que mueve un peso pasa por la misma propuesta del dominio (ADR 0014),
+// y la base recibe lo que la propuesta calculo.
+const vigentesDe = (filas: { funcion_id: unknown; ponderacion: unknown }[] | null) =>
+  (filas ?? []).map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+
+const enFilas = (pesos: readonly { funcionId: string; ponderacion: number }[]) =>
+  pesos.map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion }));
 
 // Una sola respuesta: las preguntas son excluyentes y se eligen como tal.
 const si = (f: FormData, campo: string) => f.get('tipo') === campo;
@@ -51,8 +62,8 @@ export async function crearFuncion(empleadoId: string, formulario: FormData) {
   if (mal) return { mensaje: mal, celebra: false };
 
   const peso = Number(formulario.get('ponderacion') ?? 0);
-  if (!Number.isInteger(peso) || peso < 0 || peso > 100)
-    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
+  if (!Number.isInteger(peso) || peso < 0 || peso > TOPE)
+    return { mensaje: `Un peso va de cero a ${TOPE}, y es un entero.`, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -82,10 +93,10 @@ export async function crearFuncion(empleadoId: string, formulario: FormData) {
     actual.set(t.funcion_id as string, t.ponderacion as number);
   }
 
-  const propuestos = [
-    ...reescalarA([...actual].map(([funcionId, ponderacion]) => ({ funcionId, ponderacion })), 100 - peso),
-    { funcionId: funcion.id as string, ponderacion: peso },
-  ];
+  const { despues: propuestos } = proponerReparto(
+    [...actual].map(([funcionId, ponderacion]) => ({ funcionId, ponderacion })),
+    { entra: { funcionId: funcion.id as string, ponderacion: peso } },
+  );
 
   await supabase.from('titularidad').delete().eq('empleado_id', empleadoId).is('publicado_en', null);
   const { error: sinBorrador } = await supabase.from('titularidad').insert(
@@ -165,14 +176,10 @@ export async function archivarFuncion(funcionId: string, empleadoId: string) {
     .is('hasta', null)
     .not('publicado_en', 'is', null);
 
-  const quedan = (vigentes ?? [])
-    .filter((t) => t.funcion_id !== funcionId)
-    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
-
   const { error } = await supabase.rpc('archivar_funcion', {
     la_funcion: funcionId,
     quien: empleadoId,
-    pesos: reescalarACien(quedan).map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion })),
+    pesos: enFilas(proponerReparto(vigentesDe(vigentes), { sale: funcionId }).despues),
   });
   if (error) return { mensaje: error.message, celebra: false };
 
@@ -194,14 +201,10 @@ export async function eliminarFuncion(funcionId: string, empleadoId: string) {
     .is('hasta', null)
     .not('publicado_en', 'is', null);
 
-  const quedan = (vigentes ?? [])
-    .filter((t) => t.funcion_id !== funcionId)
-    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
-
   const { error } = await supabase.rpc('eliminar_funcion', {
     la_funcion: funcionId,
     quien: empleadoId,
-    pesos: reescalarACien(quedan).map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion })),
+    pesos: enFilas(proponerReparto(vigentesDe(vigentes), { sale: funcionId }).despues),
   });
   if (error) return { mensaje: error.message, celebra: false };
 
@@ -219,8 +222,8 @@ export async function eliminarFuncion(funcionId: string, empleadoId: string) {
 // que se aplica es exactamente lo que se enseño, no lo que viaje en el formulario.
 export async function aplicarPonderacion(funcionId: string, empleadoId: string, nueva: number) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
-  if (!Number.isInteger(nueva) || nueva < 0 || nueva > 100)
-    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
+  if (!Number.isInteger(nueva) || nueva < 0 || nueva > TOPE)
+    return { mensaje: `Un peso va de cero a ${TOPE}, y es un entero.`, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -231,18 +234,13 @@ export async function aplicarPonderacion(funcionId: string, empleadoId: string, 
     .is('hasta', null)
     .not('publicado_en', 'is', null);
 
-  const resto = (vigentes ?? [])
-    .filter((t) => t.funcion_id !== funcionId)
-    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+  const { despues } = proponerReparto(vigentesDe(vigentes), { cambia: { funcionId, ponderacion: nueva } });
 
   const { error } = await supabase.rpc('ajustar_ponderacion', {
     la_funcion: funcionId,
     quien: empleadoId,
     nueva,
-    pesos_del_resto: reescalarA(resto, 100 - nueva).map((p) => ({
-      funcion_id: p.funcionId,
-      ponderacion: p.ponderacion,
-    })),
+    pesos_del_resto: enFilas(despues.filter((p) => p.funcionId !== funcionId)),
   });
   if (error) return { mensaje: error.message, celebra: false };
 
@@ -282,7 +280,9 @@ export async function guardarBorrador(empleadoId: string, formulario: FormData) 
   revalidatePath(`/admin/${empleadoId}`);
   const suma = sumaDe(propuestos);
   return {
-    mensaje: suma === 100 ? 'Guardado. Ya cuadra: puedes publicarlo.' : `Guardado. Va por ${suma} de 100.`,
+    mensaje: sePuedePublicar(propuestos).publicable
+      ? `Guardado. Su cotidianidad queda en ${100 - suma}: puedes publicarlo.`
+      : `Guardado. Las funciones suman ${suma}: la cotidianidad quedaría bajo ${PISO_DE_COTIDIANIDAD}.`,
     celebra: false,
   };
 }
@@ -309,11 +309,9 @@ export async function publicarReparto(empleadoId: string) {
   const veredicto = sePuedePublicar(pesos);
   if (!veredicto.publicable) {
     const mensaje =
-      veredicto.motivo === 'no_suma_cien'
-        ? `Suma ${veredicto.suma}. ${veredicto.falta > 0 ? `Faltan ${veredicto.falta}` : `Sobran ${-veredicto.falta}`}.`
-        : veredicto.motivo === 'cargo_vacio'
-          ? 'No hay nada que publicar.'
-          : 'Algún peso no es posible.';
+      veredicto.motivo === 'bajo_el_piso'
+        ? `Las funciones suman ${veredicto.suma}: la cotidianidad quedaría en ${100 - veredicto.suma}, y nunca baja de ${PISO_DE_COTIDIANIDAD}. Sobran ${veredicto.sobra}.`
+        : 'Algún peso no es posible.';
     return { mensaje, celebra: false };
   }
 
@@ -349,8 +347,8 @@ export async function traspasar(funcionId: string, deQuien: string, formulario: 
 
   if (!aQuien) return { mensaje: '¿A quién se la pasas?', celebra: false };
   if (aQuien === deQuien) return { mensaje: 'Esa función ya es suya.', celebra: false };
-  if (!Number.isInteger(pesoNuevo) || pesoNuevo < 0 || pesoNuevo > 100)
-    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
+  if (!Number.isInteger(pesoNuevo) || pesoNuevo < 0 || pesoNuevo > TOPE)
+    return { mensaje: `Un peso va de cero a ${TOPE}, y es un entero.`, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -368,19 +366,18 @@ export async function traspasar(funcionId: string, deQuien: string, formulario: 
     }));
   };
 
-  const quedan = (await cargoDe(deQuien)).filter((t) => t.funcionId !== funcionId);
-  const reciben = await cargoDe(aQuien);
-
-  const enFilas = (pesos: { funcionId: string; ponderacion: number }[]) =>
-    pesos.map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion }));
+  // La misma regla de los dos lados (ADR 0014): a quien entrega le sale, a
+  // quien recibe le entra.
+  const entrega = proponerReparto(await cargoDe(deQuien), { sale: funcionId }).despues;
+  const recibe = proponerReparto(await cargoDe(aQuien), { entra: { funcionId, ponderacion: pesoNuevo } }).despues;
 
   const { error } = await supabase.rpc('traspasar', {
     la_funcion: funcionId,
     de_quien: deQuien,
     a_quien: aQuien,
     peso_nuevo: pesoNuevo,
-    pesos_de_quien_entrega: enFilas(reescalarACien(quedan)),
-    pesos_de_quien_recibe: enFilas(reescalarA(reciben, 100 - pesoNuevo)),
+    pesos_de_quien_entrega: enFilas(entrega),
+    pesos_de_quien_recibe: enFilas(recibe.filter((p) => p.funcionId !== funcionId)),
   });
   if (error) return { mensaje: error.message, celebra: false };
 

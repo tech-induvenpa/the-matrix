@@ -27,11 +27,11 @@ describe('INV-17: el arrastre no se hereda, pero la funcion lo conserva', () => 
       texto: 'Cierre financiero',
       periodicidad: 'mensual',
       importancia: 9,
-      ponderacion: 100,
+      ponderacion: 90,
       fecha_alta: '2026-04-01',
     });
     await sembrarFuncion(benito, {
-      hash_identidad: 'b-1', texto: 'Compras', periodicidad: 'semanal', importancia: 6, ponderacion: 100,
+      hash_identidad: 'b-1', texto: 'Compras', periodicidad: 'semanal', importancia: 6, ponderacion: 90,
     });
 
     const { data: dias } = await comoServicio().from('dia_no_habil').select('desde, hasta');
@@ -67,7 +67,7 @@ describe('INV-17: el arrastre no se hereda, pero la funcion lo conserva', () => 
       a_quien: benito,
       peso_nuevo: 50,
       pesos_de_quien_entrega: [],
-      pesos_de_quien_recibe: [{ funcion_id: await compras(benito), ponderacion: 50 }],
+      pesos_de_quien_recibe: [{ funcion_id: await compras(benito), ponderacion: 40 }],
     });
     expect(error).toBeNull();
 

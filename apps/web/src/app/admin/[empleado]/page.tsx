@@ -51,7 +51,7 @@ export default async function Cargo({
       <header>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>{cargo.nombre}</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
-          {enPalabras(dePersona(empleado)) || 'sin empresa'} · {cargo.funciones.length} funciones · reparte {suma} de 100
+          {enPalabras(dePersona(empleado)) || 'sin empresa'} · {cargo.funciones.length} funciones · cotidianidad {100 - suma}%
           {editar !== 'persona' && (
             <>
               {' · '}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PISO_DE_COTIDIANIDAD } from '@matriz/dominio';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
 import { descartarBorrador, guardarBorrador } from '../acciones';
@@ -9,7 +10,9 @@ import { Ir } from '../../ir';
 type Fila = { id: string; texto: string; ponderacion: number };
 
 // Repartir el cien de una persona. Nadie cambia el peso de una funcion suelta:
-// se redistribuye el todo, y por eso la suma esta siempre a la vista (ADR 0008).
+// se redistribuye el todo, y por eso la cuenta esta siempre a la vista (ADR
+// 0008). Lo que no pesan las funciones es su cotidianidad, que se calcula y
+// nunca baja del piso (ADR 0014).
 export function Reparto({
   empleadoId,
   funciones,
@@ -27,7 +30,8 @@ export function Reparto({
   );
 
   const suma = Object.values(pesos).reduce((t, p) => t + (Number.isFinite(p) ? p : 0), 0);
-  const falta = 100 - suma;
+  const cotidianidad = 100 - suma;
+  const publicable = cotidianidad >= PISO_DE_COTIDIANIDAD;
 
   // Los botones son de un formulario, no de un estado, y eso confundia: al
   // publicar seguian ahi igual que antes y parecia que no habia pasado nada.
@@ -38,11 +42,11 @@ export function Reparto({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 30, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{suma}</span>
-        <span style={{ fontSize: 14, color: 'var(--gris)' }}>de 100</span>
-        {falta !== 0 && (
+        <span style={{ fontSize: 30, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{cotidianidad}%</span>
+        <span style={{ fontSize: 14, color: 'var(--gris)' }}>de cotidianidad</span>
+        {!publicable && (
           <span style={{ fontSize: 14, fontWeight: 600, color: '#D9503A' }}>
-            {falta > 0 ? `faltan ${falta}` : `sobran ${-falta}`}
+            bajo el piso de {PISO_DE_COTIDIANIDAD}: sobran {PISO_DE_COTIDIANIDAD - cotidianidad} en las funciones
           </span>
         )}
         <span style={{ fontSize: 12.5, marginLeft: 'auto', color: hayQueHacerAlgo ? '#8A7A3E' : 'var(--gris)' }}>
@@ -95,6 +99,27 @@ export function Reparto({
             </label>
           ))}
 
+          {/* No se edita: es lo que queda. */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              border: '1.5px dashed rgba(26,23,19,0.18)',
+              borderRadius: 12,
+              padding: '8px 14px',
+              color: publicable ? 'var(--gris)' : '#D9503A',
+            }}
+          >
+            <span style={{ flexGrow: 1, minWidth: 0, fontSize: 14 }}>
+              Cotidianidad <span style={{ fontSize: 12.5 }}>· lo que queda para lo que le pidan</span>
+            </span>
+            <span style={{ width: 64, textAlign: 'right', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {cotidianidad}
+            </span>
+            <span style={{ fontSize: 13 }}>%</span>
+          </div>
+
           {hayQueHacerAlgo && (
             <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               <Enviar style={BOTON} enviando="Guardando…">
@@ -114,13 +139,15 @@ export function Reparto({
               <Enviar
                 name="publicar"
                 value="si"
-                style={{ ...BOTON, background: falta === 0 ? 'var(--tinta)' : 'rgba(26,23,19,0.25)', color: '#fff' }}
+                style={{ ...BOTON, background: publicable ? 'var(--tinta)' : 'rgba(26,23,19,0.25)', color: '#fff' }}
                 enviando="Publicando…"
               >
                 Publicar
               </Enviar>
               <span style={{ fontSize: 12, color: 'var(--gris)' }}>
-                {falta === 0 ? 'Desde ese momento es lo que ve en su pantalla.' : 'Tiene que sumar 100 para poder publicar.'}
+                {publicable
+                  ? 'Desde ese momento es lo que ve en su pantalla.'
+                  : `Su cotidianidad tiene que quedar en ${PISO_DE_COTIDIANIDAD} o más para poder publicar.`}
               </span>
             </div>
           )}
