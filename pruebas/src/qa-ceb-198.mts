@@ -20,6 +20,7 @@ await servicio.from('empleado').update({ supervisor_id: sofia }).eq('id', bruno)
 
 const f = (texto: string) => ({ hash_identidad: `h-${texto}`, texto, importancia: 5, periodicidad: 'mensual', tipo_generado: 'entregable', fecha_alta: '2026-01-01' });
 const caja = await sembrarFuncion(ana, f('Cierre de caja'));
+const deSara = await sembrarFuncion(sara, f('Informe de Sara'));
 const conciliacion = await sembrarFuncion(ana, f('Conciliacion'));
 
 const jefa = await comoAdministrador('jefa@prueba.test');
@@ -36,6 +37,10 @@ const { data: pedido, error: sinPedido } = await servicio
   .single();
 if (sinPedido) throw sinPedido;
 
+const finDelMes = new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 0)).toISOString().slice(0, 10);
+const { data: delegacion, error: sinDelegar } = await sSara.rpc('delegar', { la_funcion: deSara, el_periodo: mes, a_quien: ana, el_vence: finDelMes });
+if (sinDelegar) throw sinDelegar;
+await sSara.from('comentario').insert({ imprevisto_id: delegacion, texto: 'COMENTARIO-EN-LA-DELEGACION' });
 await sSara.from('comentario').insert({ funcion_id: caja, periodo: mes, texto: 'COMENTARIO-DE-SARA' });
 await jefa.from('comentario').insert({ funcion_id: caja, periodo: mes, texto: 'COMENTARIO-DE-LA-JEFA' });
 await sAna.from('comentario').insert({ funcion_id: conciliacion, periodo: mes, texto: 'ANTES-DE-MARCAR' });
@@ -92,6 +97,13 @@ criterio('sara: punto junto a ana por el comentario de la jefa', html.includes(P
 html = await pagina(cSara, `/equipo?tarea=${deCaja}`);
 criterio('sara: abre el perfil desde el equipo y comenta', html.includes('COMENTARIO-DE-LA-JEFA') && html.includes('Escribe un comentario'));
 
+html = await pagina(cSara, `/?tarea=i:${delegacion}`);
+criterio('sara: abre la delegacion desde delegadas', html.includes('Delegadas') && html.includes('COMENTARIO-EN-LA-DELEGACION') && html.includes('Lo delegó SARA'));
+criterio('sara: sin pedidos fuera de su equipo, no hay "Lo que pedí"', !html.includes('Lo que pedí'));
+
+html = await pagina(cAna, `/?tarea=i:${delegacion}`);
+criterio('ana: lee la delegacion y sabe quien mas la lee', html.includes('COMENTARIO-EN-LA-DELEGACION') && html.includes('Lo leen: ANA, SARA y el administrador'));
+
 html = await pagina(cSofia, '/');
 // React separa el texto fijo de lo interpolado con un comentario.
 criterio('sofia: lo que pidio fuera de su equipo', html.includes('Lo que pedí') && /Se lo pediste a (<!-- -->)?ANA/.test(html));
@@ -100,6 +112,12 @@ html = await pagina(cJefa, '/admin');
 criterio('jefa: punto junto a ana', html.includes(PUNTO));
 html = await pagina(cJefa, `/admin/${ana}?tarea=${deCaja}`);
 criterio('jefa: la ficha trae la lista y el perfil', html.includes('Sus tareas abiertas') && html.includes('COMENTARIO-DE-SARA'));
+html = await pagina(cJefa, `/admin/${ana}`);
+criterio('jefa: punto en la tarjeta de la lista por persona', html.includes(PUNTO) && !html.includes('¡Hecho!'));
+html = await pagina(cJefa, `/admin/${ana}?tarea=i:${pedido!.id}`);
+criterio('jefa: abre el imprevisto desde la ficha', html.includes('Lo pidió SOFIA') && html.includes('Escribe un comentario'));
+html = await pagina(cJefa, `/admin/${sara}`);
+criterio('jefa: ve la lista de un supervisor', html.includes('Informe de Sara'));
 
 console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');
 process.exit(fallos ? 1 : 0);

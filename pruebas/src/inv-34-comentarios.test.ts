@@ -289,3 +289,82 @@ describe('la lista por persona y lo que pedi', () => {
     expect((await sSara.rpc('lo_que_pedi')).data).toEqual([]);
   });
 });
+
+// QA de CEB-198: los criterios de CEB-200 a CEB-203 que las pruebas de arriba
+// no tocaban.
+describe('QA CEB-198: criterios sin cubrir', () => {
+  let ocurrencia: { funcion_id: string; periodo: string };
+  let pedido: string;
+
+  beforeAll(async () => {
+    ocurrencia = { funcion_id: await sembrarFuncion(ana, entregable('Arqueo')), periodo: mes() };
+    const { data, error } = await comoServicio()
+      .from('imprevisto')
+      .insert({ empleado_id: ana, texto: 'Otro pedido de Sofia', vence: hoy(), pedido_por: await uid(sSofia), registrado_por: await uid(sSofia) })
+      .select('id')
+      .single();
+    if (error) throw error;
+    pedido = data.id;
+  });
+
+  it('CEB-200: un comentario se ancla a una sola tarea, ni a dos ni a ninguna', async () => {
+    expect((await comentar(sAna, { ...ocurrencia, imprevisto_id: pedido })).error).not.toBeNull();
+    expect((await sAna.from('comentario').insert({ texto: 'sin tarea' })).error).not.toBeNull();
+    expect((await comentar(jefa, { funcion_id: ocurrencia.funcion_id })).error).not.toBeNull();
+  });
+
+  it('CEB-200: un imprevisto borrado no admite comentarios', async () => {
+    const { data } = await sAna
+      .from('imprevisto')
+      .insert({ empleado_id: ana, texto: 'Anotado por error', vence: hoy(), pedido_por_otro: 'nadie' })
+      .select('id')
+      .single();
+    expect((await sAna.rpc('borrar_imprevisto', { el_imprevisto: data!.id })).error).toBeNull();
+    expect((await comentar(sAna, { imprevisto_id: data!.id })).error).not.toBeNull();
+    expect((await comentar(jefa, { imprevisto_id: data!.id })).error).not.toBeNull();
+  });
+
+  it('CEB-202: nadie lee ni escribe la vista de otro', async () => {
+    await sAna.rpc('ver_tarea', { la_funcion: ocurrencia.funcion_id, el_periodo: ocurrencia.periodo, el_imprevisto: null });
+    const deAna = await comoServicio().from('comentario_visto').select('usuario').eq('funcion_id', ocurrencia.funcion_id);
+    expect(deAna.data).toHaveLength(1);
+    for (const s of [sSara, jefa]) {
+      expect((await s.from('comentario_visto').select('usuario').eq('funcion_id', ocurrencia.funcion_id)).data).toEqual([]);
+      expect((await s.from('comentario_visto').insert({ usuario: await uid(sAna), ...ocurrencia })).error).not.toBeNull();
+      await s.from('comentario_visto').update({ visto_en: '2020-01-01T00:00:00Z' }).eq('funcion_id', ocurrencia.funcion_id);
+      await s.from('comentario_visto').delete().eq('funcion_id', ocurrencia.funcion_id);
+    }
+    expect((await comoServicio().from('comentario_visto').select('usuario, visto_en').eq('funcion_id', ocurrencia.funcion_id)).data)
+      .toEqual(deAna.data!.map((v) => ({ ...v, visto_en: expect.not.stringMatching(/^2020/) })));
+  });
+
+  it('CEB-201: el administrador ve la lista de un supervisor', async () => {
+    const { data } = await jefa.rpc('tareas_de', { el_empleado: sara });
+    expect(data.funciones.map((f: { texto: string }) => f.texto)).toContain('Cierre de Sara');
+  });
+
+  it('CEB-201 y CEB-203: al quitarle a ana, sara deja de ver sus tareas, y su delegacion no se cuela en "lo que pedi"', async () => {
+    await jefa.rpc('asignar_supervisor', { el_empleado: ana, el_supervisor: null });
+    try {
+      expect((await sSara.rpc('tareas_de', { el_empleado: ana })).data).toBeNull();
+      expect((await sSara.rpc('lo_que_pedi')).data).toEqual([]);
+    } finally {
+      await jefa.rpc('asignar_supervisor', { el_empleado: ana, el_supervisor: sara });
+    }
+    expect((await sSara.rpc('tareas_de', { el_empleado: ana })).data).not.toBeNull();
+  });
+
+  it('CEB-203: cuando ana le comenta, se le enciende a sofia; cuando lo marca, sale de "lo que pedi"', async () => {
+    expect((await comentar(sAna, { imprevisto_id: pedido }, 'ya voy')).error).toBeNull();
+    const { data: comentarios } = await sSofia.rpc('comentarios_visibles');
+    const suyos = (comentarios as { imprevisto_id: string; autor: string; escrito_en: string; abierta: boolean }[]).filter(
+      (c) => c.imprevisto_id === pedido,
+    );
+    expect(sinLeer(suyos.map((c) => ({ autor: c.autor, escritoEn: c.escrito_en })), null, await uid(sSofia), !suyos[0]!.abierta)).toBe(true);
+
+    const antes = ((await sSofia.rpc('lo_que_pedi')).data as { id: string }[]).map((i) => i.id);
+    expect(antes).toContain(pedido);
+    expect((await sAna.rpc('marcar_imprevisto', { el_imprevisto: pedido, el_resultado: 'hecho', la_razon: null })).error).toBeNull();
+    expect(((await sSofia.rpc('lo_que_pedi')).data as { id: string }[]).map((i) => i.id)).not.toContain(pedido);
+  });
+});
