@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { FuegosDelMes } from './fiesta';
+import { fuegosDe } from '@/lib/nomina';
 import {
   avisoDe,
   coberturaDe,
@@ -56,6 +58,9 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     },
     { perfil, deOcurrencia },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
+
+  // Los fuegos de fin de mes, si el ultimo mes cerrado lo merece.
+  const fuegos = await fuegosDe(empleadoId);
 
   // Una delegacion devuelta vuelve como una nueva: trae la razon de la anterior,
   // para saber que rehacer (ADR 0012).
@@ -381,6 +386,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     <>
       <Navegacion entradas={gente.length > 0 ? DEL_SUPERVISOR : DEL_EMPLEADO} salida={salir} />
     <main style={{ display: 'flex', flexDirection: 'column', maxWidth: 1440, margin: '0 auto' }}>
+      <FuegosDelMes mes={fuegos.mes} merece={fuegos.merece} />
       {metaCumplida ? (
         <CierreDeSemana
           cabecera={cabecera}

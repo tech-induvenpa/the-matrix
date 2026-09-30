@@ -1,3 +1,4 @@
+import { FuegosDelMes } from '../fiesta';
 import {
   cuadranteDe,
   estadosVigentes,
@@ -21,7 +22,7 @@ import { salir } from '../acciones';
 import { ImprevistosDelMes } from '../imprevistos';
 import { perfiles } from '../perfil';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
-import { nombreDelMes, nominaDelMes } from '@/lib/nomina';
+import { fuegosDe, nombreDelMes, nominaDelMes } from '@/lib/nomina';
 import { EstadoDeCuenta, ultimosMeses } from '../nomina';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
@@ -38,7 +39,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
   // Su nomina (ADR 0016): la del mes en curso, provisional, o la de un mes
   // anterior, fija. Un mes futuro todavia no tiene nada.
   const mesDeLaNomina = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedido) && pedido <= hoy.slice(0, 7) ? pedido : hoy.slice(0, 7);
-  const suNomina = await nominaDelMes(empleadoId, mesDeLaNomina);
+  const [suNomina, fuegos] = await Promise.all([nominaDelMes(empleadoId, mesDeLaNomina), fuegosDe(empleadoId)]);
 
   // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
   // cuyo "no pude" o atraso se le vinculo.
@@ -138,6 +139,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
     <>
       <Navegacion entradas={gente.length > 0 ? DEL_SUPERVISOR : DEL_EMPLEADO} salida={salir} />
     <main style={{ maxWidth: 1440, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <FuegosDelMes mes={fuegos.mes} merece={fuegos.merece} />
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, textTransform: 'capitalize' }}>

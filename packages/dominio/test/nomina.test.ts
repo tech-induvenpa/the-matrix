@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Calendario } from '../src/calendario';
 import { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura } from '../src/descarga';
 import { ocurrenciasEntre } from '../src/ocurrencias';
-import { conceptoDe, nominaDe, partesDelMes, reaperturasDeLaNomina, type FuncionDeLaNomina, type ImprevistoDeLaNomina } from '../src/nomina';
+import { conceptoDe, merecenFuegos, nominaDe, partesDelMes, reaperturasDeLaNomina, tareasDelMes, type FuncionDeLaNomina, type ImprevistoDeLaNomina } from '../src/nomina';
 
 // La nomina: cuanto del bono le corresponde a una persona en un mes, con su
 // fundamento (ADR 0016). Se lee como un estado de cuenta.
@@ -191,5 +191,24 @@ describe('las reaperturas en la nomina', () => {
       ['2026-10-02T14:00:00.000Z', 'a_mano', 400, 410],
       ['2026-10-08T12:00:00.000Z', 'solo', 410, 420.91],
     ]);
+  });
+});
+
+// Los fuegos de fin de mes: mas del 90% de las tareas cumplidas. Cuentan las
+// entregas y los imprevistos; un flujo se mide en dias, no en tareas.
+describe('tareasDelMes', () => {
+  const parte = (tipo: 'entregable' | 'flujo' | 'cotidianidad', veces: number, sinCumplir: number) => ({ parte: tipo, tipo, ponderacion: 10, veces, sinCumplir });
+
+  it('cuenta entregas e imprevistos, no los dias de un flujo', () => {
+    expect(tareasDelMes([parte('entregable', 4, 1), parte('cotidianidad', 10, 0), parte('flujo', 22, 22)])).toEqual({ hechas: 13, total: 14 });
+  });
+
+  it('merece fuegos con mas del 90%, no con el 90% justo', () => {
+    expect(merecenFuegos({ hechas: 19, total: 20 })).toBe(true);
+    expect(merecenFuegos({ hechas: 9, total: 10 })).toBe(false);
+  });
+
+  it('un mes sin tareas no merece fuegos', () => {
+    expect(merecenFuegos({ hechas: 0, total: 0 })).toBe(false);
   });
 });
