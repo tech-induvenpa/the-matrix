@@ -24,6 +24,8 @@ export type EmpleadoDelPanel = {
   correo: string;
   empresaId: string | null;
   sedeId: string | null;
+  // Quien responde por esta persona, si alguien (CEB-145).
+  supervisorId: string | null;
   // Los textos de lo que tiene hoy: por ellos tambien se le encuentra (CEB-184).
   funciones: string[];
 };
@@ -35,7 +37,7 @@ export async function gente(): Promise<EmpleadoDelPanel[]> {
 
   const { data } = await supabase
     .from('empleado')
-    .select('id, nombre_bloque, correo, empresa_id, sede_id, titularidad(funcion(texto))')
+    .select('id, nombre_bloque, correo, empresa_id, sede_id, supervisor_id, titularidad(funcion(texto))')
     .is('titularidad.hasta', null)
     .order('nombre_bloque');
 
@@ -45,6 +47,7 @@ export async function gente(): Promise<EmpleadoDelPanel[]> {
     correo: e.correo as string,
     empresaId: (e.empresa_id as string | null) ?? null,
     sedeId: (e.sede_id as string | null) ?? null,
+    supervisorId: (e.supervisor_id as string | null) ?? null,
     funciones: ((e.titularidad ?? []) as unknown as { funcion: { texto: string } | null }[]).flatMap((t) => (t.funcion ? [t.funcion.texto] : [])),
   }));
 }

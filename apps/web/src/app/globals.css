@@ -138,3 +138,12 @@ dialog::backdrop { background: rgba(26, 23, 19, 0.35); }
 @media (max-width: 760px) {
   .cifras, .tablero { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* El acordeon de cada persona: sin el triangulo nativo, con un chevron que
+   gira al abrir. */
+.acordeon > summary::-webkit-details-marker { display: none; }
+.acordeon .chevron { transition: transform 0.15s ease; }
+.acordeon[open] .chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .acordeon .chevron { transition: none; }
+}

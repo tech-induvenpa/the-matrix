@@ -1,4 +1,6 @@
-import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
+import { Calendario, delFiltro, emojiDe, montoNoCumplido } from '@matriz/dominio';
+import { tareasAbiertasDe } from '@/lib/tareas';
+import { comoVence } from '@/lib/datos';
 import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
 import { datosDelEquipo, lasDelegaciones } from '@/lib/equipo';
 import { barrasDe, cargasDe, imprevistosQueSeBuscan, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
@@ -41,6 +43,17 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   // El filtro acota tambien las graficas: las mismas personas que la lista.
   const quienes = new Set(equipo.map((e) => e.id));
   const dias = Calendario.con(calendario.dias);
+  // Las tareas abiertas de cada quien, para su acordeon. Solo en la pestana de
+  // personas: el tablero no las necesita.
+  // ponytail: una lectura por persona; un equipo es de pocas.
+  const tareas = new Map(
+    vista === 'equipo' ? await Promise.all(equipo.map(async (e) => [e.id, await tareasAbiertasDe(e.id, calendario.hoy, dias)] as const)) : [],
+  );
+  // Cuantos tiene a cargo cada quien: con alguno, es responsable (CEB-145).
+  const aCargo = (id: string) => todos.filter((p) => p.supervisorId === id).length;
+  const responsableDe = new Map(todos.map((p) => [p.id, p.nombre]));
+  // Buscando por texto, los acordeones se abren: lo buscado puede ser una tarea.
+  const abiertos = Boolean(parametros.q);
   const barras = barrasDe(datos, calendario.hoy, dias).filter((b) => quienes.has(b.persona.id));
   const lineas = lineasDelArrastre(datos, calendario.hoy, dias).filter((l) => quienes.has(l.persona.id));
   const cargas = cargasDe(datos, calendario.hoy).filter((c) => quienes.has(c.persona.id));
@@ -103,32 +116,66 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
-          <Ir
-            key={e.id}
-            href={`/admin/${e.id}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '4px 14px',
-              background: 'var(--suave)',
-              borderRadius: 14,
-              padding: '12px 16px',
-              color: 'var(--tinta)',
-              textDecoration: 'none',
-            }}
-          >
-            <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
-              {e.nombre}
-              {/* Comentarios sin leer en alguna de sus tareas abiertas (CEB-198). */}
-              {sinLeerDe(e.id) && <Punto />}
-              <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--gris)', marginLeft: 10 }}>{enPalabras(e)}</span>
-            </span>
-            <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              {e.funciones.length} {e.funciones.length === 1 ? 'función' : 'funciones'}
-            </span>
-          </Ir>
+          <details key={e.id} className="acordeon" open={abiertos} style={{ background: 'var(--suave)', borderRadius: 14 }}>
+            <summary style={FILA_PERSONA}>
+              {/* El rol, primero: responsable (con gente a cargo) o empleado. */}
+              <span
+                title={aCargo(e.id) ? `Responsable de ${aCargo(e.id)} ${aCargo(e.id) === 1 ? 'persona' : 'personas'}` : `Empleado${e.supervisorId ? `, a cargo de ${responsableDe.get(e.supervisorId)}` : ''}`}
+                style={{ ...ICONO, background: aCargo(e.id) ? 'var(--tinta)' : '#fff', color: aCargo(e.id) ? '#fff' : 'var(--gris)' }}
+              >
+                {aCargo(e.id) ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Responsable">
+                    <circle cx="9" cy="8" r="3.5" />
+                    <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+                    <circle cx="17" cy="9" r="2.5" />
+                    <path d="M17 14c2.6 0 4.5 1.9 4.5 4.8" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Empleado">
+                    <circle cx="12" cy="8" r="3.5" />
+                    <path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5" />
+                  </svg>
+                )}
+              </span>
+              <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
+                {e.nombre}
+                {/* Comentarios sin leer en alguna de sus tareas abiertas (CEB-198). */}
+                {sinLeerDe(e.id) && <Punto />}
+                <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--gris)', marginLeft: 10 }}>{enPalabras(e)}</span>
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                {e.funciones.length} {e.funciones.length === 1 ? 'función' : 'funciones'}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--gris)', whiteSpace: 'nowrap' }}>
+                {tareas.get(e.id)?.length ?? 0} {tareas.get(e.id)?.length === 1 ? 'tarea abierta' : 'tareas abiertas'}
+              </span>
+              <span className="chevron" aria-hidden style={ICONO}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+              <Ir href={`/admin/${e.id}`} title={`Ver el perfil de ${e.nombre}`} style={{ ...ICONO, background: '#fff', color: 'var(--tinta)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-label={`Ver el perfil de ${e.nombre}`}>
+                  <line x1="7" y1="17" x2="17" y2="7" />
+                  <polyline points="7 7 17 7 17 17" />
+                </svg>
+              </Ir>
+            </summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '0 12px 12px' }}>
+              {(tareas.get(e.id) ?? []).map((t) => (
+                <div key={t.tipo === 'ocurrencia' ? `${t.tarea.funcionId}|${t.tarea.periodo}` : t.tarea.id} style={FILA_TAREA}>
+                  <span aria-hidden>{emojiDe(t.urgencia)}</span>
+                  <span style={{ flexGrow: 1, minWidth: 0 }}>{t.tarea.texto}</span>
+                  <span style={{ fontSize: 12, color: 'var(--gris)', whiteSpace: 'nowrap' }}>
+                    {t.tipo === 'imprevisto' ? 'imprevisto · ' : ''}
+                    {comoVence(t.tarea.vence, calendario.hoy)}
+                  </span>
+                </div>
+              ))}
+              {!tareas.get(e.id)?.length && <p style={{ fontSize: 13.5, color: 'var(--gris)', margin: '4px 4px 0' }}>Nada abierto.</p>}
+            </div>
+          </details>
         ))}
 
         {equipo.length === 0 && (
@@ -199,4 +246,36 @@ const BOTON = {
   fontSize: 14,
   fontWeight: 600,
   cursor: 'pointer',
+} as const;
+
+const FILA_PERSONA = {
+  display: 'flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: '4px 14px',
+  padding: '10px 12px 10px 16px',
+  cursor: 'pointer',
+  listStyle: 'none',
+} as const;
+
+const FILA_TAREA = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  background: '#fff',
+  borderRadius: 10,
+  padding: '8px 12px',
+  fontSize: 14,
+} as const;
+
+const ICONO = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 32,
+  height: 32,
+  borderRadius: 999,
+  background: 'rgba(26,23,19,0.06)',
+  color: 'var(--gris)',
+  flexShrink: 0,
 } as const;
