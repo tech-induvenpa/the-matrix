@@ -40,15 +40,19 @@ function noSirve(datos: ReturnType<typeof loQueSeEscribio>): string | null {
   return null;
 }
 
-// Una funcion nueva nace pesando cero: el reparto de su titular sigue sumando
-// cien y nadie se queda con un cargo roto por crear trabajo. Darle su peso es
-// redistribuir el reparto, que es otra pantalla (CEB-132).
+// Una funcion nueva nace con el peso que se le da, pero en el borrador: las
+// demas se reacomodan para que el cargo siga sumando cien, y eso se ve en el
+// reparto antes de publicarlo. Crear no cambia lo que ve nadie (CEB-132).
 export async function crearFuncion(empleadoId: string, formulario: FormData) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
 
   const datos = loQueSeEscribio(formulario);
   const mal = noSirve(datos);
   if (mal) return { mensaje: mal, celebra: false };
+
+  const peso = Number(formulario.get('ponderacion') ?? 0);
+  if (!Number.isInteger(peso) || peso < 0 || peso > 100)
+    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -65,13 +69,37 @@ export async function crearFuncion(empleadoId: string, formulario: FormData) {
     .single();
   if (error) return { mensaje: error.message, celebra: false };
 
-  const { error: sinVinculo } = await supabase
+  // Lo que tiene hoy: lo publicado, y encima lo que el administrador ya haya
+  // dejado en el borrador, para no perderlo.
+  const { data: vigentes } = await supabase
     .from('titularidad')
-    .insert({ funcion_id: funcion.id, empleado_id: empleadoId, ponderacion: 0 });
-  if (sinVinculo) return { mensaje: sinVinculo.message, celebra: false };
+    .select('funcion_id, ponderacion, publicado_en, funcion!inner(activa)')
+    .eq('empleado_id', empleadoId)
+    .is('hasta', null)
+    .eq('funcion.activa', true);
+  const actual = new Map<string, number>();
+  for (const t of [...(vigentes ?? [])].sort((a, b) => Number(a.publicado_en === null) - Number(b.publicado_en === null))) {
+    actual.set(t.funcion_id as string, t.ponderacion as number);
+  }
+
+  const propuestos = [
+    ...reescalarA([...actual].map(([funcionId, ponderacion]) => ({ funcionId, ponderacion })), 100 - peso),
+    { funcionId: funcion.id as string, ponderacion: peso },
+  ];
+
+  await supabase.from('titularidad').delete().eq('empleado_id', empleadoId).is('publicado_en', null);
+  const { error: sinBorrador } = await supabase.from('titularidad').insert(
+    propuestos.map((p) => ({ funcion_id: p.funcionId, empleado_id: empleadoId, ponderacion: p.ponderacion, publicado_en: null })),
+  );
+  if (sinBorrador) {
+    // Son dos escrituras: sin su borrador, la funcion quedaria huerfana, sin
+    // titular. Nace sin historia, asi que se puede eliminar.
+    await supabase.rpc('eliminar_funcion', { la_funcion: funcion.id, quien: empleadoId, pesos: [] });
+    return { mensaje: sinBorrador.message, celebra: false };
+  }
 
   revalidatePath(`/admin/${empleadoId}`);
-  return { mensaje: 'Creada. Le falta su peso en el reparto.', celebra: true };
+  redirect(`/admin/${empleadoId}?editar=reparto`);
 }
 
 // Editar el nombre no toca la identidad: la funcion es la misma y su historial

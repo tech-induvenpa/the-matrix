@@ -78,3 +78,13 @@ button { font: inherit; cursor: pointer; border: none; }
 .quien-pidio:not(:has(option[value="otro"]:checked)) input[name="otro"] {
   display: none;
 }
+
+/* Una funcion nueva o editada: cada campo solo si aplica a su tipo. La
+   entrega tiene periodicidad, dia tope (solo mensual) e importancia; el flujo,
+   importancia; la holgura, nada. CSS y no JavaScript, como arriba. */
+.formulario-funcion:not(:has(select[name="tipo"] option[value="quedaTerminado"]:checked)) .solo-entrega,
+.formulario-funcion:not(:has(select[name="periodicidad"] option[value="mensual"]:checked)) .dia-tope,
+.formulario-funcion:not(:has(select[name="tipo"] option[value="quedaTerminado"]:checked, select[name="tipo"] option[value="seAtiendeMientrasHaya"]:checked)) .con-importancia {
+  /* Las etiquetas traen display: flex en linea, que gana sin esto. */
+  display: none !important;
+}

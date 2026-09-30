@@ -298,13 +298,18 @@ export default async function Cargo({
         )}
       </section>
 
-      <section style={{ borderTop: '1px solid rgba(26,23,19,0.10)', paddingTop: 18 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 12px' }}>Una función nueva</h2>
-        <Formulario empleadoId={empleado} accion={crearFuncion.bind(null, empleado)} />
-      </section>
+      {/* Plegado: la ficha es para leer el cargo, y crear es lo raro. */}
+      <details style={{ borderTop: '1px solid rgba(26,23,19,0.10)', paddingTop: 18 }}>
+        <summary style={AGREGAR}>＋ Agregar nueva función</summary>
+        <div style={{ paddingTop: 14 }}>
+          <Formulario empleadoId={empleado} accion={crearFuncion.bind(null, empleado)} />
+        </div>
+      </details>
     </main>
   );
 }
+
+const AGREGAR = { cursor: 'pointer', fontSize: 15, fontWeight: 600, width: 'fit-content' } as const;
 
 const FILA = {
   display: 'flex',
