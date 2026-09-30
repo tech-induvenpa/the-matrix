@@ -5,6 +5,10 @@ import { comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } f
 // y no ve una tasa de cumplimiento en ninguna parte. La ponderacion existe y es
 // suya, pero solo se muestra en el listado del mes, bajo el encuadre de como se
 // reparte su cargo.
+//
+// Reescrito en CEB-215: el empleado no obtiene su tasa de cumplimiento ni lo
+// sin cumplir de nadie. El supervisor si lo obtiene de su gente, en peso y
+// nunca en dinero: esa parte es INV-40.
 describe('INV-3: la ponderacion vive en el mes, y la tasa no existe', () => {
   beforeAll(async () => {
     await vaciar();
@@ -36,6 +40,20 @@ describe('INV-3: la ponderacion vive en el mes, y la tasa no existe', () => {
     const { data } = await ana.from('funcion').select('titularidad(ponderacion)').neq('texto', 'Cierre de Ana');
 
     expect(data).toEqual([]);
+  });
+
+  it('ni lo sin cumplir de nadie: las lecturas del supervisor no le devuelven nada', async () => {
+    const ana = await comoEmpleado('ana@prueba.test');
+    await comoEmpleado('benito@prueba.test');
+    const { data: benito } = await comoServicio().from('empleado').select('id').eq('nombre_bloque', 'BENITO').single();
+
+    const { data } = await ana.rpc('lo_de_mi_gente');
+    expect(data).toMatchObject({ gente: [], funciones: [], marcas: [], eventos: [], imprevistos: [], intromisiones: [] });
+    expect((await ana.rpc('tareas_de', { el_empleado: benito!.id })).data).toBeNull();
+    // Un "no pude" de benito: lo que lleva sin cumplir no le llega a ana.
+    const { data: suya } = await comoServicio().from('funcion').select('id').eq('texto', 'Cierre de Benito').single();
+    await comoServicio().from('marca').insert({ funcion_id: suya!.id, periodo: '2026-01', resultado: 'no_pude', razon: 'sin sistema' });
+    expect((await ana.from('marca').select('id').eq('funcion_id', suya!.id)).data).toEqual([]);
   });
 
   // La garantia que falta es de interfaz, no de datos: que el HTML de la
