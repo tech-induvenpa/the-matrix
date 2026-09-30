@@ -2,7 +2,7 @@ import { Calendario, conceptoDe, estadoDelMes } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { escapar } from '@/lib/datos';
-import { lasReaperturas } from '@/lib/cierre-del-mes';
+import { ahoraEnLaBase, lasReaperturas } from '@/lib/cierre-del-mes';
 import { nombreDelMes, nominaDelMes } from '@/lib/nomina';
 import { SIN_EMPRESA, TODAS } from '@/lib/nomina-por-empresa';
 import { NextResponse, type NextRequest } from 'next/server';
@@ -38,11 +38,12 @@ export async function GET(request: NextRequest) {
   const todas = empresaId === TODAS;
   const ninguna = empresaId === SIN_EMPRESA;
   const deLaEmpresa = supabase.from('empleado').select('id, nombre_bloque, empresa(nombre)').order('nombre_bloque');
-  const [{ data: dias }, { data: empresa }, { data: gente }, reaperturas] = await Promise.all([
+  const [{ data: dias }, { data: empresa }, { data: gente }, reaperturas, ahora] = await Promise.all([
     supabase.from('dia_no_habil').select('desde, hasta'),
     todas || ninguna ? Promise.resolve({ data: null }) : supabase.from('empresa').select('nombre').eq('id', empresaId).maybeSingle(),
     todas ? deLaEmpresa : ninguna ? deLaEmpresa.is('empresa_id', null) : deLaEmpresa.eq('empresa_id', empresaId),
     lasReaperturas(),
+    ahoraEnLaBase(),
   ]);
   if (!todas && !ninguna && !empresa) return new NextResponse(null, { status: 404 });
   const nombreDeEmpresa = (e: Record<string, unknown>) => ((e.empresa as { nombre?: string } | null)?.nombre ?? 'Sin empresa');
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     ? [...(gente ?? [])].sort((a, b) => nombreDeEmpresa(a).localeCompare(nombreDeEmpresa(b)) || String(a.nombre_bloque).localeCompare(String(b.nombre_bloque)))
     : (gente ?? []);
 
-  const estado = estadoDelMes(mes, Calendario.con(dias ?? []), new Date().toISOString(), reaperturas);
+  const estado = estadoDelMes(mes, Calendario.con(dias ?? []), ahora, reaperturas);
   if (estado.estado !== 'cerrado') return new NextResponse('Ese mes todavía no cerró: su nómina es provisional.', { status: 409 });
 
   const filas: string[][] = [];

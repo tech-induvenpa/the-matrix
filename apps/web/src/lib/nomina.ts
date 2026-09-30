@@ -16,7 +16,7 @@ import {
 } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { comoCambios, hoyISO, sumarDias } from '@/lib/datos';
-import { lasReaperturas } from '@/lib/cierre-del-mes';
+import { ahoraEnLaBase, lasReaperturas } from '@/lib/cierre-del-mes';
 
 // Con sus reaperturas, si las hubo (CEB-232).
 export type NominaDelMes = {
@@ -39,7 +39,7 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
   const supabase = await clienteDelServidor();
   const hoy = hoyISO();
 
-  const [{ data: dias }, { data: titularidades }, { data: imprevistos }, { data: bonos }, reaperturas, { data: totales }] = await Promise.all([
+  const [{ data: dias }, { data: titularidades }, { data: imprevistos }, { data: bonos }, reaperturas, { data: totales }, ahora] = await Promise.all([
     supabase.from('dia_no_habil').select('desde, hasta'),
     supabase
       .from('titularidad')
@@ -57,10 +57,10 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
     supabase.from('bono').select('monto, rige_desde').eq('empleado_id', empleadoId),
     lasReaperturas(),
     supabase.from('total_al_reabrir').select('reapertura_id, total').eq('empleado_id', empleadoId),
+    ahoraEnLaBase(),
   ]);
 
   const calendario = Calendario.con(dias ?? []);
-  const ahora = new Date().toISOString();
   const estado = estadoDelMes(mes, calendario, ahora, reaperturas);
   const bono = bonoDelMes(comoCambios(bonos), mes);
   const activas = ((titularidades ?? []) as Record<string, unknown>[])

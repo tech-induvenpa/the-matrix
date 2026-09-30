@@ -105,7 +105,9 @@ describe('INV-20: la intromision no se puede inventar', () => {
   it('en un flujo, un imprevisto de antes del ultimo "al dia" se rechaza', async () => {
     const viejo = await registrar('ana@prueba.test', ana, 'Antes de ponerme al dia');
     const sesion = await comoEmpleado('ana@prueba.test');
-    await sesion.from('evento_flujo').insert({ funcion_id: caja, estado: 'al_dia' });
+    // Con fecha: sin ella seria la del reloj de las pruebas, a mitad de mes, y
+    // el imprevisto se pidio con la fecha real.
+    await sesion.from('evento_flujo').insert({ funcion_id: caja, estado: 'al_dia', en: new Date().toISOString() });
 
     const { error } = await sesion.rpc('atrasar_flujo', { la_funcion: caja, la_razon: 'Excusa', imprevistos: [viejo] });
     expect(error).not.toBeNull();
