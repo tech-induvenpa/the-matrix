@@ -88,3 +88,33 @@ button { font: inherit; cursor: pointer; border: none; }
   /* Las etiquetas traen display: flex en linea, que gana sin esto. */
   display: none !important;
 }
+
+/* El perfil de una persona para el administrador: lo que cambia poco (quien
+   es, su responsable, su bono, su reparto) a la izquierda; lo del dia (sus
+   tareas) a la derecha. En pantallas chicas, uno debajo del otro. */
+.perfil {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .perfil { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Agregar algo a una lista: una fila mas, en gris y punteada, al final de las
+   que ya estan. Al abrirla se despliega el formulario debajo. */
+.nuevo-item > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  border: 1.5px dashed rgba(26, 23, 19, 0.18);
+  border-radius: 12px;
+  color: var(--gris);
+  font-size: 14px;
+  font-weight: 600;
+}
+.nuevo-item > summary::-webkit-details-marker { display: none; }
+.nuevo-item > summary:hover { border-color: rgba(26, 23, 19, 0.35); color: var(--tinta); }
+.nuevo-item[open] > summary { border-style: solid; color: var(--tinta); }

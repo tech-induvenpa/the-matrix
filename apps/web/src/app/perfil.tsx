@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { lineaDeTiempo, loLeen, sinLeer, type EventoDelPerfil, type TareaDelPerfil } from '@matriz/dominio';
 import { claveDeOcurrencia, losComentarios, type FilaComentario } from '@/lib/comentarios';
-import { fechaCorta, hoyISO } from '@/lib/datos';
+import { hoyISO, momentoCorto } from '@/lib/datos';
 import { comentar } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
@@ -94,7 +94,7 @@ function PerfilDeTarea({
           <li key={n} style={{ display: 'flex', gap: 9, alignItems: 'baseline', fontSize: 13.5, lineHeight: 1.4 }}>
             <span aria-hidden style={{ flexShrink: 0 }}>{e.emoji}</span>
             <span style={{ flexGrow: 1, minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{enPalabras(e)}</span>
-            <span style={{ fontSize: 12, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{fechaCorta(e.cuando.slice(0, 10))}</span>
+            <span style={{ fontSize: 12, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{momentoCorto(e.cuando)}</span>
           </li>
         ))}
       </ol>

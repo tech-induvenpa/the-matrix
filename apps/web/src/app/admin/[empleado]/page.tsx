@@ -47,7 +47,7 @@ export default async function Cargo({
   const proponiendo = peso !== undefined && editar !== undefined && Number.isInteger(Number(peso));
 
   return (
-    <main style={{ maxWidth: 880, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 24 }}>
       <header>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>{cargo.nombre}</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
@@ -99,223 +99,233 @@ export default async function Cargo({
         )}
       </header>
 
-      {/* Quien responde por esta persona (CEB-145). Un solo nivel: quien
-          supervisa a alguien no tiene supervisor. */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su responsable 👥</h2>
-        {cargo.supervisa.length > 0 ? (
-          <p style={{ fontSize: 14, margin: 0 }}>
-            Es responsable de {cargo.supervisa.map((p) => p.nombre).join(', ')}. Quien es responsable de alguien no tiene responsable.
-          </p>
-        ) : (
-          <Accion accion={asignarSupervisor.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select name="supervisor" defaultValue={cargo.supervisorId ?? ''} style={CAMPO} aria-label="Su responsable">
-              <option value="">Sin responsable</option>
-              {cargo.puedenSupervisar.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
-            <Enviar style={BOTON} enviando="Guardando…">
-              Guardar
-            </Enviar>
-          </Accion>
-        )}
-      </section>
+      <div className="perfil">
+        {/* Lo que cambia poco: se lee de un vistazo y se toca con el lapiz. */}
+        <aside style={{ background: 'var(--panel)', borderRadius: 18, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+          {/* Quien responde por esta persona (CEB-145). Un solo nivel: quien
+              supervisa a alguien no tiene supervisor. */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <h2 style={H_FIJO}>Su responsable 👥</h2>
+            {cargo.supervisa.length > 0 ? (
+              <p style={{ fontSize: 14, margin: 0 }}>
+                Es responsable de {cargo.supervisa.map((p) => p.nombre).join(', ')}. Quien es responsable de alguien no tiene responsable.
+              </p>
+            ) : (
+              <Accion accion={asignarSupervisor.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select name="supervisor" defaultValue={cargo.supervisorId ?? ''} style={CAMPO} aria-label="Su responsable">
+                  <option value="">Sin responsable</option>
+                  {cargo.puedenSupervisar.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </select>
+                <Enviar style={BOTON} enviando="Guardando…">
+                  Guardar
+                </Enviar>
+              </Accion>
+            )}
+          </section>
 
-      {/* El bono (ADR 0010): el unico monto que el sistema conoce. Un cambio
-          rige siempre desde el mes que viene; la base lo decide, no esta pantalla. */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* Siempre el bono que rige hoy. Si ya hay otro para el mes que viene,
-            va al lado como una nota, para que editar no parezca no haber hecho
-            nada. */}
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          Su bono 💵
-          <strong>{bono.vigente === null ? '—' : dolares(bono.vigente)}</strong>
-          <Ir
-            href={editar === 'bono' ? '?' : '?editar=bono'}
-            aria-label={editar === 'bono' ? 'Cerrar' : 'Editar el bono'}
-            style={{ fontSize: 14, textDecoration: 'none' }}
-          >
-            {editar === 'bono' ? '✕' : '✏️'}
-          </Ir>
-          {bono.pendiente !== null && (
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gris)' }}>
-              a partir del mes que viene: {dolares(bono.pendiente)}
-            </span>
-          )}
-        </h2>
-        {editar === 'bono' && (
-          <Accion accion={fijarBono.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <input
-              name="monto"
-              inputMode="decimal"
-              required
-              autoFocus
-              defaultValue={bono.pendiente ?? bono.vigente ?? ''}
-              placeholder="Bono en dólares"
-              style={CAMPO}
-            />
-            <Enviar style={BOTON} enviando="Guardando…">
-              Guardar
-            </Enviar>
-            <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>
-              {bono.vigente === null ? 'Es su primer bono: rige desde este mes.' : 'Rige desde el mes que viene.'}
-            </span>
-          </Accion>
-        )}
-      </section>
+          {/* El bono (ADR 0010): el unico monto que el sistema conoce. Un cambio
+              rige siempre desde el mes que viene; la base lo decide, no esta pantalla. */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Siempre el bono que rige hoy. Si ya hay otro para el mes que viene,
+                va al lado como una nota, para que editar no parezca no haber hecho
+                nada. */}
+            <h2 style={{ ...H_FIJO, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              Su bono 💵
+              <strong>{bono.vigente === null ? '—' : dolares(bono.vigente)}</strong>
+              <Ir
+                href={editar === 'bono' ? '?' : '?editar=bono'}
+                aria-label={editar === 'bono' ? 'Cerrar' : 'Editar el bono'}
+                style={{ fontSize: 14, textDecoration: 'none' }}
+              >
+                {editar === 'bono' ? '✕' : '✏️'}
+              </Ir>
+              {bono.pendiente !== null && (
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gris)' }}>
+                  a partir del mes que viene: {dolares(bono.pendiente)}
+                </span>
+              )}
+            </h2>
+            {editar === 'bono' && (
+              <Accion accion={fijarBono.bind(null, empleado)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  name="monto"
+                  inputMode="decimal"
+                  required
+                  autoFocus
+                  defaultValue={bono.pendiente ?? bono.vigente ?? ''}
+                  placeholder="Bono en dólares"
+                  style={CAMPO}
+                />
+                <Enviar style={BOTON} enviando="Guardando…">
+                  Guardar
+                </Enviar>
+                <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>
+                  {bono.vigente === null ? 'Es su primer bono: rige desde este mes.' : 'Rige desde el mes que viene.'}
+                </span>
+              </Accion>
+            )}
+          </section>
 
-      {/* Sus tareas abiertas, ocurrencias e imprevistos juntos (CEB-198): se
-          comentan desde su perfil y las marca ella. Lo que el administrador le
-          pide a ultimo minuto tambien cuenta como imprevisto (CEB-151). */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Sus tareas abiertas 🌪️</h2>
-        <ListaDeTareas
-          lista={tareas}
-          hoy={imprevistos.hoy}
-          calendario={imprevistos.calendario}
-          quienesPiden={imprevistos.quienesPiden}
-          perfiles={conPerfil}
-          puedeBorrar={() => true}
-        />
-        <NuevoImprevisto
-          empleadoId={empleado}
-          quienesPiden={imprevistos.quienesPiden}
-          pidioPorDefecto={imprevistos.yo}
-          hoy={imprevistos.hoy}
-          calendario={imprevistos.calendario}
-          rotulo="＋ Registrarle un imprevisto"
-        />
-      </section>
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+              <h2 style={H_FIJO}>Su reparto 🥧</h2>
+              <Ir href={repartiendo ? '?' : '?editar=reparto'} style={{ fontSize: 13, color: 'var(--gris)' }}>
+                {repartiendo ? 'dejar de modificar' : '✏️ modificar ponderación'}
+              </Ir>
+            </div>
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Su reparto 🥧</h2>
-          <Ir href={repartiendo ? '?' : '?editar=reparto'} style={{ fontSize: 13, color: 'var(--gris)' }}>
-            {repartiendo ? 'dejar de modificar' : '✏️ modificar ponderación'}
-          </Ir>
-        </div>
-
-        {repartiendo ? (
-          <Reparto empleadoId={empleado} funciones={cargo.funciones} borrador={cargo.borrador} />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {cargo.funciones.map((f) => (
-              <div key={f.id}>
-                <div style={FILA}>
-                  <span style={{ flexGrow: 1, minWidth: 0, fontSize: 14 }}>{f.texto}</span>
-                  <span style={{ fontSize: 12.5, color: 'var(--gris)', whiteSpace: 'nowrap' }}>
-                    {f.sinPublicar && <strong style={{ color: '#8A7A3E' }}>sin publicar · </strong>}
-                    {f.tipo ?? 'sin tipo'} · {f.periodicidad}
-                    {f.diaTope ? ` · día ${f.diaTope}` : ''}
-                  </span>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
-                    {f.ponderacion}%
-                  </span>
-                  <Ir
-                    href={editar === f.id ? '?' : `?editar=${f.id}`}
-                    title="Editar esta función"
-                    style={{ fontSize: 15, textDecoration: 'none' }}
-                  >
-                    {editar === f.id ? '✕' : '✏️'}
-                  </Ir>
-                </div>
-
-                {editar === f.id && proponiendo && (
-                  <div style={{ marginTop: 5 }}>
-                    <Propuesta
-                      empleadoId={empleado}
-                      funciones={cargo.funciones}
-                      funcionId={f.id}
-                      nueva={Number(peso)}
-                    />
-                  </div>
-                )}
-
-                {editar === f.id && !proponiendo && (
-                  <div style={{ background: 'var(--suave)', borderRadius: 14, padding: '16px 18px', marginTop: 5 }}>
-                    <Formulario funcionId={f.id} empleadoId={empleado} funcion={f} />
-
-                    <Accion accion={traspasar.bind(null, f.id, empleado)}>
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,23,19,0.10)' }}>
-                        <label style={ETIQUETA}>
-                          Pasársela a
-                          <select name="aQuien" style={CAMPO}>
-                            <option value="">—</option>
-                            {cargo.companeros.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.nombre}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label style={ETIQUETA}>
-                          Cuánto pesa en su cargo
-                          <input name="pesoNuevo" type="number" min={0} max={100} defaultValue={f.ponderacion} style={{ ...CAMPO, width: 80, textAlign: 'right' }} />
-                        </label>
-
-                        <Enviar style={{ ...BOTON, background: 'rgba(26,23,19,0.06)', color: 'var(--tinta)' }} enviando="Traspasando…">
-                          Traspasar
-                        </Enviar>
-
-                        <span style={{ fontSize: 12, color: 'var(--gris)', flexBasis: '100%' }}>
-                          Aquí pesa {f.ponderacion}%. Su historial se va con ella; el arrastre de {cargo.nombre} se queda.
+            {repartiendo ? (
+              <Reparto empleadoId={empleado} funciones={cargo.funciones} borrador={cargo.borrador} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {cargo.funciones.map((f) => (
+                  <div key={f.id}>
+                    <div style={FILA}>
+                      {/* Nombre y detalle apilados: la columna es angosta. */}
+                      <span style={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 14 }}>{f.texto}</span>
+                        <span style={{ fontSize: 12, color: 'var(--gris)' }}>
+                          {f.sinPublicar && <strong style={{ color: '#8A7A3E' }}>sin publicar · </strong>}
+                          {f.tipo ?? 'sin tipo'} · {f.periodicidad}
+                          {f.diaTope ? ` · día ${f.diaTope}` : ''}
                         </span>
+                      </span>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
+                        {f.ponderacion}%
+                      </span>
+                      <Ir
+                        href={editar === f.id ? '?' : `?editar=${f.id}`}
+                        title="Editar esta función"
+                        style={{ fontSize: 15, textDecoration: 'none' }}
+                      >
+                        {editar === f.id ? '✕' : '✏️'}
+                      </Ir>
+                    </div>
+
+                    {editar === f.id && proponiendo && (
+                      <div style={{ marginTop: 5 }}>
+                        <Propuesta
+                          empleadoId={empleado}
+                          funciones={cargo.funciones}
+                          funcionId={f.id}
+                          nueva={Number(peso)}
+                        />
                       </div>
-                    </Accion>
+                    )}
 
-                    <Accion accion={archivarFuncion.bind(null, f.id, empleado)}>
-                      <Enviar
-                        style={{ ...BOTON, marginTop: 14, background: 'rgba(198,40,40,0.10)', color: '#C62828' }}
-                        enviando="Archivando…"
-                      >
-                        Archivar esta función: sale de su cargo y conserva su historia
-                      </Enviar>
-                    </Accion>
+                    {editar === f.id && !proponiendo && (
+                      <div style={{ background: 'var(--suave)', borderRadius: 14, padding: '16px 18px', marginTop: 5 }}>
+                        <Formulario funcionId={f.id} empleadoId={empleado} funcion={f} />
 
-                    {/* Para la creada por error. Si ya tiene historia, la base la
-                        rechaza y hay que archivarla. */}
-                    <Accion accion={eliminarFuncion.bind(null, f.id, empleado)}>
-                      <Enviar
-                        style={{ marginTop: 6, fontSize: 12.5, color: '#C62828', background: 'none', cursor: 'pointer' }}
-                        enviando="Eliminando…"
-                      >
-                        Eliminarla por completo (solo si se creó por error y no tiene historia)
-                      </Enviar>
-                    </Accion>
+                        <Accion accion={traspasar.bind(null, f.id, empleado)}>
+                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,23,19,0.10)' }}>
+                            <label style={ETIQUETA}>
+                              Pasársela a
+                              <select name="aQuien" style={CAMPO}>
+                                <option value="">—</option>
+                                {cargo.companeros.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.nombre}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label style={ETIQUETA}>
+                              Cuánto pesa en su cargo
+                              <input name="pesoNuevo" type="number" min={0} max={100} defaultValue={f.ponderacion} style={{ ...CAMPO, width: 80, textAlign: 'right' }} />
+                            </label>
+
+                            <Enviar style={{ ...BOTON, background: 'rgba(26,23,19,0.06)', color: 'var(--tinta)' }} enviando="Traspasando…">
+                              Traspasar
+                            </Enviar>
+
+                            <span style={{ fontSize: 12, color: 'var(--gris)', flexBasis: '100%' }}>
+                              Aquí pesa {f.ponderacion}%. Su historial se va con ella; el arrastre de {cargo.nombre} se queda.
+                            </span>
+                          </div>
+                        </Accion>
+
+                        <Accion accion={archivarFuncion.bind(null, f.id, empleado)}>
+                          <Enviar
+                            style={{ ...BOTON, marginTop: 14, background: 'rgba(198,40,40,0.10)', color: '#C62828' }}
+                            enviando="Archivando…"
+                          >
+                            Archivar esta función: sale de su cargo y conserva su historia
+                          </Enviar>
+                        </Accion>
+
+                        {/* Para la creada por error. Si ya tiene historia, la base la
+                            rechaza y hay que archivarla. */}
+                        <Accion accion={eliminarFuncion.bind(null, f.id, empleado)}>
+                          <Enviar
+                            style={{ marginTop: 6, fontSize: 12.5, color: '#C62828', background: 'none', cursor: 'pointer' }}
+                            enviando="Eliminando…"
+                          >
+                            Eliminarla por completo (solo si se creó por error y no tiene historia)
+                          </Enviar>
+                        </Accion>
+                      </div>
+                    )}
                   </div>
+                ))}
+
+                {cargo.funciones.length === 0 && (
+                  <p style={{ color: 'var(--gris)', fontSize: 14 }}>Todavía no tiene ninguna función.</p>
                 )}
               </div>
-            ))}
-
-            {cargo.funciones.length === 0 && (
-              <p style={{ color: 'var(--gris)', fontSize: 14 }}>Todavía no tiene ninguna función.</p>
             )}
-          </div>
-        )}
-      </section>
+          </section>
 
-      {/* Plegado: la ficha es para leer el cargo, y crear es lo raro. */}
-      <details style={{ borderTop: '1px solid rgba(26,23,19,0.10)', paddingTop: 18 }}>
-        <summary style={AGREGAR}>＋ Agregar nueva función</summary>
-        <div style={{ paddingTop: 14 }}>
-          <Formulario empleadoId={empleado} accion={crearFuncion.bind(null, empleado)} />
-        </div>
-      </details>
+          {/* Plegado: la ficha es para leer el cargo, y crear es lo raro. */}
+          <details className="nuevo-item">
+            <summary>＋ Nueva función</summary>
+            <div style={{ paddingTop: 14 }}>
+              <Formulario empleadoId={empleado} accion={crearFuncion.bind(null, empleado)} />
+            </div>
+          </details>
+        </aside>
+
+        {/* Lo del dia: lo que tiene abierto ahora. */}
+        {/* Sus tareas abiertas, ocurrencias e imprevistos juntos (CEB-198): se
+            comentan desde su perfil y las marca ella. Lo que el administrador le
+            pide a ultimo minuto tambien cuenta como imprevisto (CEB-151). */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Sus tareas abiertas 🌪️</h2>
+          <ListaDeTareas
+            lista={tareas}
+            hoy={imprevistos.hoy}
+            calendario={imprevistos.calendario}
+            quienesPiden={imprevistos.quienesPiden}
+            perfiles={conPerfil}
+            puedeBorrar={() => true}
+          />
+          <NuevoImprevisto
+            empleadoId={empleado}
+            quienesPiden={imprevistos.quienesPiden}
+            pidioPorDefecto={imprevistos.yo}
+            hoy={imprevistos.hoy}
+            calendario={imprevistos.calendario}
+            rotulo="＋ Nueva tarea"
+            fila
+          />
+        </section>
+      </div>
     </main>
   );
 }
 
-const AGREGAR = { cursor: 'pointer', fontSize: 15, fontWeight: 600, width: 'fit-content' } as const;
+const H_FIJO = { fontSize: 15, fontWeight: 700, margin: 0 } as const;
 
 const FILA = {
   display: 'flex',
   alignItems: 'center',
   gap: 12,
-  background: 'var(--suave)',
+  background: '#fff',
   borderRadius: 12,
   padding: '10px 14px',
 } as const;

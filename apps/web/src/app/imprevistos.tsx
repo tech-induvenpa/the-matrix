@@ -127,6 +127,7 @@ export function NuevoImprevisto({
   hoy,
   calendario,
   rotulo = '＋ Me cayó un imprevisto',
+  fila = false,
 }: {
   empleadoId: string;
   quienesPiden: readonly QuienPide[];
@@ -134,14 +135,16 @@ export function NuevoImprevisto({
   hoy: string;
   calendario: Calendario;
   rotulo?: string;
+  // Como una fila mas, en gris, al final de la lista.
+  fila?: boolean;
 }) {
   const cuando = (vence: string) => (vence === hoy ? 'hoy' : vence === sumarDias(hoy, 1) ? 'mañana' : fechaConDia(vence));
 
   return (
-    <details style={{ fontSize: 14 }}>
+    <details className={fila ? 'nuevo-item' : undefined} style={{ fontSize: 14 }}>
       <summary style={{ cursor: 'pointer', color: 'var(--gris)', fontWeight: 600 }}>{rotulo}</summary>
       <Accion accion={registrarImprevisto.bind(null, empleadoId)} style={FORMULARIO}>
-        <input name="texto" required placeholder="¿Qué te pidieron?" style={{ ...CAMPO, flex: '1 1 220px' }} />
+        <input name="texto" required placeholder="¿Qué hay que hacer?" style={{ ...CAMPO, flex: '1 1 220px' }} />
         <select name="urgencia" defaultValue="8" style={CAMPO} aria-label="Urgencia: para cuándo">
           {opcionesDeUrgencia(hoy, calendario).map((o) => (
             <option key={o.urgencia} value={o.urgencia}>
