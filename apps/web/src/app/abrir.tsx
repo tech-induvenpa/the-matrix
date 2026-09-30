@@ -35,14 +35,25 @@ export function AbrirPerfil({ clave, sinLeer, children }: { clave: string; sinLe
   );
 }
 
-// Del color del texto de donde este: rojo sobre una tarjeta roja no se veia.
+// Verde, como el de la esquina de las tarjetas (NuevoMensaje), con un borde
+// blanco para que se lea sobre cualquier color.
 export function Punto() {
   return (
     <span
       role="img"
       aria-label="comentarios sin leer"
       title="Comentarios sin leer"
-      style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 999, background: 'currentColor', marginLeft: 7, verticalAlign: 'middle' }}
+      style={{
+        display: 'inline-block',
+        width: 12,
+        height: 12,
+        borderRadius: 999,
+        background: '#2E9E5B',
+        border: '2px solid #fff',
+        boxShadow: '0 1px 3px rgba(26,23,19,0.2)',
+        marginLeft: 7,
+        verticalAlign: 'middle',
+      }}
     />
   );
 }
