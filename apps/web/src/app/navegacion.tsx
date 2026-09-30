@@ -2,6 +2,9 @@
 
 import { usePathname } from 'next/navigation';
 import { Ir } from './ir';
+import { Accion } from './accion';
+import type { Aviso } from './avisos';
+import type { MesDelCierre } from '@/lib/cierre-del-mes';
 
 // Cada rol tiene su menu y ninguno ve el del otro: al administrador, "Esta
 // semana" y "El mes" lo mandaban de vuelta al panel, y al empleado no le
@@ -10,12 +13,21 @@ export function Navegacion({
   entradas,
   salida,
   personas = [],
+  cierre,
 }: {
   entradas: { href: string; texto: string; externo?: boolean; porMes?: boolean }[];
   salida?: () => Promise<void>;
   // Quienes pueden elegirse en la descarga. Solo el administrador las recibe.
   personas?: readonly { id: string; nombre: string }[];
+  // Los meses con su cierre, y reabrir y cerrar (CEB-229). Solo el administrador.
+  cierre?: {
+    meses: readonly MesDelCierre[];
+    reabrir: (formulario: FormData) => Promise<Aviso | undefined>;
+    cerrar: (mes: string) => Promise<Aviso | undefined>;
+  };
 }) {
+  const meses = cierre?.meses ?? MESES;
+
   const donde = usePathname();
 
   return (
@@ -54,34 +66,38 @@ export function Navegacion({
             return (
               <details key={e.href} style={{ position: 'relative' }}>
                 <summary style={{ ...estilo, cursor: 'pointer', listStyle: 'none' }}>{e.texto}</summary>
-                <form action={e.href} method="get" style={PANEL}>
-                  <label style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
-                    ¿Qué mes?
-                    <select name="mes" defaultValue={MESES[0]!.valor} style={SELECTOR}>
-                      {MESES.map((m) => (
-                        <option key={m.valor} value={m.valor}>
-                          {m.texto}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {personas.length > 0 && (
-                    <fieldset style={PERSONAS}>
-                      <legend style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500, padding: 0, marginBottom: 4 }}>
-                        ¿De quién? <span style={{ fontWeight: 400 }}>Sin marcar, de todos.</span>
-                      </legend>
-                      {personas.map((p) => (
-                        <label key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, fontWeight: 500 }}>
-                          <input type="checkbox" name="persona" value={p.id} />
-                          {p.nombre}
-                        </label>
-                      ))}
-                    </fieldset>
-                  )}
-                  <button type="submit" style={BOTON}>
-                    Descargar
-                  </button>
-                </form>
+                <div style={PANEL}>
+                  <form action={e.href} method="get" style={COLUMNA}>
+                    <label style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
+                      ¿Qué mes?
+                      <select name="mes" defaultValue={meses[0]!.valor} style={SELECTOR}>
+                        {meses.map((m) => (
+                          <option key={m.valor} value={m.valor}>
+                            {m.texto}
+                            {'estado' in m && ` · ${ESTADO[m.estado.estado]}${m.hasta ? ` hasta el ${m.hasta}` : ''}`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {personas.length > 0 && (
+                      <fieldset style={PERSONAS}>
+                        <legend style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500, padding: 0, marginBottom: 4 }}>
+                          ¿De quién? <span style={{ fontWeight: 400 }}>Sin marcar, de todos.</span>
+                        </legend>
+                        {personas.map((p) => (
+                          <label key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, fontWeight: 500 }}>
+                            <input type="checkbox" name="persona" value={p.id} />
+                            {p.nombre}
+                          </label>
+                        ))}
+                      </fieldset>
+                    )}
+                    <button type="submit" style={BOTON}>
+                      Descargar
+                    </button>
+                  </form>
+                  {cierre && <ElCierre {...cierre} />}
+                </div>
               </details>
             );
           }
@@ -113,6 +129,50 @@ export function Navegacion({
     </div>
   );
 }
+
+// Reabrir y volver a cerrar, donde se elige el mes para descargar (CEB-229).
+// Son formularios aparte, debajo del de la descarga: un formulario no va
+// dentro de otro.
+function ElCierre({ meses, reabrir, cerrar }: NonNullable<Parameters<typeof Navegacion>[0]['cierre']>) {
+  const cerrados = meses.filter((m) => m.estado.estado === 'cerrado');
+  const reabiertos = meses.filter((m) => m.estado.estado === 'reabierto');
+  if (!cerrados.length && !reabiertos.length) return null;
+
+  return (
+    <div style={CIERRE}>
+      <span style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
+        El mes se cierra solo a las 23:59 de su último día hábil.
+      </span>
+      {reabiertos.map((m) => (
+        <Accion key={m.valor} accion={() => cerrar(m.valor)} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}>
+          <span style={{ flexGrow: 1 }}>
+            {m.texto}: reabierto hasta el {m.hasta}
+          </span>
+          <button type="submit" style={SECUNDARIO}>
+            Cerrarlo ya
+          </button>
+        </Accion>
+      ))}
+      {cerrados.length > 0 && (
+        <Accion accion={reabrir} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <select name="mes" defaultValue={cerrados[0]!.valor} style={SELECTOR}>
+            {cerrados.map((m) => (
+              <option key={m.valor} value={m.valor}>
+                {m.texto}
+              </option>
+            ))}
+          </select>
+          <textarea name="razon" required rows={2} placeholder="¿Por qué se reabre?" style={RAZON} />
+          <button type="submit" style={SECUNDARIO}>
+            Reabrir para todos
+          </button>
+        </Accion>
+      )}
+    </div>
+  );
+}
+
+const ESTADO = { abierto: 'abierto', cerrado: 'cerrado', reabierto: 'reabierto' } as const;
 
 export const DEL_EMPLEADO = [
   { href: '/', texto: 'Esta semana' },
@@ -158,6 +218,38 @@ const PANEL = {
   background: '#ffffff',
   boxShadow: '0 10px 30px rgba(26,23,19,0.18)',
   minWidth: 220,
+} as const;
+
+const COLUMNA = { display: 'flex', flexDirection: 'column', gap: 10 } as const;
+
+const CIERRE = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  borderTop: '1px solid rgba(26,23,19,0.10)',
+  paddingTop: 10,
+  maxWidth: 280,
+} as const;
+
+const RAZON = {
+  borderRadius: 12,
+  border: '1px solid rgba(26,23,19,0.12)',
+  padding: '8px 12px',
+  fontSize: 13.5,
+  fontFamily: 'inherit',
+  resize: 'vertical',
+} as const;
+
+const SECUNDARIO = {
+  height: 32,
+  padding: '0 14px',
+  borderRadius: 999,
+  border: '1px solid rgba(26,23,19,0.18)',
+  background: '#ffffff',
+  color: 'var(--tinta)',
+  fontSize: 13.5,
+  fontWeight: 600,
+  cursor: 'pointer',
 } as const;
 
 const PERSONAS = {

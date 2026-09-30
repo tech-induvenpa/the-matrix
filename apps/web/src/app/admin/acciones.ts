@@ -542,3 +542,28 @@ export async function asignarSupervisor(empleadoId: string, formulario: FormData
   revalidatePath(`/admin/${empleadoId}`);
   return { mensaje: supervisor ? 'Anotado. Ya responde por esta persona.' : 'Anotado. Sin responsable.', celebra: false };
 }
+
+// Reabrir un mes cerrado, para todos y con razon (CEB-229). La base comprueba
+// que quien reabre sea el administrador, que haya razon y que el mes este
+// cerrado; aqui solo se traduce el formulario.
+export async function reabrirMes(formulario: FormData) {
+  const mes = String(formulario.get('mes') ?? '');
+  const razon = String(formulario.get('razon') ?? '').trim();
+  if (!razon) return { mensaje: 'Reabrir un mes pide una razón.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('reabrir_mes', { el_mes: mes, la_razon: razon });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return { mensaje: 'Reabierto para todos. Se vuelve a cerrar solo en veinticuatro horas.', celebra: false };
+}
+
+export async function cerrarMes(mes: string) {
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('cerrar_mes', { el_mes: mes });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return { mensaje: 'Cerrado otra vez.', celebra: false };
+}
