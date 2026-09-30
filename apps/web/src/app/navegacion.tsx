@@ -1,7 +1,8 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useRef, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { SIN_EMPRESA, TODAS } from '@/lib/nomina-por-empresa';
 import { Ir } from './ir';
 import { Accion } from './accion';
@@ -93,7 +94,7 @@ export function Navegacion({
                 </Modal>
               </div>
             </details>
-            <Modal boton="Cierre del mes" titulo="Cierre del mes" estilo={{ color: 'var(--gris)' }}>
+            <Modal boton="Reabrir mes" titulo="Reabrir un mes" estilo={{ color: 'var(--gris)' }}>
               <ElCierre {...cierre} />
             </Modal>
           </>
@@ -152,9 +153,12 @@ function LasTareas({ meses, personas }: { meses: readonly { valor: string; texto
 }
 
 // Un modal nativo: <dialog> trae el fondo, el foco y Escape. Al abrirlo desde
-// el desplegable de descargas, el desplegable se pliega.
+// el desplegable de descargas, el desplegable se pliega. El dialogo vive fuera,
+// en el body: dentro de un <details> cerrado se esconderia con el.
 function Modal({ boton, titulo, estilo, children }: { boton: string; titulo: string; estilo: React.CSSProperties; children: ReactNode }) {
   const dialogo = useRef<HTMLDialogElement>(null);
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
   const abrir = (evento: MouseEvent<HTMLButtonElement>) => {
     evento.currentTarget.closest('details')?.removeAttribute('open');
     dialogo.current?.showModal();
@@ -165,15 +169,19 @@ function Modal({ boton, titulo, estilo, children }: { boton: string; titulo: str
       <button type="button" onClick={abrir} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', ...estilo }}>
         {boton}
       </button>
-      <dialog ref={dialogo} onClick={(e) => e.target === dialogo.current && dialogo.current.close()} style={DIALOGO}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{titulo}</h2>
-          <button type="button" aria-label="Cerrar" onClick={() => dialogo.current?.close()} style={CERRAR}>
-            ✕
-          </button>
-        </div>
-        {children}
-      </dialog>
+      {montado &&
+        createPortal(
+          <dialog ref={dialogo} onClick={(e) => e.target === dialogo.current && dialogo.current.close()} style={DIALOGO}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{titulo}</h2>
+              <button type="button" aria-label="Cerrar" onClick={() => dialogo.current?.close()} style={CERRAR}>
+                ✕
+              </button>
+            </div>
+            {children}
+          </dialog>,
+          document.body,
+        )}
     </>
   );
 }
