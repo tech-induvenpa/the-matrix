@@ -489,6 +489,8 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
             quienesPiden={quienesPiden.filter((q) => q.id !== yo)}
             hoy={hoy}
             calendario={calendario}
+            rotulo="＋ Nueva tarea"
+            fila
           />
 
           {/* Con imprevistos abiertos, los flujos se pliegan pero nunca se van:
