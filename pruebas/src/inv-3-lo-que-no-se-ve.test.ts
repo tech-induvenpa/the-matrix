@@ -1,4 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-3 · El empleado no ve el peso de su trabajo en la pantalla donde trabaja,
@@ -9,6 +10,15 @@ import { comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } f
 // Reescrito en CEB-215: el empleado no obtiene su tasa de cumplimiento ni lo
 // sin cumplir de nadie. El supervisor si lo obtiene de su gente, en peso y
 // nunca en dinero: esa parte es INV-40.
+//
+// Reescrito otra vez en CEB-227 (ADR 0016): el empleado ve su cumplimiento en
+// dinero, en su nomina, suya y de nadie mas; el supervisor no ve ninguna. La
+// nomina se lee con la sesion de quien mira (lib/nomina.ts): se prueba por esa
+// lectura real y por consulta directa. Solo se sustituyen las cookies de Next.
+const next = await vi.hoisted(async () => ({ sesion: null as SupabaseClient | null }));
+vi.mock('@/lib/supabase/servidor', () => ({ clienteDelServidor: async () => next.sesion }));
+
+const { nominaDelMes } = await import('../../apps/web/src/lib/nomina');
 describe('INV-3: la ponderacion vive en el mes, y la tasa no existe', () => {
   beforeAll(async () => {
     await vaciar();
@@ -60,4 +70,52 @@ describe('INV-3: la ponderacion vive en el mes, y la tasa no existe', () => {
   // pantalla de trabajo no imprima la ponderacion y el del mes si. Pide levantar
   // Next contra esta base y pedir las dos paginas con una sesion.
   it.todo('el HTML de / no contiene la ponderación y el de /mes sí');
+});
+
+describe('INV-3 (reescrito): el empleado obtiene su nomina y la de nadie mas; el supervisor, ninguna', () => {
+  const MES = '2026-08';
+  let ana: string;
+  let benito: string;
+
+  beforeAll(async () => {
+    await vaciar();
+    const servicio = comoServicio();
+    const sara = await sembrarEmpleado('SARA', 'sara@prueba.test');
+    ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
+    benito = await sembrarEmpleado('BENITO', 'benito@prueba.test');
+    await servicio.from('empleado').update({ supervisor_id: sara }).in('id', [ana, benito]);
+    await sembrarFuncion(ana, { hash_identidad: 'a-1', texto: 'Cierre de Ana', ponderacion: 25, importancia: 9, periodicidad: 'mensual', tipo_generado: 'entregable', fecha_alta: '2026-01-01' });
+    await servicio.from('bono').insert([
+      { empleado_id: ana, monto: 500, rige_desde: '2026-01-01' },
+      { empleado_id: benito, monto: 800, rige_desde: '2026-01-01' },
+    ]);
+  });
+
+  it('con su sesion, el empleado obtiene su nomina del mes', async () => {
+    next.sesion = await comoEmpleado('ana@prueba.test');
+    const { nomina } = await nominaDelMes(ana, MES);
+    // El cierre de agosto vencio sin marcar: 25% de $500.
+    expect(nomina).toMatchObject({ bono: 500, total: 375 });
+  });
+
+  it('y no la de un compañero', async () => {
+    next.sesion = await comoEmpleado('ana@prueba.test');
+    expect((await nominaDelMes(benito, MES)).nomina).toBeNull();
+  });
+
+  it('la supervisora no obtiene la nomina de su gente', async () => {
+    next.sesion = await comoEmpleado('sara@prueba.test');
+    expect((await nominaDelMes(ana, MES)).nomina).toBeNull();
+    expect((await nominaDelMes(benito, MES)).nomina).toBeNull();
+  });
+
+  it('por consulta directa, lo mismo: ni el bono ni el total de nadie mas', async () => {
+    const sesionAna = await comoEmpleado('ana@prueba.test');
+    const sesionSara = await comoEmpleado('sara@prueba.test');
+
+    expect((await sesionAna.from('bono').select('monto').eq('empleado_id', benito)).data).toEqual([]);
+    expect((await sesionAna.from('total_al_reabrir').select('total').eq('empleado_id', benito)).data).toEqual([]);
+    expect((await sesionSara.from('bono').select('monto')).data).toEqual([]);
+    expect((await sesionSara.from('total_al_reabrir').select('total')).data).toEqual([]);
+  });
 });

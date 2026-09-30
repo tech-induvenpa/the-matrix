@@ -108,8 +108,8 @@ export async function comoAdministrador(correo: string): Promise<SupabaseClient>
 // Cada prueba monta su escenario desde cero: nada de datos heredados.
 export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
-  for (const tabla of ['bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
-    const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
+  for (const tabla of ['reloj', 'reapertura', 'bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
+    const columna = tabla === 'administrador' ? 'auth_user_id' : tabla === 'reloj' ? 'unico' : 'id';
     // Tragarse este error costo una tarde: una restriccion nueva bloqueaba el
     // borrado, las tablas quedaban con datos de la corrida anterior, y el fallo
     // aparecia lejos, como una clave duplicada.
@@ -170,4 +170,67 @@ export async function sede(empresaId: string, nombre: string): Promise<string> {
     .single();
   if (error) throw error;
   return data.id as string;
+}
+
+// El reloj de la base (0032). Lo que depende de "ahora" -- el cierre del mes y
+// sus reaperturas -- pregunta a ahora(), que es este instante si hay uno y
+// now() si no. Asi se prueba el minuto antes y el minuto despues del cierre
+// sin esperar a fin de mes, con la base real. Solo lo mueve la llave de
+// servicio; vaciar() lo devuelve a now(). Con null, tambien.
+export async function fijarReloj(instante: string | null): Promise<void> {
+  const servicio = comoServicio();
+  const { error } = instante
+    ? await servicio.from('reloj').upsert({ unico: true, instante }, { onConflict: 'unico' })
+    : await servicio.from('reloj').delete().eq('unico', true);
+  if (error) throw error;
+}
+
+// Las descargas son CSV con punto y coma, como las lee Excel en español. Esto
+// las lee como una hoja: respeta las comillas (un punto y coma dentro de un
+// texto no parte la celda) y resuelve las formulas de pura aritmetica que
+// escribe la descarga de siempre (=K2/L2*(1-I2), =M2*N2/100).
+export function leerHoja(csv: string): { cabecera: string[]; filas: Record<string, string | number>[] } {
+  const lineas: string[][] = [];
+  let celda = '';
+  let fila: string[] = [];
+  let entreComillas = false;
+  const texto = csv.replace(/^\uFEFF/, '');
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i]!;
+    if (entreComillas && c === '"' && texto[i + 1] === '"') {
+      celda += '"';
+      i++;
+    } else if (c === '"') {
+      entreComillas = !entreComillas;
+    } else if (!entreComillas && c === ';') {
+      fila.push(celda);
+      celda = '';
+    } else if (!entreComillas && c === '\n') {
+      fila.push(celda);
+      lineas.push(fila);
+      fila = [];
+      celda = '';
+    } else {
+      celda += c;
+    }
+  }
+  fila.push(celda);
+  lineas.push(fila);
+
+  const [cabecera = [], ...resto] = lineas;
+  const valor = (n: number, col: number): number => {
+    const bruto = resto[n - 2]?.[col] ?? '';
+    if (!bruto.startsWith('=')) return Number(bruto || 0);
+    // ponytail: las formulas son solo referencias y aritmetica; se sustituyen
+    // las referencias por su valor y se evalua lo que queda.
+    const aritmetica = bruto.slice(1).replace(/([A-Z])(\d+)/g, (_, l: string, r: string) => `(${valor(+r, l.charCodeAt(0) - 65)})`);
+    return Function(`return ${aritmetica}`)() as number;
+  };
+
+  return {
+    cabecera,
+    filas: resto.map((celdas, i) =>
+      Object.fromEntries(cabecera.map((c, col) => [c, celdas[col]?.startsWith('=') ? valor(i + 2, col) : (celdas[col] ?? '')])),
+    ),
+  };
 }
