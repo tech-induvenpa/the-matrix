@@ -2,7 +2,8 @@
 
 import { ADMITE_DIA_TOPE, leerPertenencia, PISO_DE_COTIDIANIDAD, proponerReparto, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { esAdministrador } from '@/lib/administrador';
+import { esAdministrador, gente } from '@/lib/administrador';
+import { nominaDelMes } from '@/lib/nomina';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -541,4 +542,38 @@ export async function asignarSupervisor(empleadoId: string, formulario: FormData
 
   revalidatePath(`/admin/${empleadoId}`);
   return { mensaje: supervisor ? 'Anotado. Ya responde por esta persona.' : 'Anotado. Sin responsable.', celebra: false };
+}
+
+// Reabrir un mes cerrado, para todos y con razon (CEB-229). La base comprueba
+// que quien reabre sea el administrador, que haya razon y que el mes este
+// cerrado; aqui solo se traduce el formulario.
+export async function reabrirMes(formulario: FormData) {
+  const mes = String(formulario.get('mes') ?? '');
+  const razon = String(formulario.get('razon') ?? '').trim();
+  if (!razon) return { mensaje: 'Reabrir un mes pide una razón.', celebra: false };
+
+  // Lo que cada quien tenia a pagar antes de reabrir, para que su nomina diga
+  // que cambio (CEB-232). Quien no tiene bono ese mes no tiene total.
+  // ponytail: una nomina por persona, una tras otra; son decenas, no miles.
+  const totales = [];
+  for (const { id } of await gente()) {
+    const { nomina } = await nominaDelMes(id, mes);
+    if (nomina) totales.push({ empleado_id: id, total: nomina.total });
+  }
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('reabrir_mes', { el_mes: mes, la_razon: razon, totales });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return { mensaje: 'Reabierto para todos. Se vuelve a cerrar solo en veinticuatro horas.', celebra: false };
+}
+
+export async function cerrarMes(mes: string) {
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('cerrar_mes', { el_mes: mes });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return { mensaje: 'Cerrado otra vez.', celebra: false };
 }

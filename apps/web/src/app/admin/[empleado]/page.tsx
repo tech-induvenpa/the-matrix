@@ -21,6 +21,8 @@ import { comoVanSusFunciones, masDelegadas } from '@/lib/tablero';
 import { delegadaVeces } from '../../tablero';
 import { ComoVa } from '../../como-va';
 import { CerradasDelMes } from '../../cerradas';
+import { nombreDelMes, nominaDelMes } from '@/lib/nomina';
+import { EstadoDeCuenta, ultimosMeses } from '../../nomina';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
 // repartir y la de editar, con los mismos nombres repetidos uno debajo del otro.
@@ -33,11 +35,15 @@ export default async function Cargo({
   searchParams,
 }: {
   params: Promise<{ empleado: string }>;
-  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string; aQuien?: string; pesoNuevo?: string }>;
+  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string; aQuien?: string; pesoNuevo?: string; nomina?: string }>;
 }) {
   const { empleado } = await params;
-  const { editar, peso, tarea, entra, aQuien, pesoNuevo } = await searchParams;
-  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil, datos, delegaciones] = await Promise.all([
+  const { editar, peso, tarea, entra, aQuien, pesoNuevo, nomina: pedida = '' } = await searchParams;
+  // Su nomina (CEB-231): la del mes en curso, provisional, o la de un mes
+  // anterior, fija. La misma que ve la persona en "El mes".
+  const esteMes = new Date().toISOString().slice(0, 7);
+  const mesDeLaNomina = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedida) && pedida <= esteMes ? pedida : esteMes;
+  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil, datos, delegaciones, suNomina] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
     bonoDe(empleado),
@@ -45,6 +51,7 @@ export default async function Cargo({
     perfiles(tarea),
     datosDelEquipo(empleado),
     lasDelegaciones(false),
+    nominaDelMes(empleado, mesDeLaNomina),
   ]);
 
   // Quien no existe -- o una ruta vieja, como /admin/reporte -- es un 404.
@@ -191,6 +198,33 @@ export default async function Cargo({
               </Accion>
             )}
           </section>
+
+          {/* Su nomina (CEB-231, ADR 0016), debajo de su bono: para responder por
+              que se le paga lo que se le paga. Sin bono este mes, no aparece. */}
+          {(suNomina.nomina || mesDeLaNomina !== esteMes) && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <h2 style={H_FIJO}>Su nómina de {nombreDelMes(mesDeLaNomina)} 🧾</h2>
+                <form method="get" style={{ display: 'flex', gap: 6 }}>
+                  <select name="nomina" defaultValue={mesDeLaNomina} aria-label="Qué mes" style={CAMPO}>
+                    {ultimosMeses(esteMes).map((m) => (
+                      <option key={m.valor} value={m.valor}>
+                        {m.texto}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="submit" style={BOTON}>
+                    Ver
+                  </button>
+                </form>
+              </div>
+              {suNomina.nomina ? (
+                <EstadoDeCuenta datos={{ ...suNomina, nomina: suNomina.nomina }} />
+              ) : (
+                <p style={{ fontSize: 13, color: 'var(--gris)', margin: 0 }}>Ese mes no tenía bono, así que no hay nómina.</p>
+              )}
+            </section>
+          )}
 
           <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
