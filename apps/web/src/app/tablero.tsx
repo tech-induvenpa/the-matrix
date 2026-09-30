@@ -1,5 +1,5 @@
 import type { Barra } from '@matriz/dominio';
-import { dolares } from '@/lib/datos';
+import { dolares, fechaCorta } from '@/lib/datos';
 import type { PersonaDelTablero } from '@/lib/tablero';
 
 // Las graficas del tablero del equipo (CEB-215). Se dibujan en el servidor, en
@@ -96,6 +96,65 @@ export function SinCumplir({
         <p style={NADA}>
           {alDia} {alDia === 1 ? 'persona está al día' : 'personas están al día'}: están en la lista de abajo.
         </p>
+      )}
+    </section>
+  );
+}
+
+// Desde cuando (CEB-222): una linea de tiempo por persona, un tramo por
+// funcion que arrastra, desde que empezo hasta hoy. La escala va del arrastre
+// mas viejo del equipo a hoy, asi lo mas viejo es lo que mas salta.
+export function DesdeCuando({
+  lineas,
+  hoy,
+  perfilDe,
+}: {
+  lineas: readonly { persona: { id: string; nombre: string }; tramos: readonly { funcionId: string; texto: string; periodos: number; desde: string }[] }[];
+  hoy: string;
+  perfilDe: (id: string) => string;
+}) {
+  const inicio = lineas.reduce((m, l) => (l.tramos[0]!.desde < m ? l.tramos[0]!.desde : m), hoy);
+  const dia = (f: string) => Date.parse(`${f}T00:00:00Z`) / 864e5;
+  const largo = Math.max(1, dia(hoy) - dia(inicio));
+  const x = (f: string) => ((dia(f) - dia(inicio)) / largo) * 100;
+
+  return (
+    <section style={GRAFICA}>
+      <header>
+        <h2 style={TITULO}>Desde cuándo</h2>
+        <p style={NOTA}>Cada tramo es una función que arrastra, desde que dejó de cumplirse hasta hoy. Quien no arrastra nada no aparece.</p>
+      </header>
+
+      {lineas.length === 0 ? (
+        <p style={NADA}>Nada arrastra ahora mismo.</p>
+      ) : (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gris)' }}>
+            <span>{fechaCorta(inicio)}</span>
+            <span>hoy</span>
+          </div>
+          <ol style={LISTA}>
+            {lineas.map((l) => (
+              <li key={l.persona.id}>
+                <a href={perfilDe(l.persona.id)} style={ENLACE}>
+                  <strong style={{ fontSize: 14 }}>{l.persona.nombre}</strong>
+                  {l.tramos.map((t) => (
+                    <span key={t.funcionId} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ fontSize: 12.5, color: 'var(--gris)', overflowWrap: 'anywhere' }}>
+                        {t.texto} · {t.periodos} {t.periodos === 1 ? 'periodo' : 'periodos'}, desde el {fechaCorta(t.desde)}
+                      </span>
+                      <svg width="100%" height="10" aria-hidden style={{ display: 'block' }}>
+                        <title>{`${t.texto}: desde el ${fechaCorta(t.desde)}`}</title>
+                        <rect x="0" y="0" width="100%" height="10" rx="3" fill={PISTA} />
+                        <rect x={`${x(t.desde)}%`} y="0" width={`${Math.max(0.8, 100 - x(t.desde))}%`} height="10" rx="3" fill={FUNCION} />
+                      </svg>
+                    </span>
+                  ))}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </>
       )}
     </section>
   );

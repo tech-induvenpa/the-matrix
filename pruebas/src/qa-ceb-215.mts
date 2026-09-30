@@ -37,6 +37,9 @@ const facturas = await sembrarFuncion(ana, { ...funcion('Facturas', 'flujo'), po
 // Una funcion que nacio hoy: todavia no vence nada, esta al dia.
 const nueva = await sembrarFuncion(ana, { ...funcion('Informe nuevo', 'entregable'), ponderacion: 10, fecha_alta: hoy });
 await sembrarFuncion(carla, { ...funcion('Lo de Carla', 'entregable'), ponderacion: 45 });
+// Otra cadencia: una semanal de bruno sin cumplir en todo septiembre.
+const semanal = await sembrarFuncion(bruno, { ...funcion('Reporte semanal', 'entregable', 'semanal'), ponderacion: 15 });
+await servicio.from('titularidad').update({ desde: '2026-09-01' }).eq('funcion_id', semanal);
 // Las tenencias vienen de antes: el arrastre empieza cuando empezo a tenerla.
 await servicio.from('titularidad').update({ desde: '2026-06-01' }).in('funcion_id', [cierre, facturas]);
 await servicio.from('evento_flujo').insert({ funcion_id: facturas, estado: 'atrasado', razon: 'RAZON-DEL-ATRASO', en: haceDias(3) });
@@ -157,6 +160,19 @@ html = texto((await pagina(cSara, '/equipo')).html);
 criterio('sara: la misma barra, sin montos', html.includes('70% sin cumplir') && !/\$\d/.test(html) && html.includes(`href="/equipo/${ana}"`));
 criterio('sara: solo su gente', !html.includes('CARLA'));
 criterio('sara: no da de alta a nadie', !html.includes('Alguien nuevo'));
+
+// CEB-222 · La linea del arrastre.
+for (const [quien, cookie, ruta, perfil] of [
+  ['jefa', cJefa, '/admin', `/admin/${ana}`],
+  ['sara', cSara, '/equipo', `/equipo/${ana}`],
+] as const) {
+  html = texto((await pagina(cookie, ruta)).html);
+  const linea = html.slice(html.indexOf('Desde cuándo'));
+  criterio(`${quien}: un tramo por funcion que arrastra, de cadencias distintas`, linea.includes('Cierre contable · 4 periodos, desde el 30 jun') && /Reporte semanal · \d+ periodos, desde el/.test(linea));
+  criterio(`${quien}: lo mas viejo primero`, linea.indexOf('ANA') < linea.indexOf('BRUNO'));
+  criterio(`${quien}: quien no arrastra no ocupa espacio`, !linea.includes('SARA</strong>'));
+  criterio(`${quien}: el tramo lleva al perfil`, linea.includes(`href="${perfil}"`));
+}
 
 console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');
 process.exit(fallos ? 1 : 0);
