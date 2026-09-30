@@ -185,7 +185,7 @@ export async function archivarFuncion(funcionId: string, empleadoId: string) {
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath(`/admin/${empleadoId}`);
-  return { mensaje: 'Archivada. Su historial sigue ahí y el reparto se reacomodó.', celebra: false };
+  redirect(`/admin/${empleadoId}`);
 }
 
 // Eliminar por completo: para la funcion creada por error. La base la rechaza

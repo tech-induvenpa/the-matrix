@@ -25,10 +25,10 @@ export default async function Cargo({
   searchParams,
 }: {
   params: Promise<{ empleado: string }>;
-  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string }>;
+  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string; quitar?: string }>;
 }) {
   const { empleado } = await params;
-  const { editar, peso, tarea, entra } = await searchParams;
+  const { editar, peso, tarea, entra, quitar } = await searchParams;
   const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
@@ -235,7 +235,34 @@ export default async function Cargo({
                       </div>
                     )}
 
-                    {editar === f.id && !proponiendo && (
+                    {/* Archivar o eliminar muestran antes a donde va su peso (CEB-211). */}
+                    {editar === f.id && !proponiendo && (quitar === 'archivar' || quitar === 'eliminar') && (
+                      <div style={{ marginTop: 5 }}>
+                        <Cuenta
+                          titulo={quitar === 'archivar' ? 'Así quedaría si la archivas' : 'Así quedaría si la eliminas'}
+                          funciones={cargo.funciones.filter((g) => !g.sinPublicar)}
+                          cambio={{ sale: f.id }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                            <Accion accion={(quitar === 'archivar' ? archivarFuncion : eliminarFuncion).bind(null, f.id, empleado)}>
+                              <Enviar style={{ ...BOTON, background: '#C62828' }} enviando={quitar === 'archivar' ? 'Archivando…' : 'Eliminando…'}>
+                                {quitar === 'archivar' ? 'Sí, archivarla' : 'Sí, eliminarla'}
+                              </Enviar>
+                            </Accion>
+                            <Ir href={`?editar=${f.id}`} style={{ fontSize: 13, color: 'var(--gris)' }}>
+                              dejarla como está
+                            </Ir>
+                            <span style={{ fontSize: 12, color: 'var(--gris)', flexBasis: '100%' }}>
+                              {quitar === 'archivar'
+                                ? 'Sale de su cargo y conserva su historia.'
+                                : 'Desaparece por completo. Si ya tiene historia, la base lo rechaza y hay que archivarla.'}
+                            </span>
+                          </div>
+                        </Cuenta>
+                      </div>
+                    )}
+
+                    {editar === f.id && !proponiendo && !quitar && (
                       <div style={{ background: 'var(--suave)', borderRadius: 14, padding: '16px 18px', marginTop: 5 }}>
                         <Formulario funcionId={f.id} empleadoId={empleado} funcion={f} />
 
@@ -268,25 +295,21 @@ export default async function Cargo({
                           </div>
                         </Accion>
 
-                        <Accion accion={archivarFuncion.bind(null, f.id, empleado)}>
-                          <Enviar
-                            style={{ ...BOTON, marginTop: 14, background: 'rgba(198,40,40,0.10)', color: '#C62828' }}
-                            enviando="Archivando…"
-                          >
-                            Archivar esta función: sale de su cargo y conserva su historia
-                          </Enviar>
-                        </Accion>
+                        <Ir
+                          href={`?editar=${f.id}&quitar=archivar`}
+                          style={{ ...BOTON, marginTop: 14, background: 'rgba(198,40,40,0.10)', color: '#C62828', textDecoration: 'none', width: 'fit-content' }}
+                        >
+                          Archivar esta función: sale de su cargo y conserva su historia
+                        </Ir>
 
                         {/* Para la creada por error. Si ya tiene historia, la base la
                             rechaza y hay que archivarla. */}
-                        <Accion accion={eliminarFuncion.bind(null, f.id, empleado)}>
-                          <Enviar
-                            style={{ marginTop: 6, fontSize: 12.5, color: '#C62828', background: 'none', cursor: 'pointer' }}
-                            enviando="Eliminando…"
-                          >
-                            Eliminarla por completo (solo si se creó por error y no tiene historia)
-                          </Enviar>
-                        </Accion>
+                        <Ir
+                          href={`?editar=${f.id}&quitar=eliminar`}
+                          style={{ marginTop: 6, fontSize: 12.5, color: '#C62828', display: 'flex' }}
+                        >
+                          Eliminarla por completo (solo si se creó por error y no tiene historia)
+                        </Ir>
                       </div>
                     )}
                   </div>
