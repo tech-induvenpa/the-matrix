@@ -17,8 +17,12 @@ import { Punto } from '../abrir';
 // debajo la lista de personas, que lleva al perfil de cada una. Es la misma
 // pantalla que la del supervisor (equipo/page.tsx); el administrador ve ademas
 // los montos, y da de alta a alguien nuevo.
-export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
-  const parametros = await searchParams;
+export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { vista?: string }> }) {
+  const { vista: pedida, ...parametros } = await searchParams;
+  // Dos pestanas: el tablero, y el equipo como tal (las personas y dar de alta).
+  // La pestana viaja en la URL: recargar o volver atras no la pierde.
+  const vista = pedida === 'equipo' ? 'equipo' : 'tablero';
+  const enlaceA = (v: string) => `?${new URLSearchParams({ ...parametros, ...(v === 'equipo' ? { vista: v } : {}) } as Record<string, string>)}`;
   const [todos, calendario, { opciones, deIds }, { sinLeerDe }, datos, bonos, delegaciones] = await Promise.all([
     gente(),
     elCalendario(),
@@ -55,10 +59,35 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         </p>
       </header>
 
-      <Filtrar opciones={opciones} valores={parametros} />
+      <nav aria-label="Vistas del equipo" style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(26,23,19,0.10)' }}>
+        {[
+          ['tablero', 'Tablero'],
+          ['equipo', 'Personas'],
+        ].map(([v, texto]) => (
+          <Ir
+            key={v}
+            href={enlaceA(v!)}
+            style={{
+              padding: '8px 14px',
+              fontSize: 15,
+              fontWeight: 600,
+              textDecoration: 'none',
+              color: vista === v ? 'var(--tinta)' : 'var(--gris)',
+              borderBottom: `2px solid ${vista === v ? 'var(--tinta)' : 'transparent'}`,
+              marginBottom: -1,
+            }}
+          >
+            {texto}
+          </Ir>
+        ))}
+      </nav>
+
+      <Filtrar opciones={opciones} valores={parametros} conservar={{ vista: vista === 'equipo' ? 'equipo' : undefined }} />
 
       <AvisoDeCobertura cobertura={calendario.cobertura} cargadoHasta={calendario.cargadoHasta} enlazar />
 
+      {vista === 'tablero' && (
+        <>
       <Resumen barras={barras} lineas={lineas} cargas={cargas} montoDe={montoDe} />
       <div className="tablero">
         <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
@@ -67,8 +96,11 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         <MasDelegadas repetidas={repetidas} perfilDe={(funcionId) => `/admin/${titularDe.get(funcionId)}`} />
       </div>
 
-      <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
+        </>
+      )}
 
+      {vista === 'equipo' && (
+        <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
           <Ir
@@ -142,6 +174,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         </p>
         </div>
       </details>
+        </>
+      )}
 
     </main>
   );
