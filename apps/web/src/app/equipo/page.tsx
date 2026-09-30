@@ -4,13 +4,14 @@ import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/
 import { Filtrar } from '../filtro';
 import { esAdministrador } from '@/lib/administrador';
 import { loDeMiGente, type PersonaACargo } from '@/lib/supervisor';
-import { barrasDe, cargasDe, lineasDelArrastre } from '@/lib/tablero';
+import { barrasDe, cargasDe, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
+import { lasDelegaciones } from '@/lib/equipo';
 import { DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
 import { perfiles } from '../perfil';
 import { Punto } from '../abrir';
 import { Ir } from '../ir';
-import { Carga, DesdeCuando, Patrones, SinCumplir } from '../tablero';
+import { Carga, DesdeCuando, MasDelegadas, Patrones, SinCumplir } from '../tablero';
 
 // El equipo (CEB-215): el mismo tablero que ve el administrador, con su gente
 // y sin montos (ADR 0015). Debajo, la lista de personas: cada una lleva a su
@@ -19,10 +20,11 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   if (await esAdministrador()) redirect('/admin');
 
   const parametros = await searchParams;
-  const [{ hoy, calendario, datos, gente: todos }, { opciones, deIds }, { sinLeerDe }] = await Promise.all([
+  const [{ hoy, calendario, datos, gente: todos }, { opciones, deIds }, { sinLeerDe }, delegaciones] = await Promise.all([
     loDeMiGente(),
     pertenencias(),
     perfiles(undefined),
+    lasDelegaciones(true),
   ]);
   // Quien no supervisa no tiene esta pantalla: un 404, como en /admin.
   if (todos.length === 0) notFound();
@@ -37,6 +39,8 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   const barras = barrasDe(datos, hoy, calendario).filter((b) => quienes.has(b.persona.id));
   const lineas = lineasDelArrastre(datos, hoy, calendario).filter((l) => quienes.has(l.persona.id));
   const cargas = cargasDe(datos, hoy).filter((c) => quienes.has(c.persona.id));
+  // Las que el delega: son funciones suyas, y su perfil no es de esta pantalla.
+  const repetidas = masDelegadas(delegaciones, hoy, calendario);
 
   return (
     <>
@@ -50,6 +54,7 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
         <SinCumplir barras={barras} perfilDe={(id) => `/equipo/${id}`} />
         <DesdeCuando lineas={lineas} hoy={hoy} perfilDe={(id) => `/equipo/${id}`} />
         <Carga cargas={cargas} perfilDe={(id) => `/equipo/${id}`} />
+        <MasDelegadas repetidas={repetidas} />
 
         <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
         {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14, margin: 0 }}>Nadie de tu equipo coincide con el filtro.</p>}

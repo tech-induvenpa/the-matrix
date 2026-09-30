@@ -3,13 +3,15 @@ import {
   barrasDelEquipo,
   cargaDeImprevistos,
   cumplimientoDeLaHolgura,
+  delegacionRepetida,
   estadosVigentes,
   ocurrenciasEntre,
   periodosDesplazados,
+  VENTANA_DE_DELEGACION,
   type Arrastre,
   type Calendario,
 } from '@matriz/dominio';
-import type { DatosDelEquipo } from './equipo';
+import type { DatosDelEquipo, DelegacionDelEquipo, FuncionQueSeDelega } from './equipo';
 
 // Lo que se calcula sobre lo que se lee de la gente (lib/equipo.ts), igual
 // para el administrador y el supervisor. Sin lecturas: solo el dominio, asi lo
@@ -119,6 +121,41 @@ export function cargasDe(datos: DatosDelEquipo, hoy: string) {
     }))
     .filter((c) => c.carga.total > 0)
     .sort((a, b) => b.carga.total - a.carga.total || a.persona.nombre.localeCompare(b.persona.nombre));
+}
+
+// Las funciones mas delegadas (CEB-224), en proporcion a sus ocurrencias de la
+// ventana. Las ocurrencias cuentan desde que su titular de hoy la tiene: lo
+// delegado por otro titular no es suyo.
+export function masDelegadas(
+  { funciones, delegaciones }: { funciones: readonly FuncionQueSeDelega[]; delegaciones: readonly DelegacionDelEquipo[] },
+  hoy: string,
+  calendario: Calendario,
+) {
+  const desde = new Date(Date.parse(`${hoy}T00:00:00Z`) - VENTANA_DE_DELEGACION * 864e5).toISOString().slice(0, 10);
+  const delegadas = new Set(delegaciones.map((d) => d.funcion_id));
+  return delegacionRepetida(
+    funciones
+      .filter((f) => delegadas.has(f.id))
+      .map((f) => ({
+        funcionId: f.id,
+        texto: f.texto,
+        supervisor: f.titular,
+        ocurrencias: ocurrenciasEntre(
+          { periodicidad: f.periodicidad, diaTope: f.dia_tope ?? undefined, fechaAlta: f.fecha_alta },
+          calendario,
+          f.desde > desde ? f.desde : desde,
+          hoy,
+        ),
+      })),
+    delegaciones.map((d) => ({
+      funcionId: d.funcion_id,
+      periodo: d.periodo,
+      pedidoEn: d.pedido_en,
+      devueltoEn: d.devuelto_en,
+      borradoEn: d.borrado_en,
+    })),
+    hoy,
+  );
 }
 
 // La linea del arrastre (CEB-222): cada funcion con arrastre es un tramo desde

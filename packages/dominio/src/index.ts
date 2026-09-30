@@ -51,8 +51,16 @@ export { bonoDelMes, enDolares, montoNoCumplido } from './bono';
 export type { CambioDeBono, Mes } from './bono';
 export { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura } from './descarga';
 export type { HechoDeLaHolgura, Tramo } from './descarga';
-export { delegable, delegacionesPorFuncion, estaAbierta, estadoDeLaDelegacion } from './delegacion';
-export type { Delegable, Delegacion, DelegacionesDeUnaFuncion, EstadoDeLaDelegacion } from './delegacion';
+export {
+  delegable,
+  delegacionesPorFuncion,
+  delegacionRepetida,
+  estaAbierta,
+  estadoDeLaDelegacion,
+  MINIMO_DE_DELEGACIONES,
+  VENTANA_DE_DELEGACION,
+} from './delegacion';
+export type { Delegable, Delegacion, DelegacionesDeUnaFuncion, DelegacionRepetida, EstadoDeLaDelegacion } from './delegacion';
 export { delFiltro, leerPertenencia, opcionesDePertenencia } from './filtro-del-equipo';
 export type { Filtrable, FiltroDelEquipo, Opcion } from './filtro-del-equipo';
 export { haySinLeer, lineaDeTiempo, listaDeTareas, loLeen, sinLeer } from './perfil';
