@@ -1,4 +1,4 @@
-import type { Periodicidad } from '@matriz/dominio';
+import { VENTANA_DE_DELEGACION, type Periodicidad } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { COLUMNAS_DE_IMPREVISTO, sumarDias, type FilaImprevisto } from '@/lib/datos';
 
@@ -110,6 +110,60 @@ export async function datosDelEquipo(soloDe?: string): Promise<DatosDelEquipo> {
       imprevisto_id: x.imprevisto_id as string,
       marca_id: (x.marca_id as string | null) ?? null,
       evento_flujo_id: (x.evento_flujo_id as string | null) ?? null,
+    })),
+  };
+}
+
+// Lo que hace falta para las funciones mas delegadas (CEB-224): las funciones
+// de quien delega, con su titular, y sus delegaciones de la ventana.
+export type FuncionQueSeDelega = Pick<FuncionDelEquipo, 'id' | 'texto' | 'periodicidad' | 'dia_tope' | 'fecha_alta' | 'desde' | 'empleado_id'> & {
+  titular: string;
+};
+export type DelegacionDelEquipo = { funcion_id: string; periodo: string; pedido_en: string; devuelto_en: string | null; borrado_en: string | null };
+
+// El administrador ve todas; el supervisor, las que el delega: sus funciones
+// (la seguridad por fila le da solo las suyas) y mis_delegaciones.
+export async function lasDelegaciones(comoSupervisor: boolean): Promise<{ funciones: FuncionQueSeDelega[]; delegaciones: DelegacionDelEquipo[] }> {
+  const supabase = await clienteDelServidor();
+  const desde = sumarDias(new Date().toISOString().slice(0, 10), -VENTANA_DE_DELEGACION);
+
+  const [{ data: tenencias }, { data: delegaciones }] = await Promise.all([
+    supabase
+      .from('titularidad')
+      .select('funcion_id, empleado_id, desde, empleado(nombre_bloque), funcion!inner(texto, periodicidad, dia_tope_generado, dia_tope_corregido, fecha_alta)')
+      .is('hasta', null)
+      .not('publicado_en', 'is', null)
+      .eq('funcion.activa', true),
+    comoSupervisor
+      ? supabase.rpc('mis_delegaciones')
+      : supabase
+          .from('imprevisto')
+          .select('delega_funcion, delega_periodo, pedido_en, devuelto_en, borrado_en')
+          .not('delega_funcion', 'is', null)
+          .gte('pedido_en', desde),
+  ]);
+
+  return {
+    funciones: ((tenencias ?? []) as Record<string, unknown>[]).map((t) => {
+      const f = t.funcion as Record<string, unknown>;
+      return {
+        id: t.funcion_id as string,
+        empleado_id: t.empleado_id as string,
+        texto: f.texto as string,
+        periodicidad: f.periodicidad as Periodicidad,
+        dia_tope: (f.dia_tope_corregido ?? f.dia_tope_generado ?? null) as number | null,
+        fecha_alta: f.fecha_alta as string,
+        desde: t.desde as string,
+        titular: ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string,
+      };
+    }),
+    delegaciones: ((delegaciones ?? []) as Record<string, unknown>[]).map((d) => ({
+      funcion_id: d.delega_funcion as string,
+      periodo: d.delega_periodo as string,
+      pedido_en: d.pedido_en as string,
+      devuelto_en: (d.devuelto_en as string | null) ?? null,
+      // mis_delegaciones ya deja fuera las borradas.
+      borrado_en: (d.borrado_en as string | null | undefined) ?? null,
     })),
   };
 }

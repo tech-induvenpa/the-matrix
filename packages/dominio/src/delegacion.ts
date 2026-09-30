@@ -1,5 +1,6 @@
 import type { Fecha } from './calendario';
 import type { Resultado } from './imprevistos';
+import type { Ocurrencia } from './ocurrencias';
 
 // Una delegacion es un imprevisto de quien la recibe, vinculado a una
 // ocurrencia de su supervisor que sigue siendo suya (ADR 0012). La marca de
@@ -67,4 +68,61 @@ export function delegacionesPorFuncion(
   return [...grupos.values()].sort(
     (a, b) => a.supervisor.localeCompare(b.supervisor) || b.delegadas - a.delegadas || a.funcion.localeCompare(b.funcion),
   );
+}
+
+// Una delegacion que se repite es un traspaso que nadie hizo (CEB-224). Se
+// mira en una ventana movil, nunca en un mes cerrado, y una sola delegacion no
+// es repetirse. Las dos son decisiones de negocio.
+export const VENTANA_DE_DELEGACION = 90;
+export const MINIMO_DE_DELEGACIONES = 2;
+
+export type DelegacionRepetida = {
+  funcionId: string;
+  texto: string;
+  // Quien la delega: el titular de la funcion.
+  supervisor: string;
+  delegadas: number;
+  devueltas: number;
+  // La parte de sus ocurrencias de la ventana que se delego, de 0 a 1. En
+  // proporcion y no en veces: contar veces pondria siempre las diarias arriba.
+  proporcion: number;
+  // De esa parte, la que se devolvio: la misma proporcion por devueltas sobre delegadas.
+  proporcionDevuelta: number;
+};
+
+const haceDias = (hoy: Fecha, dias: number): Fecha =>
+  new Date(Date.parse(`${hoy}T00:00:00Z`) - dias * 864e5).toISOString().slice(0, 10);
+
+// Las ocurrencias de la ventana son las que vencieron en ella, mas las
+// delegadas que aun no vencen: solo se delega lo que no vencio. Volver a
+// delegar la misma ocurrencia es otra vez, pero no otra ocurrencia.
+export function delegacionRepetida(
+  funciones: readonly { funcionId: string; texto: string; supervisor: string; ocurrencias: readonly Ocurrencia[] }[],
+  delegaciones: readonly { funcionId: string; periodo: string; pedidoEn: string; devueltoEn: string | null; borradoEn: string | null }[],
+  hoy: Fecha,
+): DelegacionRepetida[] {
+  const desde = haceDias(hoy, VENTANA_DE_DELEGACION);
+  const enLaVentana = delegaciones.filter((d) => !d.borradoEn && d.pedidoEn.slice(0, 10) >= desde);
+
+  return funciones
+    .flatMap((f) => {
+      const suyas = enLaVentana.filter((d) => d.funcionId === f.funcionId);
+      if (suyas.length < MINIMO_DE_DELEGACIONES) return [];
+      const delegados = new Set(suyas.map((d) => d.periodo));
+      const ocurrencias = new Set([...f.ocurrencias.filter((o) => o.vence >= desde && o.vence <= hoy).map((o) => o.periodo), ...delegados]);
+      const devueltas = suyas.filter((d) => d.devueltoEn).length;
+      const proporcion = delegados.size / ocurrencias.size;
+      return [
+        {
+          funcionId: f.funcionId,
+          texto: f.texto,
+          supervisor: f.supervisor,
+          delegadas: suyas.length,
+          devueltas,
+          proporcion,
+          proporcionDevuelta: (proporcion * devueltas) / suyas.length,
+        },
+      ];
+    })
+    .sort((a, b) => b.proporcion - a.proporcion || b.delegadas - a.delegadas || a.texto.localeCompare(b.texto));
 }

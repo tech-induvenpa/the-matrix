@@ -1,3 +1,4 @@
+import { VENTANA_DE_DELEGACION } from '@matriz/dominio';
 import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
 import { enPalabras, pertenencias } from '@/lib/pertenencia';
 import { dolares } from '@/lib/datos';
@@ -14,8 +15,9 @@ import { Propuesta } from './propuesta';
 import { Cuenta } from './cuenta';
 import { Ir } from '../../ir';
 import { Confirmar } from '../../confirmar';
-import { datosDelEquipo } from '@/lib/equipo';
-import { comoVanSusFunciones } from '@/lib/tablero';
+import { datosDelEquipo, lasDelegaciones } from '@/lib/equipo';
+import { comoVanSusFunciones, masDelegadas } from '@/lib/tablero';
+import { delegadaVeces } from '../../tablero';
 import { ComoVa } from '../../como-va';
 import { CerradasDelMes } from '../../cerradas';
 
@@ -34,19 +36,22 @@ export default async function Cargo({
 }) {
   const { empleado } = await params;
   const { editar, peso, tarea, entra, aQuien, pesoNuevo } = await searchParams;
-  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil, datos] = await Promise.all([
+  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil, datos, delegaciones] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
     bonoDe(empleado),
     pertenencias(),
     perfiles(tarea),
     datosDelEquipo(empleado),
+    lasDelegaciones(false),
   ]);
 
   if (!cargo) return null;
   const tareas = await tareasAbiertasDe(empleado, imprevistos.hoy, imprevistos.calendario);
   // Como va cada funcion, dicho en su fila (CEB-219).
   const comoVan = new Map(comoVanSusFunciones(datos, empleado, imprevistos.hoy, imprevistos.calendario).map((f) => [f.id, f]));
+  // Las suyas que delega seguido (CEB-224): un traspaso que nadie ha hecho.
+  const delegadas = new Map(masDelegadas(delegaciones, imprevistos.hoy, imprevistos.calendario).map((r) => [r.funcionId, r]));
 
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
@@ -229,6 +234,7 @@ export default async function Cargo({
                           {f.diaTope ? ` · día ${f.diaTope}` : ''}
                         </span>
                         <ComoVa f={comoVan.get(f.id)} />
+                        {delegadas.has(f.id) && <span style={DELEGADA}>🤝 {delegadaVeces(delegadas.get(f.id)!)}</span>}
                       </span>
                       <span style={{ fontSize: 13.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
                         {f.ponderacion}%
@@ -294,6 +300,12 @@ export default async function Cargo({
                         <form>
                           <input type="hidden" name="editar" value={f.id} />
                           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,23,19,0.10)' }}>
+                            {/* La señal junto a donde se actua sobre ella. */}
+                            {delegadas.has(f.id) && (
+                              <span style={{ ...DELEGADA, flexBasis: '100%' }}>
+                                🤝 {delegadaVeces(delegadas.get(f.id)!)} en {VENTANA_DE_DELEGACION} días: quizá es de otra persona.
+                              </span>
+                            )}
                             <label style={ETIQUETA}>
                               Pasársela a
                               <select name="aQuien" required style={CAMPO}>
@@ -411,6 +423,8 @@ export default async function Cargo({
 }
 
 const H_FIJO = { fontSize: 15, fontWeight: 700, margin: 0 } as const;
+
+const DELEGADA = { fontSize: 12.5, fontWeight: 600, color: '#8A7A3E' } as const;
 
 const FILA = {
   display: 'flex',

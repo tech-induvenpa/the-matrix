@@ -1,8 +1,8 @@
 import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
 import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
-import { datosDelEquipo } from '@/lib/equipo';
-import { barrasDe, cargasDe, lineasDelArrastre } from '@/lib/tablero';
-import { Carga, DesdeCuando, Patrones, SinCumplir } from '../tablero';
+import { datosDelEquipo, lasDelegaciones } from '@/lib/equipo';
+import { barrasDe, cargasDe, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
+import { Carga, DesdeCuando, MasDelegadas, Patrones, SinCumplir } from '../tablero';
 import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../filtro';
 import { darDeAlta } from './acciones';
@@ -19,13 +19,14 @@ import { Punto } from '../abrir';
 // los montos, y da de alta a alguien nuevo.
 export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
   const parametros = await searchParams;
-  const [todos, calendario, { opciones, deIds }, { sinLeerDe }, datos, bonos] = await Promise.all([
+  const [todos, calendario, { opciones, deIds }, { sinLeerDe }, datos, bonos, delegaciones] = await Promise.all([
     gente(),
     elCalendario(),
     pertenencias(),
     perfiles(undefined),
     datosDelEquipo(),
     bonosDelMes(),
+    lasDelegaciones(false),
   ]);
 
   // El filtro solo acota lo que ya se leyo con la sesion de quien mira (INV-29).
@@ -39,6 +40,9 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   const barras = barrasDe(datos, calendario.hoy, dias).filter((b) => quienes.has(b.persona.id));
   const lineas = lineasDelArrastre(datos, calendario.hoy, dias).filter((l) => quienes.has(l.persona.id));
   const cargas = cargasDe(datos, calendario.hoy).filter((c) => quienes.has(c.persona.id));
+  // Las de quien delega, si esta en el filtro.
+  const titularDe = new Map(delegaciones.funciones.map((f) => [f.id, f.empleado_id]));
+  const repetidas = masDelegadas(delegaciones, calendario.hoy, dias).filter((r) => quienes.has(titularDe.get(r.funcionId) ?? ''));
   // Un porcentaje del cargo, en dolares del bono de este mes. Sin bono, nada.
   const montoDe = (id: string, peso: number) => (bonos.has(id) ? montoNoCumplido(peso, bonos.get(id)!) : null);
 
@@ -59,6 +63,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
       <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
       <DesdeCuando lineas={lineas} hoy={calendario.hoy} perfilDe={(id) => `/admin/${id}`} />
       <Carga cargas={cargas} perfilDe={(id) => `/admin/${id}`} />
+      <MasDelegadas repetidas={repetidas} perfilDe={(funcionId) => `/admin/${titularDe.get(funcionId)}`} />
 
       <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
 

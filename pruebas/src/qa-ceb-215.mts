@@ -16,6 +16,8 @@ const ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
 const bruno = await sembrarEmpleado('BRUNO', 'bruno@prueba.test');
 const sara = await sembrarEmpleado('SARA', 'sara@prueba.test');
 const carla = await sembrarEmpleado('CARLA', 'carla@prueba.test');
+// Sin funciones ni nada abierto: no aparece en ninguna grafica.
+await sembrarEmpleado('DORA', 'dora@prueba.test');
 await servicio.from('empleado').update({ supervisor_id: sara }).in('id', [ana, bruno]);
 await servicio.from('bono').insert([
   { empleado_id: ana, monto: 1234, rige_desde: '2026-01-01' },
@@ -88,7 +90,19 @@ await servicio.from('imprevisto').insert(
 );
 
 await comoAdministrador('jefa@prueba.test');
-await Promise.all(['ana', 'bruno', 'sara', 'carla'].map((n) => comoEmpleado(`${n}@prueba.test`)));
+const [sesionAna, , sesionSara] = await Promise.all(['ana', 'bruno', 'sara', 'carla'].map((n) => comoEmpleado(`${n}@prueba.test`)));
+
+// Sara delega su caja diaria dos veces, y una se la devuelve a ana.
+const caja = await sembrarFuncion(sara, { ...funcion('Caja de Sara', 'entregable', 'diaria'), ponderacion: 20 });
+await servicio.from('titularidad').update({ desde: '2026-07-01' }).eq('funcion_id', caja);
+const manana = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+const { data: aAna, error: sinDelegar } = await sesionSara!.rpc('delegar', { la_funcion: caja, el_periodo: hoy, a_quien: ana, el_vence: hoy });
+if (sinDelegar) throw sinDelegar;
+await sesionAna!.rpc('marcar_imprevisto', { el_imprevisto: aAna, el_resultado: 'hecho', la_razon: null });
+const { error: sinDevolver } = await sesionSara!.rpc('devolver', { la_delegacion: aAna, la_razon: 'faltan los anexos' });
+if (sinDevolver) throw sinDevolver;
+const { error: sinDelegarOtra } = await sesionSara!.rpc('delegar', { la_funcion: caja, el_periodo: manana, a_quien: bruno, el_vence: manana });
+if (sinDelegarOtra) throw sinDelegarOtra;
 
 async function sesion(correo: string): Promise<string> {
   const { data, error } = await servicio.auth.admin.generateLink({ type: 'magiclink', email: correo });
@@ -145,7 +159,8 @@ for (const [quien, cookie, ruta] of [
   ['sara', cSara, `/equipo/${ana}`],
 ] as const) {
   html = texto((await pagina(cookie, ruta)).html);
-  criterio(`${quien}: las cerradas del mes, plegadas y contadas`, html.includes('Cerradas del mes (2)') && !/<details[^>]*open[^>]*>\s*<summary>Cerradas/.test(html));
+  // Dos marcadas y la delegacion que sara le devolvio.
+  criterio(`${quien}: las cerradas del mes, plegadas y contadas`, html.includes('Cerradas del mes (3)') && !/<details[^>]*open[^>]*>\s*<summary>Cerradas/.test(html));
   criterio(`${quien}: cada una con su resultado y su razon`, html.includes('no pude: RAZON-DEL-CIERRE') && html.includes('no pude: RAZON-DEL-IMPREVISTO'));
   criterio(`${quien}: el imprevisto borrado no esta`, !html.includes('IMPREVISTO-BORRADO'));
   html = texto((await pagina(cookie, `${ruta}?tarea=i:${marcado!.id}`)).html);
@@ -176,22 +191,37 @@ for (const [quien, cookie, ruta, perfil] of [
   const linea = html.slice(html.indexOf('Desde cuándo'));
   criterio(`${quien}: un tramo por funcion que arrastra, de cadencias distintas`, linea.includes('Cierre contable · 4 periodos, desde el 30 jun') && /Reporte semanal · \d+ periodos, desde el/.test(linea));
   criterio(`${quien}: lo mas viejo primero`, linea.indexOf('ANA') < linea.indexOf('BRUNO'));
-  criterio(`${quien}: quien no arrastra no ocupa espacio`, !linea.includes('SARA</strong>'));
+  criterio(`${quien}: quien no arrastra no ocupa espacio`, !linea.includes('DORA</strong>'));
   criterio(`${quien}: el tramo lleva al perfil`, linea.includes(`href="${perfil}"`));
 }
 
-// CEB-223 · La carga de imprevistos. Bruno: dos abiertos con cotidianidad 85.
+// CEB-223 · La carga de imprevistos. Bruno: tres abiertos (uno es la
+// delegacion de sara) con cotidianidad 85.
 for (const [quien, cookie, ruta] of [
   ['jefa', cJefa, '/admin'],
   ['sara', cSara, '/equipo'],
 ] as const) {
   html = texto((await pagina(cookie, ruta)).html);
   const carga = html.slice(html.indexOf('Cuánto le cae para su tamaño'), html.indexOf('Las personas'));
-  criterio(`${quien}: la carga de bruno por cada 10% de su cotidianidad`, carga.includes('0,2 por cada 10%') && carga.includes('2 abiertos, cotidianidad 85%'));
+  criterio(`${quien}: la carga de bruno por cada 10% de su cotidianidad`, carga.includes('0,4 por cada 10%') && carga.includes('3 abiertos, cotidianidad 85%'));
   criterio(`${quien}: partida en en plazo y vencidos`, carga.includes('0,1 vencidos por cada 10%'));
   criterio(`${quien}: lo marcado no carga a nadie`, !carga.includes('ANA'));
   criterio(`${quien}: la barra lleva al perfil`, carga.includes(`href="${ruta === '/admin' ? '/admin' : '/equipo'}/${bruno}"`));
 }
+
+// CEB-224 · Las mas delegadas, y la señal en la fila.
+for (const [quien, cookie, ruta] of [
+  ['jefa', cJefa, '/admin'],
+  ['sara', cSara, '/equipo'],
+] as const) {
+  html = texto((await pagina(cookie, ruta)).html);
+  const delegadas = html.slice(html.indexOf('Las más delegadas'), html.indexOf('Las personas'));
+  criterio(`${quien}: la caja de sara, en proporcion, con quien delega y lo devuelto`, /Caja de Sara.*% de sus ocurrencias.*delega SARA · delegada 2 veces \(1 devuelta\)/s.test(delegadas));
+}
+html = texto((await pagina(cJefa, `/admin/${sara}`)).html);
+criterio('jefa: la señal en la fila de la funcion de quien delega', html.includes('🤝 delegada 2 veces (1 devuelta)'));
+html = texto((await pagina(cJefa, `/admin/${sara}?editar=${caja}`)).html);
+criterio('jefa: y junto a "Pasársela a"', /🤝 delegada 2 veces \(1 devuelta\) en 90 días.*Pasársela a/s.test(html));
 
 console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');
 process.exit(fallos ? 1 : 0);

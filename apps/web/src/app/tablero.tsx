@@ -1,4 +1,4 @@
-import type { Barra } from '@matriz/dominio';
+import { MINIMO_DE_DELEGACIONES, VENTANA_DE_DELEGACION, type Barra, type DelegacionRepetida } from '@matriz/dominio';
 import { dolares, fechaCorta } from '@/lib/datos';
 import type { PersonaDelTablero } from '@/lib/tablero';
 
@@ -226,6 +226,79 @@ export function Carga({
   );
 }
 
+// Las mas delegadas (CEB-224): las funciones cuyas ocurrencias mas se
+// delegaron en los ultimos noventa dias, en proporcion y no en veces, con lo
+// devuelto en otro tono y quien delega en la etiqueta. Una delegacion que se
+// repite es un traspaso que nadie ha hecho.
+export function MasDelegadas({ repetidas, perfilDe }: { repetidas: readonly DelegacionRepetida[]; perfilDe?: (funcionId: string) => string | null }) {
+  return (
+    <section style={GRAFICA}>
+      <header>
+        <h2 style={TITULO}>Las más delegadas</h2>
+        <p style={NOTA}>
+          La parte de las ocurrencias de cada función que se delegó en los últimos {VENTANA_DE_DELEGACION} días. Solo las delegadas{' '}
+          {MINIMO_DE_DELEGACIONES} veces o más: una sola vez no es repetirse.
+        </p>
+      </header>
+
+      <Leyenda
+        items={[
+          { muestra: <rect width="14" height="10" rx="2" fill={COTIDIANIDAD} />, texto: 'delegada' },
+          { muestra: <rect width="14" height="10" rx="2" fill={DEVUELTA} />, texto: 'de eso, devuelta' },
+        ]}
+      />
+
+      {repetidas.length === 0 && <p style={NADA}>Ninguna función se está delegando seguido.</p>}
+
+      <ol style={LISTA}>
+        {repetidas.map((r) => {
+          const contenido = (
+            <>
+              <span style={ETIQUETA}>
+                <strong style={{ fontSize: 14 }}>{r.texto}</strong>
+                <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{pct(r.proporcion * 100)} de sus ocurrencias</span>
+                <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>
+                  delega {r.supervisor} · {delegadaVeces(r)}
+                </span>
+              </span>
+              <svg width="100%" height="14" aria-hidden style={{ display: 'block' }}>
+                <title>{`${r.texto}: ${pct(r.proporcion * 100)} delegada, ${pct(r.proporcionDevuelta * 100)} devuelta`}</title>
+                <rect x="0" y="0" width="100%" height="14" rx="4" fill={PISTA} />
+                <rect x="0" y="0" width={`${(r.proporcion - r.proporcionDevuelta) * 100}%`} height="14" fill={COTIDIANIDAD} stroke="#fff" strokeWidth="2" />
+                <rect
+                  x={`${(r.proporcion - r.proporcionDevuelta) * 100}%`}
+                  y="0"
+                  width={`${r.proporcionDevuelta * 100}%`}
+                  height="14"
+                  fill={DEVUELTA}
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+              </svg>
+            </>
+          );
+          const enlace = perfilDe?.(r.funcionId);
+          return (
+            <li key={r.funcionId}>
+              {enlace ? (
+                <a href={enlace} style={ENLACE}>
+                  {contenido}
+                </a>
+              ) : (
+                <span style={ENLACE}>{contenido}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+// "delegada 3 veces (1 devuelta)": igual en la grafica y en la fila de la funcion.
+export const delegadaVeces = (r: Pick<DelegacionRepetida, 'delegadas' | 'devueltas'>) =>
+  `delegada ${r.delegadas} ${r.delegadas === 1 ? 'vez' : 'veces'}${r.devueltas > 0 ? ` (${r.devueltas} ${r.devueltas === 1 ? 'devuelta' : 'devueltas'})` : ''}`;
+
 // El patron del rayado, una vez por pagina. Va en su propio svg para que
 // cualquier grafica lo use por su id.
 export function Patrones() {
@@ -261,6 +334,7 @@ export const FUNCION = '#d9503a';
 export const COTIDIANIDAD = '#1b6e8c';
 export const PISTA = 'rgba(26,23,19,0.06)';
 export const VENCIDO = '#9e3322';
+export const DEVUELTA = '#e8ce7a';
 
 export const GRAFICA = {
   display: 'flex',
