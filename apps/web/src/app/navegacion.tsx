@@ -87,7 +87,7 @@ export function Navegacion({
               <summary style={{ color: 'var(--gris)', cursor: 'pointer', listStyle: 'none' }}>Descargas ↓</summary>
               <div style={MENU}>
                 <Modal boton="Tareas del mes" titulo="Tareas del mes" estilo={OPCION}>
-                  <LasTareas meses={meses} personas={personas} />
+                  <LasTareas meses={meses} personas={personas} empresas={cierre.empresas} haySinEmpresa={cierre.haySinEmpresa} />
                 </Modal>
                 <Modal boton="Nóminas" titulo="Nóminas, para finanzas" estilo={OPCION}>
                   <LaNomina meses={cierre.meses} empresas={cierre.empresas} haySinEmpresa={cierre.haySinEmpresa} />
@@ -117,7 +117,17 @@ export function Navegacion({
 
 // Las tareas del mes: una fila por cada vez que algo debia hacerse (ADR 0011).
 // El formulario GET baja el archivo.
-function LasTareas({ meses, personas }: { meses: readonly { valor: string; texto: string; estado?: MesDelCierre['estado']; hasta?: string | null }[]; personas: readonly { id: string; nombre: string }[] }) {
+function LasTareas({
+  meses,
+  personas,
+  empresas,
+  haySinEmpresa,
+}: {
+  meses: readonly { valor: string; texto: string; estado?: MesDelCierre['estado']; hasta?: string | null }[];
+  personas: readonly { id: string; nombre: string }[];
+  empresas: readonly { id: string; nombre: string }[];
+  haySinEmpresa: boolean;
+}) {
   return (
     <form action="/admin/descarga" method="get" style={COLUMNA}>
       <p style={NOTA}>Una fila por cada vez que algo debía hacerse, con su resultado, su razón y su peso.</p>
@@ -132,10 +142,14 @@ function LasTareas({ meses, personas }: { meses: readonly { valor: string; texto
           ))}
         </select>
       </label>
+      <label style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
+        ¿De qué empresa?
+        <SelectorDeEmpresa empresas={empresas} haySinEmpresa={haySinEmpresa} />
+      </label>
       {personas.length > 0 && (
         <fieldset style={PERSONAS}>
           <legend style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500, padding: 0, marginBottom: 4 }}>
-            ¿De quién? <span style={{ fontWeight: 400 }}>Sin marcar, de todos.</span>
+            ¿De quién? <span style={{ fontWeight: 400 }}>Sin marcar, de todos los de la empresa.</span>
           </legend>
           {personas.map((p) => (
             <label key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, fontWeight: 500 }}>
@@ -186,6 +200,21 @@ function Modal({ boton, titulo, estilo, children }: { boton: string; titulo: str
   );
 }
 
+// La empresa, en las dos descargas: todas, una, o quien no tiene ninguna.
+function SelectorDeEmpresa({ empresas, haySinEmpresa }: { empresas: readonly { id: string; nombre: string }[]; haySinEmpresa: boolean }) {
+  return (
+    <select name="empresa" defaultValue={TODAS} aria-label="Qué empresa" style={SELECTOR}>
+      <option value={TODAS}>Todas las empresas</option>
+      {empresas.map((e) => (
+        <option key={e.id} value={e.id}>
+          {e.nombre}
+        </option>
+      ))}
+      {haySinEmpresa && <option value={SIN_EMPRESA}>Sin empresa</option>}
+    </select>
+  );
+}
+
 // "Nomina del mes", para finanzas (CEB-233): un archivo por empresa, y solo de
 // meses cerrados, porque el mes en curso es provisional. La descarga de
 // siempre, arriba, no cambia.
@@ -211,15 +240,7 @@ function LaNomina({
           </option>
         ))}
       </select>
-      <select name="empresa" defaultValue={TODAS} aria-label="Qué empresa" style={SELECTOR}>
-        <option value={TODAS}>Todas las empresas</option>
-        {empresas.map((e) => (
-          <option key={e.id} value={e.id}>
-            {e.nombre}
-          </option>
-        ))}
-        {haySinEmpresa && <option value={SIN_EMPRESA}>Sin empresa</option>}
-      </select>
+      <SelectorDeEmpresa empresas={empresas} haySinEmpresa={haySinEmpresa} />
       <button type="submit" style={BOTON}>
         Descargar la nómina
       </button>
