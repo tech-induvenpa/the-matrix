@@ -1,5 +1,6 @@
 import type { Calendario, Fecha } from './calendario';
-import { emojiDe, MARGEN } from './urgencia';
+import { cuadranteDe, importanciaEfectiva, type Cuadrante } from './cuadrante';
+import { emojiDe, MARGEN, urgenciaDe } from './urgencia';
 
 // Un imprevisto es trabajo que se hace una sola vez y no esta en el reparto de
 // nadie (ADR 0009). Quien lo anota elige una urgencia de 0 a 9 y se guarda el
@@ -30,6 +31,36 @@ export const cuandoSePidio = (pedidoEn: string, hoy: Fecha): Fecha | 'hoy' => {
 // No arrastra, porque no tiene serie: cuenta su retraso en dias habiles.
 export const retrasoDe = (vence: Fecha, hoy: Fecha, calendario: Calendario): number =>
   hoy > vence ? calendario.habilesEntre(vence, hoy) : 0;
+
+// El cuadrante de un imprevisto (CEB-242): la misma regla que el de una
+// ocurrencia, con la importancia que le dio quien lo anoto. Se trata como una
+// funcion que no es diaria ni semanal: sube a 5 cuando le quedan tres dias
+// habiles o menos, y nada cae en el vacio. Sigue en su propio bloque; el
+// cuadrante le da el color y el orden, no un lugar en la semana.
+export type CuadranteDelImprevisto = { urgencia: number; importanciaEfectiva: number; cuadrante: Cuadrante };
+
+export function cuadranteDelImprevisto(importancia: number, vence: Fecha, hoy: Fecha, calendario: Calendario): CuadranteDelImprevisto {
+  const faltan = calendario.habilesHasta(hoy, vence);
+  const urgencia = urgenciaDe(faltan);
+  const efectiva = importanciaEfectiva(importancia, faltan, 'mensual');
+  return { urgencia, importanciaEfectiva: efectiva, cuadrante: cuadranteDe(urgencia, efectiva) };
+}
+
+const RANGO: Record<Cuadrante, number> = { hacer: 0, agendar: 1, mantener: 2 };
+
+// El bloque del empleado: por cuadrante (hacer, agendar, mantener), luego lo
+// mas importante, luego lo que antes vence. La importancia es la que se
+// escribio, no la efectiva: es la que se ve en la tarjeta.
+export function ordenarImprevistos<T extends { importancia: number; vence: Fecha }>(
+  imprevistos: readonly T[],
+  hoy: Fecha,
+  calendario: Calendario,
+): T[] {
+  const rango = new Map(imprevistos.map((i) => [i, RANGO[cuadranteDelImprevisto(i.importancia, i.vence, hoy, calendario).cuadrante]]));
+  return [...imprevistos].sort(
+    (a, b) => rango.get(a)! - rango.get(b)! || b.importancia - a.importancia || a.vence.localeCompare(b.vence),
+  );
+}
 
 export type Resultado = 'hecho' | 'no_pude' | 'no_lo_tome';
 export type EstadoDeImprevisto = 'abierto' | 'vencido' | 'marcado' | 'borrado';

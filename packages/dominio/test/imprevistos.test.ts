@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Calendario } from '../src/calendario';
-import { cuandoSePidio, estadoDe, opcionesDeUrgencia, retrasoDe, vencimientoPorUrgencia } from '../src/imprevistos';
+import {
+  cuadranteDelImprevisto,
+  cuandoSePidio,
+  estadoDe,
+  opcionesDeUrgencia,
+  ordenarImprevistos,
+  retrasoDe,
+  vencimientoPorUrgencia,
+} from '../src/imprevistos';
 import { urgenciaDe } from '../src/urgencia';
 
 const sinFeriados = Calendario.con([]);
@@ -107,5 +115,61 @@ describe('el estado de un imprevisto', () => {
 
   it('borrado gana a todo lo demas', () => {
     expect(estadoDe({ ...base, borradoEn: '2026-09-25T10:00:00Z' }, '2026-09-28')).toBe('borrado');
+  });
+});
+
+describe('el cuadrante de un imprevisto (CEB-242)', () => {
+  // 2026-09-24 es jueves.
+  const hoy = '2026-09-24';
+  const cuadrante = (importancia: number, vence: string) => cuadranteDelImprevisto(importancia, vence, hoy, sinFeriados);
+
+  it('importante y urgente: hacer ya', () => {
+    expect(cuadrante(8, '2026-09-24')).toEqual({ urgencia: 9, importanciaEfectiva: 8, cuadrante: 'hacer' });
+  });
+
+  it('poco importante que vence manana: sube a hacer ya, como una funcion mensual', () => {
+    expect(cuadrante(1, '2026-09-25')).toEqual({ urgencia: 8, importanciaEfectiva: 5, cuadrante: 'hacer' });
+  });
+
+  it('poco importante, urgencia media y mas de tres dias: mantener al dia', () => {
+    // Cuatro dias habiles: urgencia 6, todavia sin la subida.
+    expect(cuadrante(2, '2026-09-30')).toEqual({ urgencia: 6, importanciaEfectiva: 2, cuadrante: 'mantener' });
+  });
+
+  it('urgencia baja: ponle fecha, sea cual sea la importancia', () => {
+    expect(cuadrante(9, '2026-10-19').cuadrante).toBe('agendar');
+    expect(cuadrante(0, '2026-10-19').cuadrante).toBe('agendar');
+  });
+
+  it('vencido sin marca: hacer ya', () => {
+    expect(cuadrante(0, '2026-09-21').cuadrante).toBe('hacer');
+  });
+});
+
+describe('el orden del bloque del empleado (CEB-242)', () => {
+  const hoy = '2026-09-24';
+  const i = (texto: string, importancia: number, vence: string) => ({ texto, importancia, vence });
+
+  it('por cuadrante, luego mas importancia, luego lo que antes vence', () => {
+    const orden = ordenarImprevistos(
+      [
+        i('mantener', 2, '2026-09-30'),
+        i('agendar', 9, '2026-10-19'),
+        i('hacer, 6, pasado', 6, '2026-09-28'),
+        i('hacer, 1, manana', 1, '2026-09-25'),
+        i('hacer, 6, hoy', 6, '2026-09-24'),
+        i('hacer, 9', 9, '2026-09-28'),
+      ],
+      hoy,
+      sinFeriados,
+    );
+    expect(orden.map((x) => x.texto)).toEqual([
+      'hacer, 9',
+      'hacer, 6, hoy',
+      'hacer, 6, pasado',
+      'hacer, 1, manana',
+      'agendar',
+      'mantener',
+    ]);
   });
 });
