@@ -1,0 +1,98 @@
+// QA de CEB-215 sobre la web real: `next dev` o `next start` contra el Supabase
+// local, con sesiones de verdad canjeadas por /auth/confirmar. Siembra un
+// equipo con un entregable arrastrado, un flujo atrasado y una funcion al dia,
+// y mira en el HTML que cada quien vea lo suyo: pesos al supervisor, montos
+// solo al administrador.
+// Uso: WEB=http://localhost:3215 npx tsx pruebas/src/qa-ceb-215.mts
+import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
+
+const WEB = process.env.WEB ?? 'http://localhost:3215';
+const servicio = comoServicio();
+const hoy = new Date().toISOString().slice(0, 10);
+const haceDias = (n: number) => new Date(Date.now() - n * 864e5).toISOString();
+
+await vaciar();
+const ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
+const bruno = await sembrarEmpleado('BRUNO', 'bruno@prueba.test');
+const sara = await sembrarEmpleado('SARA', 'sara@prueba.test');
+const carla = await sembrarEmpleado('CARLA', 'carla@prueba.test');
+await servicio.from('empleado').update({ supervisor_id: sara }).in('id', [ana, bruno]);
+await servicio.from('bono').insert([
+  { empleado_id: ana, monto: 1234, rige_desde: '2026-01-01' },
+  { empleado_id: carla, monto: 999, rige_desde: '2026-01-01' },
+]);
+
+const funcion = (texto: string, tipo: string, periodicidad = 'mensual') => ({
+  hash_identidad: `h-${texto}`,
+  texto,
+  importancia: 5,
+  periodicidad,
+  tipo_generado: tipo,
+  fecha_alta: '2026-01-01',
+});
+// Un entregable mensual sin cumplir desde hace meses: arrastra.
+const cierre = await sembrarFuncion(ana, { ...funcion('Cierre contable', 'entregable'), ponderacion: 30 });
+// Un flujo atrasado, con su razon.
+const facturas = await sembrarFuncion(ana, { ...funcion('Facturas', 'flujo'), ponderacion: 20 });
+// Una funcion que nacio hoy: todavia no vence nada, esta al dia.
+const nueva = await sembrarFuncion(ana, { ...funcion('Informe nuevo', 'entregable'), ponderacion: 10, fecha_alta: hoy });
+await sembrarFuncion(carla, { ...funcion('Lo de Carla', 'entregable'), ponderacion: 45 });
+// Las tenencias vienen de antes: el arrastre empieza cuando empezo a tenerla.
+await servicio.from('titularidad').update({ desde: '2026-06-01' }).in('funcion_id', [cierre, facturas]);
+await servicio.from('evento_flujo').insert({ funcion_id: facturas, estado: 'atrasado', razon: 'RAZON-DEL-ATRASO', en: haceDias(3) });
+void nueva;
+
+await comoAdministrador('jefa@prueba.test');
+await Promise.all(['ana', 'bruno', 'sara', 'carla'].map((n) => comoEmpleado(`${n}@prueba.test`)));
+
+async function sesion(correo: string): Promise<string> {
+  const { data, error } = await servicio.auth.admin.generateLink({ type: 'magiclink', email: correo });
+  if (error) throw error;
+  const r = await fetch(`${WEB}/auth/confirmar?token_hash=${data.properties.hashed_token}&type=magiclink`, { redirect: 'manual' });
+  const cookies = r.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+  if (!cookies) throw new Error(`Sin sesion para ${correo}: ${r.status}`);
+  return cookies;
+}
+
+const pagina = async (cookie: string, ruta: string) => {
+  const r = await fetch(`${WEB}${ruta}`, { headers: { cookie }, redirect: 'manual' });
+  return { status: r.status, html: await r.text() };
+};
+// Lo que se pinta, sin los scripts de Next (repiten el contenido) y sin el
+// comentario con que React separa el texto fijo de lo interpolado.
+const texto = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<!-- -->/g, '');
+
+let fallos = 0;
+function criterio(nombre: string, ok: boolean) {
+  if (!ok) fallos++;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${nombre}`);
+}
+
+const [cSara, cJefa, cAna] = await Promise.all(['sara', 'jefa', 'ana'].map((n) => sesion(`${n}@prueba.test`)));
+
+// CEB-217 · El supervisor abre el perfil de su gente, con pesos.
+let r = await pagina(cSara, `/equipo/${ana}`);
+let html = texto(r.html);
+criterio('sara: abre el perfil de ana en su propia pagina', r.status === 200 && html.includes('Su reparto') && html.includes('Sus tareas abiertas'));
+criterio('sara: ve el peso de cada funcion y la cotidianidad', html.includes('30%') && html.includes('20%') && html.includes('cotidianidad 40%'));
+criterio('sara: ni bono ni montos', !/\$\d/.test(html) && !html.includes('1234') && !html.includes('1.234') && !html.includes('Su bono'));
+criterio('sara: puede pedirle una nueva tarea', html.includes('＋ Nueva tarea'));
+criterio('sara: no edita su reparto', !html.includes('?editar='));
+r = await pagina(cSara, `/equipo/${carla}`);
+criterio('sara: carla no es de su gente, 404', r.status === 404);
+r = await pagina(cAna, `/equipo/${bruno}`);
+criterio('ana: no supervisa, 404', r.status === 404);
+
+// CEB-219 · Cada funcion dice como va en su fila.
+for (const [quien, cookie, ruta] of [
+  ['jefa', cJefa, `/admin/${ana}`],
+  ['sara', cSara, `/equipo/${ana}`],
+] as const) {
+  html = texto((await pagina(cookie, ruta)).html);
+  criterio(`${quien}: el entregable arrastrado dice periodos y desde cuando`, /arrastra \d+ periodos, desde el 30 jun/.test(html));
+  criterio(`${quien}: el flujo atrasado dice desde cuando y su razon`, html.includes('atrasado desde el') && html.includes('RAZON-DEL-ATRASO'));
+  criterio(`${quien}: la funcion al dia no dice nada`, (html.match(/arrastra \d+ periodo/g) ?? []).length === 1);
+}
+
+console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');
+process.exit(fallos ? 1 : 0);

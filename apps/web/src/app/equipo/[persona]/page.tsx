@@ -10,6 +10,7 @@ import { perfiles } from '../../perfil';
 import { ListaDeTareas } from '../../lista';
 import { Punto } from '../../abrir';
 import { Ir } from '../../ir';
+import { ComoVa } from '../../como-va';
 
 // El perfil de una persona del equipo, para su supervisor (CEB-217): las dos
 // columnas del perfil del administrador (admin/[empleado]), sin editar y sin
@@ -50,27 +51,29 @@ export default async function SuPerfil({
             {conPerfil.sinLeerDe(p.id) && <Punto />}
           </h1>
           <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
-            {donde || 'sin empresa'} · {p.reparto.length} {p.reparto.length === 1 ? 'función' : 'funciones'} · cotidianidad {p.cotidianidad}%
+            {donde || 'sin empresa'} · {p.funciones.length} {p.funciones.length === 1 ? 'función' : 'funciones'} · cotidianidad {p.cotidianidad}%
           </p>
         </header>
 
         <div className="perfil">
-          {/* Lo que cambia poco: su reparto, de solo lectura. */}
+          {/* Lo que cambia poco: su reparto, de solo lectura, con como va cada funcion. */}
           <aside style={FIJO}>
             <h2 style={H_FIJO}>Su reparto 🥧</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {p.reparto.map((f) => (
+              {p.funciones.map((f) => (
                 <div key={f.id} style={FILA}>
                   <span style={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <span style={{ fontSize: 14 }}>{f.texto}</span>
                     <span style={{ fontSize: 12, color: 'var(--gris)' }}>
                       {f.tipo ?? 'sin tipo'} · {f.periodicidad}
                     </span>
+                    {/* Como va su parte del cargo (CEB-219). */}
+                    <ComoVa f={f} />
                   </span>
                   <span style={PESO}>{f.ponderacion}%</span>
                 </div>
               ))}
-              {p.reparto.length === 0 && <p style={NADA}>Todavía no tiene funciones publicadas.</p>}
+              {p.funciones.length === 0 && <p style={NADA}>Todavía no tiene funciones publicadas.</p>}
               {/* Lo que queda para lo que le pidan: por aqui pesa todo imprevisto (ADR 0014). */}
               <div style={{ ...FILA, background: 'none', border: '1.5px dashed rgba(26,23,19,0.18)', color: 'var(--gris)' }}>
                 <span style={{ flexGrow: 1, minWidth: 0, fontSize: 14 }}>
