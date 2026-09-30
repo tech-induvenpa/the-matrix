@@ -2,6 +2,7 @@ import {
   atrasosDelFlujo,
   bonoDelMes,
   Calendario,
+  cotidianidadDe,
   diasHabilesDelMes,
   hechosDeEntregable,
   hechosDeHolgura,
@@ -19,7 +20,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 // quien decide que entra a su documento (ADR 0007).
 //
 // El hecho suelto: una fila por cada vez que algo debia hacerse (ADR 0011). Una
-// ocurrencia vencida de un entregable, un imprevisto de la holgura, o un
+// ocurrencia vencida de un entregable, un imprevisto de la cotidianidad, o un
 // episodio de atraso de un flujo. Cualquier resumen sale con una tabla
 // dinamica; resumir aqui obligaria a elegir por quien lee, y las versiones que
 // resumian terminaron confundiendo ("cerradas" contaba los "no pude" como
@@ -83,6 +84,7 @@ export async function GET(request: NextRequest) {
     { data: imprevistos },
     { data: bonos },
     { data: quienes },
+    { data: empleados },
   ] =
     await Promise.all([
       supabase.from('dia_no_habil').select('desde, hasta'),
@@ -101,6 +103,7 @@ export async function GET(request: NextRequest) {
         .gte('vence', desde),
       supabase.from('bono').select('empleado_id, monto, rige_desde'),
       supabase.rpc('quienes_piden'),
+      supabase.from('empleado').select('id, nombre_bloque').order('nombre_bloque'),
     ]);
 
   const calendario = Calendario.con(dias ?? []);
@@ -127,60 +130,71 @@ export async function GET(request: NextRequest) {
 
   const filas: string[] = [];
 
+  // Cada fila sabe su numero, porque las cuentas van como formulas: si el
+  // administrador corrige una celda, lo que depende de ella se recalcula. Solo
+  // aritmetica, sin funciones (SI/IF) que cambian de nombre segun el idioma del
+  // Excel. Sin bono, el monto queda vacio y no en cero: no es lo mismo no
+  // saberlo que no cobrar bono.
+  const escribir = (
+    base: { mes: string; persona: string; funcion: string; tipo: string; periodicidad: string; ponderacion: number; bono: number | null },
+    celdas: {
+      que: string;
+      vence: string;
+      resultado: string;
+      cumplio: 0 | 1 | null;
+      dias: number | '';
+      veces: number;
+      peso: (n: number) => string | number;
+    },
+  ) => {
+    const n = filas.length + 2; // la fila 1 es la cabecera
+    filas.push(
+      [
+        base.mes,
+        base.persona,
+        base.funcion,
+        base.tipo,
+        base.periodicidad,
+        celdas.que,
+        celdas.vence,
+        celdas.resultado,
+        celdas.cumplio ?? '',
+        celdas.dias,
+        base.ponderacion,
+        celdas.veces,
+        celdas.peso(n),
+        base.bono ?? '',
+        base.bono === null ? '' : `=M${n}*N${n}/100`,
+      ]
+        .map(escapar)
+        .join(';'),
+    );
+  };
+
+  // En el mes en curso solo cuenta lo que ya vencio: lo demas aun se puede
+  // cumplir.
+  const tramoDe = (mes: string) => ({ desde: `${mes}-01`, hasta: mes === hoy.slice(0, 7) ? hoy : finDe(mes) });
+
   for (const t of (titularidades ?? []) as Record<string, unknown>[]) {
     const f = t.funcion as Record<string, unknown>;
     const tipo = (f.tipo_corregido ?? f.tipo_generado) as string | null;
-    if (!f.activa || (tipo !== 'entregable' && tipo !== 'holgura' && tipo !== 'flujo')) continue;
+    if (!f.activa || (tipo !== 'entregable' && tipo !== 'flujo')) continue;
 
     const funcionId = f.id as string;
     const empleadoId = t.empleado_id as string;
     if (personas.length > 0 && !personas.includes(empleadoId)) continue;
-    const persona = (t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '';
-    const ponderacion = t.ponderacion as number;
     const diaTope = (f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined) as number | undefined;
 
     for (const mes of meses) {
-      // En el mes en curso solo cuenta lo que ya vencio: lo demas aun se puede
-      // cumplir.
-      const tramo = { desde: `${mes}-01`, hasta: mes === hoy.slice(0, 7) ? hoy : finDe(mes) };
-      const bono = bonoDelMes(bonosDe(empleadoId), mes);
-
-      // Cada fila sabe su numero, porque las cuentas van como formulas: si el
-      // administrador corrige una celda, lo que depende de ella se recalcula.
-      // Solo aritmetica, sin funciones (SI/IF) que cambian de nombre segun el
-      // idioma del Excel. Sin bono, el monto queda vacio y no en cero: no es lo
-      // mismo no saberlo que no cobrar bono.
-      const escribir = (celdas: {
-        que: string;
-        vence: string;
-        resultado: string;
-        cumplio: 0 | 1 | null;
-        dias: number | '';
-        veces: number;
-        peso: (n: number) => string | number;
-      }) => {
-        const n = filas.length + 2; // la fila 1 es la cabecera
-        filas.push(
-          [
-            mes,
-            persona,
-            f.texto as string,
-            tipo,
-            f.periodicidad as string,
-            celdas.que,
-            celdas.vence,
-            celdas.resultado,
-            celdas.cumplio ?? '',
-            celdas.dias,
-            ponderacion,
-            celdas.veces,
-            celdas.peso(n),
-            bono ?? '',
-            bono === null ? '' : `=M${n}*N${n}/100`,
-          ]
-            .map(escapar)
-            .join(';'),
-        );
+      const tramo = tramoDe(mes);
+      const base = {
+        mes,
+        persona: (t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '',
+        funcion: f.texto as string,
+        tipo,
+        periodicidad: f.periodicidad as string,
+        ponderacion: t.ponderacion as number,
+        bono: bonoDelMes(bonosDe(empleadoId), mes),
       };
 
       if (tipo === 'entregable') {
@@ -192,26 +206,12 @@ export async function GET(request: NextRequest) {
         ).filter((o) => o.vence <= tramo.hasta);
 
         for (const h of hechosDeEntregable(ocurrencias, marcasDe(funcionId))) {
-          escribir({
+          escribir(base, {
             ...h,
             resultado: RESULTADO[h.resultado]!,
             dias: '',
             veces: ocurrencias.length,
             peso: (n) => `=K${n}/L${n}*(1-I${n})`,
-          });
-        }
-      }
-
-      if (tipo === 'holgura') {
-        const { filas: hechos, veces } = hechosDeHolgura(imprevistosDe(empleadoId), tramo, hoy);
-        for (const h of hechos) {
-          escribir({
-            ...h,
-            resultado: RESULTADO[h.resultado]!,
-            dias: '',
-            veces,
-            // "No lo tome" es neutro: peso cero, como valor.
-            peso: (n) => (h.cumplio === null ? 0 : `=K${n}/L${n}*(1-I${n})`),
           });
         }
       }
@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
         // atrasado vale lo mismo en cualquier momento del mes.
         const veces = diasHabilesDelMes({ desde: tramo.desde, hasta: finDe(mes) }, calendario);
         for (const a of atrasosDelFlujo(eventosDe(funcionId), tramo, calendario)) {
-          escribir({
+          escribir(base, {
             que: '',
             vence: a.desde,
             resultado: 'atrasado',
@@ -232,6 +232,41 @@ export async function GET(request: NextRequest) {
             peso: (n) => `=K${n}/L${n}*J${n}`,
           });
         }
+      }
+    }
+  }
+
+  // La cotidianidad de cada persona: lo que no pesan sus funciones, cumplido
+  // con sus imprevistos (INV-39, ADR 0014). Todos la tienen, tambien quien no
+  // tiene ninguna funcion: entonces es todo su cargo.
+  for (const e of (empleados ?? []) as { id: string; nombre_bloque: string }[]) {
+    if (personas.length > 0 && !personas.includes(e.id)) continue;
+    const cotidianidad = cotidianidadDe(
+      ((titularidades ?? []) as Record<string, unknown>[])
+        .filter((t) => t.empleado_id === e.id && (t.funcion as { activa: boolean }).activa)
+        .map((t) => ({ funcionId: (t.funcion as { id: string }).id, ponderacion: t.ponderacion as number })),
+    );
+
+    for (const mes of meses) {
+      const base = {
+        mes,
+        persona: e.nombre_bloque,
+        funcion: 'Cotidianidad',
+        tipo: 'cotidianidad',
+        periodicidad: '',
+        ponderacion: cotidianidad,
+        bono: bonoDelMes(bonosDe(e.id), mes),
+      };
+      const { filas: hechos, veces } = hechosDeHolgura(imprevistosDe(e.id), tramoDe(mes), hoy);
+      for (const h of hechos) {
+        escribir(base, {
+          ...h,
+          resultado: RESULTADO[h.resultado]!,
+          dias: '',
+          veces,
+          // "No lo tome" es neutro: peso cero, como valor.
+          peso: (n) => (h.cumplio === null ? 0 : `=K${n}/L${n}*(1-I${n})`),
+        });
       }
     }
   }

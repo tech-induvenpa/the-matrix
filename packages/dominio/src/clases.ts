@@ -27,13 +27,12 @@ export function tipoSegun(r: Respuestas): TipoDeFuncion | null {
   return null;
 }
 
-// Solo lo que se agenda tiene fecha: un area y una holgura no vencen nunca, asi
+// Solo lo que se agenda tiene fecha: un area no vence nunca, asi
 // que pedir su dia tope seria pedir un dato que no significa nada.
 export const SE_AGENDA: Record<TipoDeFuncion, boolean> = {
   entregable: true,
   flujo: false,
   area: false,
-  holgura: false,
 };
 
 // Una funcion mensual puede tener dia tope; las demas lo toman de su propio

@@ -28,7 +28,7 @@ describe('de que clase es una funcion', () => {
   });
 
   it('solo el entregable se agenda; lo demas no vence nunca', () => {
-    expect(SE_AGENDA).toEqual({ entregable: true, flujo: false, area: false, holgura: false });
+    expect(SE_AGENDA).toEqual({ entregable: true, flujo: false, area: false });
   });
 
   it('el dia tope solo tiene sentido en lo mensual', () => {

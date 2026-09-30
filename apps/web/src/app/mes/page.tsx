@@ -23,7 +23,7 @@ import { perfiles } from '../perfil';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
-// y aqui viven las areas y la holgura, que no entran a la pantalla de trabajo.
+// y aqui viven las areas y la cotidianidad, que no entran a la pantalla de trabajo.
 export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
@@ -270,7 +270,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
             </div>
 
             <p style={{ fontSize: 12, color: 'var(--gris)', margin: 0 }}>
-              Aquí también vive lo que no entra a tu semana, como las áreas del cargo y la holgura para imprevistos.
+              Aquí también vive lo que no entra a tu semana: las áreas del cargo y tu cotidianidad, lo que te piden fuera de tus funciones.
             </p>
           </div>
         </section>
@@ -306,11 +306,11 @@ const ROTULO: Record<Cuadrante, { emoji: string; texto: string; color: string }>
 const COLOR_PORCION = ['#D9503A', '#E8A33F', '#1B6E8C', '#E8CE7A', '#E37B3C'];
 const RESTO = '#DCD6CB';
 
-const ETIQUETA: Record<TipoDeFuncion, string> = {
+const ETIQUETA: Record<TipoDeFuncion | 'cotidianidad', string> = {
   entregable: 'entrega',
   flujo: 'flujo',
   area: 'área',
-  holgura: 'holgura',
+  cotidianidad: 'lo que te piden',
 };
 
 
