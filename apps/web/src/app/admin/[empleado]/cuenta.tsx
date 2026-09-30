@@ -32,11 +32,12 @@ export function Cuenta({
   const antesDe = new Map(funciones.map((f) => [f.id, f.ponderacion]));
   const despuesDe = new Map(propuesta.despues.map((p) => [p.funcionId, p.ponderacion]));
   const ids = [...new Set([...funciones.map((f) => f.id), ...propuesta.despues.map((p) => p.funcionId)])];
-  const laQueCambia = 'sale' in cambio ? cambio.sale : 'entra' in cambio ? cambio.entra.funcionId : cambio.cambia.funcionId;
+  const laQueCambia =
+    'sale' in cambio ? cambio.sale : 'entra' in cambio ? cambio.entra.funcionId : 'cambia' in cambio ? cambio.cambia.funcionId : null;
 
   const filas = [
     ...ids.map((id) => ({ id, texto: nombre(id), antes: antesDe.get(id), despues: despuesDe.get(id), laQueCambia: id === laQueCambia })),
-    { id: 'cotidianidad', texto: 'Cotidianidad', antes: propuesta.cotidianidad.antes, despues: propuesta.cotidianidad.despues, laQueCambia: false },
+    { id: 'cotidianidad', texto: 'Cotidianidad', antes: propuesta.cotidianidad.antes, despues: propuesta.cotidianidad.despues, laQueCambia: 'cotidianidad' in cambio },
   ];
 
   return (
@@ -92,6 +93,11 @@ function enPalabras(
     frases.push(
       `${nombre(cambio.cambia.funcionId)} pasa de ${antes}% a ${cambio.cambia.ponderacion}%. Los ${diferencia} puntos que ${cambio.cambia.ponderacion > antes ? 'toma' : 'suelta'} se compensan en proporción entre las demás y la cotidianidad.`,
     );
+  } else if ('cotidianidad' in cambio) {
+    frases.push(
+      `La cotidianidad pasa de ${p.cotidianidad.antes}% a ${p.cotidianidad.despues}%. Las funciones se reparten el resto, ${100 - p.cotidianidad.despues}%, en la proporción que tenían.`,
+    );
+    return frases;
   } else {
     frases.push(
       `Sale ${nombre(cambio.sale)} (${antesDe.get(cambio.sale) ?? 0}%). Su peso vuelve en proporción a las demás y a la cotidianidad.`,

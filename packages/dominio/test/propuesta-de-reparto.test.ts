@@ -82,3 +82,24 @@ describe('proponer un reparto', () => {
     expect(r.despues.reduce((t, p) => t + p.ponderacion, 0)).toBe(90);
   });
 });
+
+describe('ajustar la cotidianidad', () => {
+  it('subirla baja las funciones en proporcion', () => {
+    // 60 y 30, cotidianidad 10: subirla a 25 deja 75 para las funciones, dos a uno.
+    const r = proponerReparto([f('a', 60), f('b', 30)], { cotidianidad: 25 });
+    expect(r.despues).toEqual([f('a', 50), f('b', 25)]);
+    expect(r.cotidianidad).toEqual({ antes: 10, despues: 25 });
+  });
+
+  it('bajarla sube las funciones en proporcion', () => {
+    const r = proponerReparto([f('a', 40), f('b', 20)], { cotidianidad: 10 });
+    expect(r.despues).toEqual([f('a', 60), f('b', 30)]);
+    expect(r.cotidianidad.despues).toBe(10);
+  });
+
+  it('nunca baja del piso', () => {
+    const r = proponerReparto([f('a', 40), f('b', 20)], { cotidianidad: 3 });
+    expect(r.cotidianidad.despues).toBe(10);
+    expect(r.enElPiso).toBe(true);
+  });
+});
