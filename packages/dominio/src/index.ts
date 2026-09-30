@@ -61,3 +61,5 @@ export { proponerReparto } from './propuesta-de-reparto';
 export type { CambioDeReparto, PropuestaDeReparto } from './propuesta-de-reparto';
 export { cierreDelMes, comoSeCerro, estadoDelMes, mesDe, ultimoHabilDelMes } from './cierre-del-mes';
 export type { EstadoDelMes, Reapertura, Recierre } from './cierre-del-mes';
+export { conceptoDe, nominaDe, partesDelMes } from './nomina';
+export type { FuncionDeLaNomina, ImprevistoDeLaNomina, LineaDeNomina, Nomina, ParteDelCargo } from './nomina';

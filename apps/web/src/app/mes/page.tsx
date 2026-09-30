@@ -21,14 +21,24 @@ import { salir } from '../acciones';
 import { ImprevistosDelMes } from '../imprevistos';
 import { perfiles } from '../perfil';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
+import { nominaDelMes } from '@/lib/nomina';
+import { EstadoDeCuenta, nombreDelMes, ultimosMeses } from '../nomina';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la cotidianidad, que no entran a la pantalla de trabajo.
-export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string }> }) {
+export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string; mes?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
-  const [{ hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos, gente }, { perfil, deOcurrencia }] =
-    await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
+  const [
+    { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos, gente, empleadoId },
+    { perfil, deOcurrencia },
+    { mes: pedido = '' },
+  ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea)), searchParams]);
+
+  // Su nomina (ADR 0016): la del mes en curso, provisional, o la de un mes
+  // anterior, fija. Un mes futuro todavia no tiene nada.
+  const mesDeLaNomina = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedido) && pedido <= hoy.slice(0, 7) ? pedido : hoy.slice(0, 7);
+  const suNomina = await nominaDelMes(empleadoId, mesDeLaNomina);
 
   // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
   // cuyo "no pude" o atraso se le vinculo.
@@ -213,9 +223,42 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--suave)', borderRadius: 20, padding: '22px 24px' }}>
+            {/* Con bono, su nomina reemplaza a "Donde mas cuentas" (CEB-230), y
+                lo que vale cada funcion sigue abajo: de ahi sale cada descuento. */}
+            {bonos.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
+                    Tu nómina de {nombreDelMes(mesDeLaNomina)} 🧾
+                  </h2>
+                  <form method="get" style={{ display: 'flex', gap: 6 }}>
+                    <select name="mes" defaultValue={mesDeLaNomina} aria-label="Qué mes" style={SELECTOR}>
+                      {ultimosMeses(hoy).map((m) => (
+                        <option key={m.valor} value={m.valor}>
+                          {m.texto}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="submit" style={VER}>
+                      Ver
+                    </button>
+                  </form>
+                </div>
+                {suNomina.nomina ? (
+                  <EstadoDeCuenta datos={{ ...suNomina, nomina: suNomina.nomina }} />
+                ) : (
+                  <p style={{ fontSize: 13, color: 'var(--gris)', margin: 0 }}>
+                    En {nombreDelMes(mesDeLaNomina)} no tenías bono, así que no hay nómina.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
               <div>
-                <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Dónde más cuentas 🥧</h2>
+                <h2 style={{ fontSize: bonos.length > 0 ? 15 : 19, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
+                  {bonos.length > 0 ? 'Lo que vale cada parte' : 'Dónde más cuentas 🥧'}
+                </h2>
                 <p style={{ fontSize: 12.5, color: 'var(--gris)', margin: '4px 0 0', maxWidth: 420 }}>
                   El tamaño de cada porción es lo que esa función pesa dentro de tu cargo. Las grandes son por las que
                   te buscan a ti.
@@ -290,6 +333,28 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
 }
 
 const ORDEN: Cuadrante[] = ['hacer', 'agendar', 'mantener'];
+
+const SELECTOR = {
+  height: 32,
+  borderRadius: 999,
+  border: '1px solid rgba(26,23,19,0.12)',
+  padding: '0 12px',
+  fontSize: 13,
+  color: 'var(--tinta)',
+  background: '#ffffff',
+} as const;
+
+const VER = {
+  height: 32,
+  padding: '0 14px',
+  borderRadius: 999,
+  border: 0,
+  background: 'var(--tinta)',
+  color: '#ffffff',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+} as const;
 
 const ROTULO: Record<Cuadrante, { emoji: string; texto: string; color: string }> = {
   hacer: { emoji: '⚡', texto: 'Hacer ya', color: '#D9503A' },
