@@ -12,14 +12,17 @@ export function Confirmar({
   pregunta,
   detalle,
   si,
+  enviando = 'Borrando…',
   estilo,
   children,
 }: {
   accion: (formulario: FormData) => Promise<Aviso | undefined>;
   titulo: string;
   pregunta: string;
-  detalle?: string;
+  // Texto, o lo que haga falta para ver el impacto (la cuenta de un reparto).
+  detalle?: ReactNode;
   si: string;
+  enviando?: string;
   estilo: CSSProperties;
   children: ReactNode;
 }) {
@@ -45,12 +48,12 @@ export function Confirmar({
           style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
         >
           <p style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{pregunta}</p>
-          {detalle && <p style={{ margin: 0, fontSize: 14, color: 'var(--gris)' }}>{detalle}</p>}
+          {typeof detalle === 'string' ? <p style={{ margin: 0, fontSize: 14, color: 'var(--gris)' }}>{detalle}</p> : detalle}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" autoFocus onClick={() => dialogo.current?.close()} style={{ ...BOTON, background: 'rgba(26,23,19,0.06)', color: 'var(--tinta)' }}>
               Cancelar
             </button>
-            <Enviar style={{ ...BOTON, background: '#C62828', color: '#fff' }} enviando="Borrando…">
+            <Enviar style={{ ...BOTON, background: '#C62828', color: '#fff' }} enviando={enviando}>
               {si}
             </Enviar>
           </div>
@@ -64,7 +67,7 @@ const DIALOGO = {
   border: 'none',
   borderRadius: 20,
   padding: '22px 24px',
-  width: 'min(400px, calc(100vw - 32px))',
+  width: 'min(480px, calc(100vw - 32px))',
   color: 'var(--tinta)',
   boxShadow: '0 20px 50px rgba(26,23,19,0.25)',
 } as const;

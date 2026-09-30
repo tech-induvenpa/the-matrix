@@ -13,6 +13,7 @@ import { Reparto } from './reparto';
 import { Propuesta } from './propuesta';
 import { Cuenta } from './cuenta';
 import { Ir } from '../../ir';
+import { Confirmar } from '../../confirmar';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
 // repartir y la de editar, con los mismos nombres repetidos uno debajo del otro.
@@ -25,10 +26,10 @@ export default async function Cargo({
   searchParams,
 }: {
   params: Promise<{ empleado: string }>;
-  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string; quitar?: string; aQuien?: string; pesoNuevo?: string }>;
+  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string; aQuien?: string; pesoNuevo?: string }>;
 }) {
   const { empleado } = await params;
-  const { editar, peso, tarea, entra, quitar, aQuien, pesoNuevo } = await searchParams;
+  const { editar, peso, tarea, entra, aQuien, pesoNuevo } = await searchParams;
   const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
@@ -244,33 +245,6 @@ export default async function Cargo({
                       </div>
                     )}
 
-                    {/* Archivar o eliminar muestran antes a donde va su peso (CEB-211). */}
-                    {editar === f.id && !proponiendo && (quitar === 'archivar' || quitar === 'eliminar') && (
-                      <div style={{ marginTop: 5 }}>
-                        <Cuenta
-                          titulo={quitar === 'archivar' ? 'Así quedaría si la archivas' : 'Así quedaría si la eliminas'}
-                          funciones={cargo.funciones.filter((g) => !g.sinPublicar)}
-                          cambio={{ sale: f.id }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                            <Accion accion={(quitar === 'archivar' ? archivarFuncion : eliminarFuncion).bind(null, f.id, empleado)}>
-                              <Enviar style={{ ...BOTON, background: '#C62828' }} enviando={quitar === 'archivar' ? 'Archivando…' : 'Eliminando…'}>
-                                {quitar === 'archivar' ? 'Sí, archivarla' : 'Sí, eliminarla'}
-                              </Enviar>
-                            </Accion>
-                            <Ir href={`?editar=${f.id}`} style={{ fontSize: 13, color: 'var(--gris)' }}>
-                              dejarla como está
-                            </Ir>
-                            <span style={{ fontSize: 12, color: 'var(--gris)', flexBasis: '100%' }}>
-                              {quitar === 'archivar'
-                                ? 'Sale de su cargo y conserva su historia.'
-                                : 'Desaparece por completo. Si ya tiene historia, la base lo rechaza y hay que archivarla.'}
-                            </span>
-                          </div>
-                        </Cuenta>
-                      </div>
-                    )}
-
                     {/* El traspaso muestra antes como quedan los dos (CEB-212). */}
                     {editar === f.id && traspasando && (
                       <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -304,7 +278,7 @@ export default async function Cargo({
                       </div>
                     )}
 
-                    {editar === f.id && !proponiendo && !quitar && !traspasando && (
+                    {editar === f.id && !proponiendo && !traspasando && (
                       <div style={{ background: 'var(--suave)', borderRadius: 14, padding: '16px 18px', marginTop: 5 }}>
                         <Formulario funcionId={f.id} empleadoId={empleado} funcion={f} />
 
@@ -339,21 +313,37 @@ export default async function Cargo({
                           </div>
                         </form>
 
-                        <Ir
-                          href={`?editar=${f.id}&quitar=archivar`}
-                          style={{ ...BOTON, marginTop: 14, background: 'rgba(198,40,40,0.10)', color: '#C62828', textDecoration: 'none', width: 'fit-content' }}
-                        >
-                          Archivar esta función: sale de su cargo y conserva su historia
-                        </Ir>
-
-                        {/* Para la creada por error. Si ya tiene historia, la base la
-                            rechaza y hay que archivarla. */}
-                        <Ir
-                          href={`?editar=${f.id}&quitar=eliminar`}
-                          style={{ marginTop: 6, fontSize: 12.5, color: '#C62828', display: 'flex' }}
-                        >
-                          Eliminarla por completo (solo si se creó por error y no tiene historia)
-                        </Ir>
+                        {/* Archivar o eliminar muestran antes a donde va su peso (CEB-211). */}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                          <Confirmar
+                            accion={archivarFuncion.bind(null, f.id, empleado)}
+                            titulo="Archivar: sale de su cargo y conserva su historia"
+                            pregunta={`¿Archivar «${f.texto}»?`}
+                            detalle={<Cuenta titulo="Así quedaría si la archivas" funciones={cargo.funciones.filter((g) => !g.sinPublicar)} cambio={{ sale: f.id }}>
+                              <span style={{ fontSize: 12, color: 'var(--gris)' }}>Sale de su cargo y conserva su historia.</span>
+                            </Cuenta>}
+                            si="Sí, archivarla"
+                            enviando="Archivando…"
+                            estilo={QUITAR}
+                          >
+                            📦
+                          </Confirmar>
+                          {/* Para la creada por error. Si ya tiene historia, la base la
+                              rechaza y hay que archivarla. */}
+                          <Confirmar
+                            accion={eliminarFuncion.bind(null, f.id, empleado)}
+                            titulo="Eliminar: solo si se creó por error y no tiene historia"
+                            pregunta={`¿Eliminar «${f.texto}» por completo?`}
+                            detalle={<Cuenta titulo="Así quedaría si la eliminas" funciones={cargo.funciones.filter((g) => !g.sinPublicar)} cambio={{ sale: f.id }}>
+                              <span style={{ fontSize: 12, color: 'var(--gris)' }}>Desaparece por completo. Si ya tiene historia, la base lo rechaza y hay que archivarla.</span>
+                            </Cuenta>}
+                            si="Sí, eliminarla"
+                            enviando="Eliminando…"
+                            estilo={QUITAR}
+                          >
+                            🗑
+                          </Confirmar>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -434,5 +424,18 @@ const BOTON = {
   color: '#fff',
   fontSize: 13.5,
   fontWeight: 600,
+  cursor: 'pointer',
+} as const;
+
+const QUITAR = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 38,
+  height: 38,
+  borderRadius: 999,
+  border: 'none',
+  background: 'rgba(198,40,40,0.10)',
+  fontSize: 17,
   cursor: 'pointer',
 } as const;
