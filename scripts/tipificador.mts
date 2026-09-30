@@ -19,10 +19,9 @@ tipo, exactamente uno de:
 - "entregable": produce algo concreto con fecha. Se termina. Ej: "CIERRE FINANCIERO AUTO BENGALA (ANTES DEL 3 DE CADA MES)", "DECLARACIONES AL SENIAT".
 - "flujo": trabajo continuo que se sostiene, no se termina. Ej: "CUENTAS POR PAGAR MDV", "REGISTRO DE FACTURAS", "RECEPCION DE VEHICULOS".
 - "area": una responsabilidad amplia del cargo, no una tarea. Ej: "ASISTENCIA A LA GERENCIA", "TESORERIA".
-- "holgura": espacio para lo imprevisto. Ej: "URGENTES", "URGENTES (SOLICITAR REINTEGROS, REVISAR CORREOS ETC)".
 
 diaTope: si la frase dice un día del mes ("ANTES DEL 3", "FECHA TOPE 02 DE CADA MES"), ese número. Si no, null.
-Las áreas y las holguras nunca llevan diaTope: no se agendan.
+Las áreas nunca llevan diaTope: no se agendan.
 
 confianza: 0 a 1. Si la frase es ambigua, baja de 0.6 y que lo revise una persona.
 Responde solo el JSON.`;

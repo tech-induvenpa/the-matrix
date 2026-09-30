@@ -19,11 +19,11 @@ const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral
 const TIPOS = [
   { valor: 'quedaTerminado', texto: 'Una entrega: se termina y se marca como hecha' },
   { valor: 'seAtiendeMientrasHaya', texto: 'Un flujo: se atiende mientras haya, nunca queda terminado' },
-  { valor: '', texto: 'Holgura: tiempo reservado para lo no planificado' },
+  // Sin holgura: la cotidianidad es el resto del cargo y no se crea (ADR 0014).
 ] as const;
 
 const tipoElegido = (tipo: string | null | undefined) =>
-  tipo === 'entregable' ? 'quedaTerminado' : tipo === 'flujo' ? 'seAtiendeMientrasHaya' : tipo === 'area' ? 'nombraUnAmbito' : '';
+  tipo === 'flujo' ? 'seAtiendeMientrasHaya' : tipo === 'area' ? 'nombraUnAmbito' : 'quedaTerminado';
 
 // Cada campo aparece solo si aplica a lo elegido (ver globals.css): la entrega
 // tiene periodicidad, importancia y dia tope si es mensual; el flujo, solo
@@ -59,7 +59,7 @@ export function Formulario({
         <label style={ETIQUETA}>
           Qué tipo de trabajo es
           {/* Nueva, arranca como entrega: es lo que casi siempre se crea. */}
-          <select name="tipo" defaultValue={funcion ? tipoElegido(funcion.tipo) : 'quedaTerminado'} style={CAMPO}>
+          <select name="tipo" defaultValue={tipoElegido(funcion?.tipo)} style={CAMPO}>
             {TIPOS.map((t) => (
               <option key={t.valor} value={t.valor}>
                 {t.texto}

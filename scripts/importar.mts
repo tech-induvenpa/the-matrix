@@ -33,9 +33,7 @@ const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral
 // pasa por interpretar(), la misma puerta que usara el agente de verdad.
 function propuestaDePrueba(texto: string) {
   const t = texto.toUpperCase();
-  const tipo = /URGENTES|IMPREVISTO/.test(t)
-    ? 'holgura'
-    : /ASISTENCIA A LA GERENCIA|GESTION ADMINISTRATIVA|LOGISTICA|VALIDACION DE LOS PROCESOS|ESTUDIO DE MERCADO/.test(t)
+  const tipo = /ASISTENCIA A LA GERENCIA|GESTION ADMINISTRATIVA|LOGISTICA|VALIDACION DE LOS PROCESOS|ESTUDIO DE MERCADO/.test(t)
       ? 'area'
       : /CUENTAS POR (PAGAR|COBRAR)|CONCILIACI|REGISTRO DE FACTURAS|DIGITALIZAR|SEGUIMIENTO|CONTROL DE|RECEPCION|FACTURACION|TESORERIA|CAJA CHICA|REVISAR|REVISION DE|COMPRAS DE/.test(t)
         ? 'flujo'
@@ -146,6 +144,11 @@ const textoDe = new Map((actuales ?? []).map((f) => [f.hash_identidad, f.texto])
 const sinPeriodicidad = filas.filter((f) => !PERIODICIDADES.includes(f.periodicidad ?? ''));
 filas = filas.filter((f) => PERIODICIDADES.includes(f.periodicidad ?? ''));
 
+// La holgura del documento es la cotidianidad de su titular: el resto del
+// cargo, que no es una funcion ni se da de alta (ADR 0014).
+const deCotidianidad = filas.filter((f) => /URGENTES|IMPREVISTO|HOLGURA/i.test(f.nombre));
+filas = filas.filter((f) => !deCotidianidad.includes(f));
+
 const { altas, cambios, bajas } = reconciliar(existentes, filas);
 
 console.log(`\nLeídas ${filas.length} funciones de ${Object.keys(porBloque).length} bloques conocidos.`);
@@ -155,6 +158,8 @@ if (sinPeriodicidad.length) {
   console.log(`  ${sinPeriodicidad.length} filas sin periodicidad, fuera de la importación:`);
   for (const f of sinPeriodicidad.slice(0, 8)) console.log(`    ? ${f.nombre}`);
 }
+
+if (deCotidianidad.length) console.log(`  ${deCotidianidad.length} filas de holgura, que son la cotidianidad: no se importan.`);
 
 console.log(`\n  ${altas.length} nuevas`);
 for (const f of altas) console.log(`    + ${f.nombre}`);

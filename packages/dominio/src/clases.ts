@@ -18,13 +18,13 @@ export type Respuestas = {
 
 // El orden importa y no es arbitrario: lo que se entrega gana sobre lo que se
 // atiende, porque una funcion con entrega y volumen es un entregable con
-// trabajo detras, no un flujo. La holgura es el resto: lo que no se entrega, no
-// se atiende y no nombra nada es lo que se guarda para lo no planificado.
-export function tipoSegun(r: Respuestas): TipoDeFuncion {
+// trabajo detras, no un flujo. Lo que no es nada de eso no es una funcion: el
+// resto del cargo es la cotidianidad, que no se da de alta (ADR 0014).
+export function tipoSegun(r: Respuestas): TipoDeFuncion | null {
   if (r.quedaTerminado) return 'entregable';
   if (r.seAtiendeMientrasHaya) return 'flujo';
   if (r.nombraUnAmbito) return 'area';
-  return 'holgura';
+  return null;
 }
 
 // Solo lo que se agenda tiene fecha: un area y una holgura no vencen nunca, asi

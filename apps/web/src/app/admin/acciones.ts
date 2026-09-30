@@ -36,7 +36,7 @@ function loQueSeEscribio(formulario: FormData) {
   });
 
   const topeEscrito = Number(formulario.get('diaTope') ?? 0);
-  const diaTope = SE_AGENDA[tipo] && ADMITE_DIA_TOPE(periodicidad) && topeEscrito >= 1 && topeEscrito <= 31
+  const diaTope = tipo && SE_AGENDA[tipo] && ADMITE_DIA_TOPE(periodicidad) && topeEscrito >= 1 && topeEscrito <= 31
     ? topeEscrito
     : null;
 
@@ -45,6 +45,7 @@ function loQueSeEscribio(formulario: FormData) {
 
 function noSirve(datos: ReturnType<typeof loQueSeEscribio>): string | null {
   if (!datos.texto) return 'Sin nombre no se puede crear.';
+  if (!datos.tipo) return 'Elige qué tipo de trabajo es.';
   if (!PERIODICIDADES.includes(datos.periodicidad)) return 'Esa periodicidad no existe.';
   if (!Number.isInteger(datos.importancia) || datos.importancia < 0 || datos.importancia > 9)
     return 'La importancia va de cero a nueve.';

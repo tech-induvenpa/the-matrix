@@ -15,7 +15,8 @@ export type Tipificador = {
   proponer(texto: string): Promise<Propuesta>;
 };
 
-const TIPOS: readonly string[] = ['entregable', 'flujo', 'area', 'holgura'];
+// Sin holgura: la cotidianidad no es una funcion (ADR 0014).
+const TIPOS: readonly string[] = ['entregable', 'flujo', 'area'];
 const SE_AGENDAN: readonly string[] = ['entregable', 'flujo'];
 
 // Por debajo de esto no se guarda nada: una persona escribe el tipo a mano.

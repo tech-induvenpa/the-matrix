@@ -16,8 +16,9 @@ describe('de que clase es una funcion', () => {
     expect(tipoSegun({ ...no, nombraUnAmbito: true })).toBe('area');
   });
 
-  it('lo que no es nada de eso es holgura: el resto del cargo', () => {
-    expect(tipoSegun(no)).toBe('holgura');
+  // La cotidianidad es el resto del cargo y no se da de alta (ADR 0014).
+  it('lo que no es nada de eso no es una funcion', () => {
+    expect(tipoSegun(no)).toBeNull();
   });
 
   // El caso que hacia dudar a todo el mundo: cuentas por pagar se entrega cada

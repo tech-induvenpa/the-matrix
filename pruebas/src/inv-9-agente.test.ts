@@ -12,7 +12,7 @@ const env = readFileSync(new URL('../../apps/web/.env.local', import.meta.url), 
 const v = (c: string) => env.split('\n').find((l) => l.startsWith(`${c}=`))!.slice(c.length + 1).trim();
 
 const agente = tipificadorRemoto({ clave: v('AGENTE_API_KEY'), modelo: v('AGENTE_MODELO'), url: v('AGENTE_URL') });
-const TIPOS = ['entregable', 'flujo', 'area', 'holgura'];
+const TIPOS = ['entregable', 'flujo', 'area'];
 
 describe('INV-9: el agente propone, y solo escribe lo suyo', () => {
   let funcionId: string;
