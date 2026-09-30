@@ -14,6 +14,8 @@ import { Propuesta } from './propuesta';
 import { Cuenta } from './cuenta';
 import { Ir } from '../../ir';
 import { Confirmar } from '../../confirmar';
+import { comoVanSusFunciones, datosDelEquipo } from '@/lib/equipo';
+import { ComoVa } from '../../como-va';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
 // repartir y la de editar, con los mismos nombres repetidos uno debajo del otro.
@@ -30,16 +32,19 @@ export default async function Cargo({
 }) {
   const { empleado } = await params;
   const { editar, peso, tarea, entra, aQuien, pesoNuevo } = await searchParams;
-  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil] = await Promise.all([
+  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil, datos] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
     bonoDe(empleado),
     pertenencias(),
     perfiles(tarea),
+    datosDelEquipo(empleado),
   ]);
 
   if (!cargo) return null;
   const tareas = await tareasAbiertasDe(empleado, imprevistos.hoy, imprevistos.calendario);
+  // Como va cada funcion, dicho en su fila (CEB-219).
+  const comoVan = new Map(comoVanSusFunciones(datos, empleado, imprevistos.hoy, imprevistos.calendario).map((f) => [f.id, f]));
 
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
@@ -221,6 +226,7 @@ export default async function Cargo({
                           {f.tipo ?? 'sin tipo'} · {f.periodicidad}
                           {f.diaTope ? ` · día ${f.diaTope}` : ''}
                         </span>
+                        <ComoVa f={comoVan.get(f.id)} />
                       </span>
                       <span style={{ fontSize: 13.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
                         {f.ponderacion}%

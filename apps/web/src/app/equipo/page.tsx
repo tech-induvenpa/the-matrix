@@ -4,7 +4,9 @@ import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/
 import { Filtrar } from '../filtro';
 import { esAdministrador } from '@/lib/administrador';
 import { fechaCorta } from '@/lib/datos';
-import { loDeMiGente, type ComoVaUnaFuncion, type PersonaACargo } from '@/lib/supervisor';
+import { loDeMiGente, type PersonaACargo } from '@/lib/supervisor';
+import type { ComoVaUnaFuncion } from '@/lib/equipo';
+import { comoVa as enTiempo } from '../como-va';
 import { DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
 import { NuevoImprevisto } from '../imprevistos';
@@ -35,7 +37,11 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   const filtro = filtroDe(parametros);
   const gente = todos.flatMap((p) => {
     const conSuEmpresa = { ...p, ...deIds(p.empresaId, p.sedeId) };
-    const funciones = delFiltro(conSuEmpresa, p.funciones, (f) => f.texto, filtro);
+    const medibles = p.funciones
+      .filter((f) => f.tipo === 'entregable' || f.tipo === 'flujo')
+      // Lo que mas tiempo lleva sin cumplirse, primero.
+      .sort((a, b) => desdeCuando(a).localeCompare(desdeCuando(b)) || a.texto.localeCompare(b.texto));
+    const funciones = delFiltro(conSuEmpresa, medibles, (f) => f.texto, filtro);
     return funciones ? [{ ...conSuEmpresa, funciones }] : [];
   });
 
@@ -132,9 +138,12 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   );
 }
 
-const pendientes = (p: PersonaACargo) => p.funciones.filter((f) => f.atrasadoDesde || f.arrastre?.periodos).length;
+const pendientes = (p: Pick<PersonaACargo, 'funciones'>) => p.funciones.filter((f) => f.atraso || f.arrastre?.periodos).length;
 
-function resumenDe(p: PersonaACargo, abiertos: number): string {
+// Sin arrastre ni atraso, al final.
+const desdeCuando = (f: ComoVaUnaFuncion) => (f.arrastre?.periodos ? f.arrastre.desde : f.atraso?.desde) ?? '9999-12-31';
+
+function resumenDe(p: Pick<PersonaACargo, 'funciones'>, abiertos: number): string {
   const n = pendientes(p);
   const partes = [
     n ? `${n} ${n === 1 ? 'función sin cumplirse' : 'funciones sin cumplirse'}` : 'todo al día',
@@ -147,18 +156,10 @@ const ACORDEON = { borderBottom: '1px solid rgba(26,23,19,0.10)', paddingBottom:
 // Sin display flex: el summary conserva su triangulo nativo, que es lo que dice que se abre.
 const RESUMEN = { cursor: 'pointer' } as const;
 
-// El arrastre en tiempo: el numero compara, la fecha dice si ya es grave.
-function comoVa(f: ComoVaUnaFuncion): string {
-  if (f.atrasadoDesde) return `🐢 atrasado desde el ${fechaCorta(f.atrasadoDesde)}`;
-  if (f.arrastre?.periodos) {
-    const { periodos, desde } = f.arrastre;
-    return `arrastra ${periodos} ${periodos === 1 ? 'periodo' : 'periodos'}, desde el ${fechaCorta(desde!)}`;
-  }
-  return 'al día';
-}
+const comoVa = (f: ComoVaUnaFuncion) => enTiempo(f) ?? 'al día';
 
 const colorDe = (f: ComoVaUnaFuncion) =>
-  f.atrasadoDesde || f.arrastre?.periodos ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' };
+  f.atraso || f.arrastre?.periodos ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' };
 
 // La columna fija, como en el perfil del administrador.
 const FIJO = { background: 'var(--panel)', borderRadius: 18, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 } as const;
