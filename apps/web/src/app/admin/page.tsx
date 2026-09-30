@@ -1,4 +1,5 @@
 import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
+import { AcordeonDePersona, enlacesDe, Pestanas, vistaDe } from '../personas';
 import { claveDeLaTarea, ListaDeTareas } from '../lista';
 import { tareasAbiertasDe } from '@/lib/tareas';
 import { bonosDelMes, elCalendario, gente, imprevistosDe } from '@/lib/administrador';
@@ -11,9 +12,7 @@ import { darDeAlta } from './acciones';
 import { Accion } from '../accion';
 import { Enviar } from '../boton';
 import { AvisoDeCobertura } from './cobertura';
-import { Ir } from '../ir';
 import { perfiles } from '../perfil';
-import { Punto } from '../abrir';
 
 // El equipo (CEB-215): un tablero que lee como esta la gente ahora mismo, y
 // debajo la lista de personas, que lleva al perfil de cada una. Es la misma
@@ -23,8 +22,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   const { vista: pedida, tarea, ...parametros } = await searchParams;
   // Dos pestanas: el equipo como tal (las personas y dar de alta), primero, y el
   // tablero. La pestana viaja en la URL: recargar o volver atras no la pierde.
-  const vista = pedida === 'tablero' ? 'tablero' : 'equipo';
-  const enlaceA = (v: string) => `?${new URLSearchParams({ ...parametros, ...(v === 'tablero' ? { vista: v } : {}) } as Record<string, string>)}`;
+  const vista = vistaDe(pedida);
   const [todos, calendario, { opciones, deIds }, conPerfil, datos, bonos, delegaciones, { quienesPiden }] = await Promise.all([
     gente(),
     elCalendario(),
@@ -75,28 +73,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         </p>
       </header>
 
-      <nav aria-label="Vistas del equipo" style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(26,23,19,0.10)' }}>
-        {[
-          ['equipo', 'Personas'],
-          ['tablero', 'Tablero'],
-        ].map(([v, texto]) => (
-          <Ir
-            key={v}
-            href={enlaceA(v!)}
-            style={{
-              padding: '8px 14px',
-              fontSize: 15,
-              fontWeight: 600,
-              textDecoration: 'none',
-              color: vista === v ? 'var(--tinta)' : 'var(--gris)',
-              borderBottom: `2px solid ${vista === v ? 'var(--tinta)' : 'transparent'}`,
-              marginBottom: -1,
-            }}
-          >
-            {texto}
-          </Ir>
-        ))}
-      </nav>
+      <Pestanas vista={vista} enlaceA={enlacesDe(parametros)} />
 
       <Filtrar opciones={opciones} valores={parametros} conservar={{ vista: vista === 'tablero' ? 'tablero' : undefined }} />
 
@@ -119,69 +96,35 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
-          <details
+          <AcordeonDePersona
             key={e.id}
-            className="acordeon"
+            nombre={e.nombre}
+            empresa={enPalabras(e)}
+            sinLeer={sinLeerDe(e.id)}
+            aCargo={aCargo(e.id)}
+            responsable={e.supervisorId ? responsableDe.get(e.supervisorId) : undefined}
             // Abierto si se busca por texto, o si su tarea tiene la historia abierta.
-            open={abiertos || (tareas.get(e.id) ?? []).some((t) => claveDeLaTarea(t) === tarea)}
-            style={{ background: 'var(--suave)', borderRadius: 14 }}>
-            <summary style={FILA_PERSONA}>
-              {/* El rol, primero: responsable (con gente a cargo) o empleado. */}
-              <span
-                title={aCargo(e.id) ? `Responsable de ${aCargo(e.id)} ${aCargo(e.id) === 1 ? 'persona' : 'personas'}` : `Empleado${e.supervisorId ? `, a cargo de ${responsableDe.get(e.supervisorId)}` : ''}`}
-                style={{ ...ICONO, background: aCargo(e.id) ? 'var(--tinta)' : '#fff', color: aCargo(e.id) ? '#fff' : 'var(--gris)' }}
-              >
-                {aCargo(e.id) ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Responsable">
-                    <circle cx="9" cy="8" r="3.5" />
-                    <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
-                    <circle cx="17" cy="9" r="2.5" />
-                    <path d="M17 14c2.6 0 4.5 1.9 4.5 4.8" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Empleado">
-                    <circle cx="12" cy="8" r="3.5" />
-                    <path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5" />
-                  </svg>
-                )}
-              </span>
-              <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
-                {e.nombre}
-                {/* Comentarios sin leer en alguna de sus tareas abiertas (CEB-198). */}
-                {sinLeerDe(e.id) && <Punto />}
-                <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--gris)', marginLeft: 10 }}>{enPalabras(e)}</span>
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                {e.funciones.length} {e.funciones.length === 1 ? 'función' : 'funciones'}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--gris)', whiteSpace: 'nowrap' }}>
-                {tareas.get(e.id)?.length ?? 0} {tareas.get(e.id)?.length === 1 ? 'tarea abierta' : 'tareas abiertas'}
-              </span>
-              <span className="chevron" aria-hidden style={ICONO}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </span>
-              <Ir href={`/admin/${e.id}`} title={`Ver el perfil de ${e.nombre}`} style={{ ...ICONO, background: '#fff', color: 'var(--tinta)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-label={`Ver el perfil de ${e.nombre}`}>
-                  <line x1="7" y1="17" x2="17" y2="7" />
-                  <polyline points="7 7 17 7 17 17" />
-                </svg>
-              </Ir>
-            </summary>
-            {/* Las mismas tarjetas que en su perfil: el titulo abre su historia. */}
-            <div style={{ padding: '0 12px 12px' }}>
-              <ListaDeTareas
-                lista={tareas.get(e.id) ?? []}
-                hoy={calendario.hoy}
-                calendario={dias}
-                quienesPiden={quienesPiden}
-                perfiles={conPerfil}
-                puedeBorrar={() => true}
-              />
-            </div>
-          </details>
+            abierto={abiertos || (tareas.get(e.id) ?? []).some((t) => claveDeLaTarea(t) === tarea)}
+            perfil={`/admin/${e.id}`}
+            tareasAbiertas={tareas.get(e.id)?.length ?? 0}
+            datos={
+              <>
+                <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                  {e.funciones.length} {e.funciones.length === 1 ? 'función' : 'funciones'}
+                </span>
+              </>
+            }
+          >
+            <ListaDeTareas
+              lista={tareas.get(e.id) ?? []}
+              hoy={calendario.hoy}
+              calendario={dias}
+              quienesPiden={quienesPiden}
+              perfiles={conPerfil}
+              puedeBorrar={() => true}
+            />
+          </AcordeonDePersona>
         ))}
 
         {equipo.length === 0 && (
@@ -254,25 +197,5 @@ const BOTON = {
   cursor: 'pointer',
 } as const;
 
-const FILA_PERSONA = {
-  display: 'flex',
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  gap: '4px 14px',
-  padding: '10px 12px 10px 16px',
-  cursor: 'pointer',
-  listStyle: 'none',
-} as const;
 
 
-const ICONO = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 32,
-  height: 32,
-  borderRadius: 999,
-  background: 'rgba(26,23,19,0.06)',
-  color: 'var(--gris)',
-  flexShrink: 0,
-} as const;
