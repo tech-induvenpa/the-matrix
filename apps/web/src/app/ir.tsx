@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 // Los formularios avisan de que estan trabajando desde el principio; los
 // enlaces no, y estas pantallas van al servidor en cada clic. Sin esto, pulsar
-// "Qué se arrastra" parece no hacer nada hasta que la pagina cambia sola.
+// "El calendario" parece no hacer nada hasta que la pagina cambia sola.
 //
 // useLinkStatus solo funciona dentro del propio Link, asi que el indicador
 // tiene que ser un componente aparte.

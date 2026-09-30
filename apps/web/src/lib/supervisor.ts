@@ -9,8 +9,6 @@ import { comoVanSusFunciones, type ComoVaUnaFuncion } from '@/lib/tablero';
 // nunca un monto (ADR 0015, INV-40): el supervisor no tiene politica sobre las
 // tablas donde vive la ponderacion.
 
-export type Razon = { en: string; funcion: string; quePaso: string; razon: string };
-
 export type PersonaACargo = {
   id: string;
   nombre: string;
@@ -19,7 +17,6 @@ export type PersonaACargo = {
   cotidianidad: number;
   // Todo su reparto, de mas a menos peso, con como va cada funcion.
   funciones: ComoVaUnaFuncion[];
-  razones: Razon[];
   imprevistos: FilaImprevisto[];
 };
 
@@ -44,19 +41,8 @@ export async function loDeMiGente() {
     imprevistos: todo.imprevistos ?? [],
     intromisiones: todo.intromisiones ?? [],
   };
-  const textoDe = new Map(datos.funciones.map((f) => [f.id, f.texto]));
 
   const gente: PersonaACargo[] = datos.gente.map((p) => {
-    const ids = new Set(datos.funciones.filter((f) => f.empleado_id === p.id).map((f) => f.id));
-    const razones: Razon[] = [
-      ...datos.marcas
-        .filter((m) => ids.has(m.funcion_id) && m.razon)
-        .map((m) => ({ en: m.marcada_en.slice(0, 10), funcion: textoDe.get(m.funcion_id) ?? '', quePaso: 'no pude', razon: m.razon! })),
-      ...datos.eventos
-        .filter((e) => ids.has(e.funcion_id) && e.razon)
-        .map((e) => ({ en: e.en.slice(0, 10), funcion: textoDe.get(e.funcion_id) ?? '', quePaso: 'me atrasé', razon: e.razon! })),
-    ].sort((a, b) => b.en.localeCompare(a.en));
-
     return {
       id: p.id,
       nombre: p.nombre,
@@ -66,7 +52,6 @@ export async function loDeMiGente() {
       funciones: comoVanSusFunciones(datos, p.id, hoy, calendario).sort(
         (a, b) => b.ponderacion - a.ponderacion || a.texto.localeCompare(b.texto),
       ),
-      razones,
       imprevistos: datos.imprevistos.filter((i) => i.empleado_id === p.id),
     };
   });

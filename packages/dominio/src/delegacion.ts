@@ -49,27 +49,6 @@ export function delegable(
   return { si: true };
 }
 
-export type DelegacionesDeUnaFuncion = { supervisor: string; funcion: string; delegadas: number; devueltas: number };
-
-// Para el administrador: una delegacion que se repite es un traspaso que nadie
-// hizo. Por eso se agrupa por funcion y no como una tasa por persona.
-export function delegacionesPorFuncion(
-  delegaciones: readonly { supervisor: string; funcion: string; devueltoEn: string | null; borradoEn: string | null }[],
-): DelegacionesDeUnaFuncion[] {
-  const grupos = new Map<string, DelegacionesDeUnaFuncion>();
-  for (const d of delegaciones) {
-    if (d.borradoEn) continue;
-    const clave = `${d.supervisor}|${d.funcion}`;
-    const g = grupos.get(clave) ?? { supervisor: d.supervisor, funcion: d.funcion, delegadas: 0, devueltas: 0 };
-    g.delegadas++;
-    if (d.devueltoEn) g.devueltas++;
-    grupos.set(clave, g);
-  }
-  return [...grupos.values()].sort(
-    (a, b) => a.supervisor.localeCompare(b.supervisor) || b.delegadas - a.delegadas || a.funcion.localeCompare(b.funcion),
-  );
-}
-
 // Una delegacion que se repite es un traspaso que nadie hizo (CEB-224). Se
 // mira en una ventana movil, nunca en un mes cerrado, y una sola delegacion no
 // es repetirse. Las dos son decisiones de negocio.

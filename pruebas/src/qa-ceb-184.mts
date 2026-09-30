@@ -60,7 +60,8 @@ function criterio(nombre: string, ok: boolean, detalle = '') {
 // Cada pantalla pinta a la persona de su lista de una forma; los nombres
 // aparecen tambien en otros lados (las casillas de la descarga, "quien lo
 // pidio"), asi que se busca la forma de la lista y no el nombre suelto.
-const FORMA = { equipo: (n: string) => `>${n}<span`, reporte: (n: string) => `>${n}</a>`, supervisor: (n: string) => `margin-right:12px">${n}<` };
+// El supervisor ve la misma lista de personas que el administrador (CEB-221).
+const FORMA = { equipo: (n: string) => `>${n}<span`, supervisor: (n: string) => `>${n}<span` };
 let forma = FORMA.equipo;
 const quienes = (html: string, nombres: string[]) => nombres.filter((n) => html.includes(forma(n)));
 const esperar = (nombre: string, html: string, deben: string[], todos = ['ANA', 'BENITO', 'CARLA', 'DARIO', 'ELENA']) => {
@@ -93,23 +94,6 @@ criterio('filtrando hay "quitar filtro" y el desplegable conserva la eleccion', 
 p = await pagina(jefa, `/admin/${benito}?editar=persona`);
 criterio('la ficha muestra su empresa y sede', p.html.includes('KIA · Centro'));
 criterio('la ficha edita empresa y sede con la actual elegida', new RegExp(`value="${kia}/${kiaCentro}" selected`).test(p.html));
-
-// Que se arrastra y Razones (CEB-188)
-forma = FORMA.reporte;
-p = await pagina(jefa, `/admin/reporte?en=${toyota}`);
-esperar('Qué se arrastra filtrado por Toyota', p.html, ['DARIO']);
-p = await pagina(jefa, '/admin/reporte?q=cierre');
-criterio('Qué se arrastra con "cierre" deja solo filas de cierre', p.html.includes('Cierre Auto Bengala') && p.html.includes('Cierre de caja') && !p.html.includes('Conciliación bancaria'));
-p = await pagina(jefa, '/admin/reporte');
-const orden = ['BENITO', 'DARIO', 'ELENA'].map((n) => p.html.indexOf(forma(n)));
-const ordenFiltrado = (await pagina(jefa, `/admin/reporte?en=${kia}`)).html;
-criterio('filtrar no reordena Qué se arrastra', ordenFiltrado.indexOf(forma('BENITO')) < ordenFiltrado.indexOf(forma('ELENA')) === orden[0]! < orden[2]!);
-p = await pagina(jefa, `/admin/razones?en=${toyota}`);
-criterio('Razones por Toyota trae la de DARIO y no la de ELENA', p.html.includes('RAZON-DE-DARIO') && !p.html.includes('RAZON-DE-ELENA'));
-p = await pagina(jefa, `/admin/razones?funcion=${caja}&en=${toyota}`);
-criterio('Razones combina funcion con empresa ("y")', !p.html.includes('RAZON-DE-ELENA') && !p.html.includes('RAZON-DE-DARIO'));
-p = await pagina(jefa, `/admin/razones?funcion=${caja}&q=elena`);
-criterio('Razones conserva ?funcion= al filtrar', p.html.includes('RAZON-DE-ELENA') && p.html.includes(`name="funcion" value="${caja}"`));
 
 // El supervisor (CEB-189)
 forma = FORMA.supervisor;
