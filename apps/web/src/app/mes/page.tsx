@@ -21,8 +21,8 @@ import { salir } from '../acciones';
 import { ImprevistosDelMes } from '../imprevistos';
 import { perfiles } from '../perfil';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
-import { nominaDelMes } from '@/lib/nomina';
-import { EstadoDeCuenta, nombreDelMes, ultimosMeses } from '../nomina';
+import { nombreDelMes, nominaDelMes } from '@/lib/nomina';
+import { EstadoDeCuenta, ultimosMeses } from '../nomina';
 
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la cotidianidad, que no entran a la pantalla de trabajo.

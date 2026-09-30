@@ -12,7 +12,7 @@ import {
 } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
-import { comoCambios, hoyISO, quienPidio, type QuienPide } from '@/lib/datos';
+import { comoCambios, escapar, hoyISO, quienPidio, type QuienPide } from '@/lib/datos';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // La salida hacia la hoja de sueldos. Es una funcion de la pantalla, no una
@@ -53,13 +53,6 @@ const RESULTADO: Record<string, string> = {
 
 const finDe = (mes: string) =>
   new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 0)).toISOString().slice(0, 10);
-
-// Los nombres de las funciones llevan barras, parentesis y comas. El punto y
-// coma no aparece hoy, pero basta con que alguien lo escriba una vez.
-const escapar = (v: string | number) => {
-  const s = String(v);
-  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
 
 export async function GET(request: NextRequest) {
   if (!(await esAdministrador())) return new NextResponse(null, { status: 404 });

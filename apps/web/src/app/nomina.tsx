@@ -1,6 +1,6 @@
 import { conceptoDe } from '@matriz/dominio';
 import { dolares } from '@/lib/datos';
-import type { NominaDelMes } from '@/lib/nomina';
+import { nombreDelMes, type NominaDelMes } from '@/lib/nomina';
 import { enCaracas } from '@/lib/cierre-del-mes';
 
 // La nomina como estado de cuenta (ADR 0016): el bono, un descuento por cada
@@ -49,9 +49,6 @@ export function EstadoDeCuenta({ datos }: { datos: NominaDelMes & { nomina: NonN
     </div>
   );
 }
-
-export const nombreDelMes = (mes: string) =>
-  new Intl.DateTimeFormat('es', { month: 'long', timeZone: 'UTC' }).format(new Date(`${mes}-01T00:00:00Z`));
 
 // Los ultimos doce meses, para elegir cual ver.
 export const ultimosMeses = (hoy: string) =>

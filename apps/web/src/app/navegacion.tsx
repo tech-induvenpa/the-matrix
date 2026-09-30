@@ -22,6 +22,8 @@ export function Navegacion({
   // Los meses con su cierre, y reabrir y cerrar (CEB-229). Solo el administrador.
   cierre?: {
     meses: readonly MesDelCierre[];
+    // Para la descarga "Nomina del mes", una por empresa (CEB-233).
+    empresas: readonly { id: string; nombre: string }[];
     reabrir: (formulario: FormData) => Promise<Aviso | undefined>;
     cerrar: (mes: string) => Promise<Aviso | undefined>;
   };
@@ -96,6 +98,7 @@ export function Navegacion({
                       Descargar
                     </button>
                   </form>
+                  {cierre && <LaNomina meses={cierre.meses} empresas={cierre.empresas} />}
                   {cierre && <ElCierre {...cierre} />}
                 </div>
               </details>
@@ -130,10 +133,41 @@ export function Navegacion({
   );
 }
 
+// "Nomina del mes", para finanzas (CEB-233): un archivo por empresa, y solo de
+// meses cerrados, porque el mes en curso es provisional. La descarga de
+// siempre, arriba, no cambia.
+function LaNomina({ meses, empresas }: { meses: readonly MesDelCierre[]; empresas: readonly { id: string; nombre: string }[] }) {
+  const cerrados = meses.filter((m) => m.estado.estado === 'cerrado');
+  if (!cerrados.length || !empresas.length) return null;
+
+  return (
+    <form action="/admin/nomina" method="get" style={{ ...CIERRE, gap: 6 }}>
+      <span style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>Nómina del mes, para finanzas</span>
+      <select name="mes" defaultValue={cerrados[0]!.valor} aria-label="Qué mes" style={SELECTOR}>
+        {cerrados.map((m) => (
+          <option key={m.valor} value={m.valor}>
+            {m.texto}
+          </option>
+        ))}
+      </select>
+      <select name="empresa" defaultValue={empresas[0]!.id} aria-label="Qué empresa" style={SELECTOR}>
+        {empresas.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.nombre}
+          </option>
+        ))}
+      </select>
+      <button type="submit" style={SECUNDARIO}>
+        Descargar la nómina
+      </button>
+    </form>
+  );
+}
+
 // Reabrir y volver a cerrar, donde se elige el mes para descargar (CEB-229).
 // Son formularios aparte, debajo del de la descarga: un formulario no va
 // dentro de otro.
-function ElCierre({ meses, reabrir, cerrar }: NonNullable<Parameters<typeof Navegacion>[0]['cierre']>) {
+function ElCierre({ meses, reabrir, cerrar }: Omit<NonNullable<Parameters<typeof Navegacion>[0]['cierre']>, 'empresas'>) {
   const cerrados = meses.filter((m) => m.estado.estado === 'cerrado');
   const reabiertos = meses.filter((m) => m.estado.estado === 'reabierto');
   if (!cerrados.length && !reabiertos.length) return null;

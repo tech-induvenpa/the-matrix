@@ -53,6 +53,14 @@ export const comoCambios = (filas: readonly { monto: unknown; rige_desde: unknow
 export const dolares = (n: number, { centavos = false } = {}) =>
   `$${n.toLocaleString('es-VE', { minimumFractionDigits: centavos || !Number.isInteger(n) ? 2 : 0, maximumFractionDigits: 2 })}`;
 
+// Una celda de las descargas, que van separadas por punto y coma. Los nombres
+// de las funciones llevan barras, parentesis y comas. El punto y coma no
+// aparece hoy, pero basta con que alguien lo escriba una vez.
+export const escapar = (v: string | number) => {
+  const s = String(v);
+  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
 export const COLUMNAS_DE_IMPREVISTO =
   'id, empleado_id, texto, pedido_en, vence, pedido_por, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en, delega_funcion, delega_periodo, devuelto_en, devuelto_razon';
 

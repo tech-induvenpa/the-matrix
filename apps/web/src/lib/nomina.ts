@@ -112,3 +112,6 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
 
   return { mes, nomina, estado, reaperturas: reaperturasDeLaNomina(suyas, nomina.total, ahora) };
 }
+
+export const nombreDelMes = (mes: string) =>
+  new Intl.DateTimeFormat('es', { month: 'long', timeZone: 'UTC' }).format(new Date(`${mes}-01T00:00:00Z`));
