@@ -24,28 +24,29 @@ export const diasHabilesDelMes = (mes: Tramo, calendario: Calendario) => habiles
 // el dia en que se declaro atrasado hasta el dia antes de ponerse al dia; si
 // sigue abierto, hasta el final del tramo. Se recorta al tramo, asi que uno
 // que cruza de mes sale en los dos, cada uno con sus dias. Declarar atrasado
-// dos veces seguidas no abre un segundo episodio.
+// dos veces seguidas no abre un segundo episodio, pero su razon es la vigente.
 export function atrasosDelFlujo(
-  eventos: readonly { estado: 'al_dia' | 'atrasado'; en: string }[],
+  eventos: readonly { estado: 'al_dia' | 'atrasado'; en: string; razon?: string | null }[],
   tramo: Tramo,
   calendario: Calendario,
-): { desde: Fecha; dias: number }[] {
+): { desde: Fecha; dias: number; razon?: string }[] {
   const ordenados = [...eventos].sort((a, b) => a.en.localeCompare(b.en));
-  const episodios: { inicio: Fecha; fin: Fecha | null }[] = [];
+  const episodios: { inicio: Fecha; fin: Fecha | null; razon?: string }[] = [];
 
   for (const e of ordenados) {
     const dia = e.en.slice(0, 10);
     const abierto = episodios.at(-1);
     if (e.estado === 'atrasado' && (!abierto || abierto.fin !== null)) episodios.push({ inicio: dia, fin: null });
+    if (e.estado === 'atrasado' && e.razon) episodios.at(-1)!.razon = e.razon;
     if (e.estado === 'al_dia' && abierto && abierto.fin === null) abierto.fin = dia;
   }
 
   return episodios
-    .map(({ inicio, fin }) => {
+    .map(({ inicio, fin, razon }) => {
       const desde = inicio > tramo.desde ? inicio : tramo.desde;
       // El dia en que se puso al dia ya no cuenta.
       const hasta = fin === null ? tramo.hasta : diaAnterior(fin) < tramo.hasta ? diaAnterior(fin) : tramo.hasta;
-      return { desde, dias: habilesDe(desde, hasta, calendario) };
+      return { desde, dias: habilesDe(desde, hasta, calendario), razon };
     })
     .filter((e) => e.dias > 0);
 }
@@ -56,6 +57,8 @@ export type HechoDeLaHolgura = {
   resultado: Resultado | 'devuelto' | 'sin_marcar';
   // null en "no lo tome": es neutro, ni cumple ni deja de cumplir.
   cumplio: 0 | 1 | null;
+  // Tal cual la escribieron (CEB-218); vacia en lo hecho y en lo vencido sin marcar.
+  razon: string;
 };
 
 // Una fila por imprevisto que vencio en el tramo. "No lo tome" sale, pero es
@@ -66,8 +69,10 @@ export function hechosDeHolgura(
     texto: string;
     vence: Fecha;
     resultado: Resultado | null;
+    razon?: string | null;
     borradoEn: string | null;
     devueltoEn?: string | null;
+    devueltoRazon?: string | null;
   }[],
   tramo: Tramo,
   hoy: Fecha,
@@ -82,6 +87,8 @@ export function hechosDeHolgura(
       // Un "hecho" devuelto por el supervisor no cumple (ADR 0012).
       resultado: i.devueltoEn ? 'devuelto' : (i.resultado ?? 'sin_marcar'),
       cumplio: i.devueltoEn ? 0 : i.resultado === 'no_lo_tome' ? null : i.resultado === 'hecho' ? 1 : 0,
+      // Devuelto, la razon es la de quien lo devolvio: el "hecho" no tenia.
+      razon: (i.devueltoEn ? i.devueltoRazon : i.resultado === 'hecho' ? null : i.razon) ?? '',
     }));
 
   return { filas, veces: filas.filter((f) => f.cumplio !== null).length };
@@ -91,12 +98,18 @@ export function hechosDeHolgura(
 // "no pude" libera el lugar en el plan, pero cuenta en contra.
 export function hechosDeEntregable(
   ocurrencias: readonly { periodo: string; vence: Fecha }[],
-  marcas: readonly { periodo: string; resultado: string }[],
-): { que: string; vence: Fecha; resultado: 'hecho' | 'no_pude' | 'sin_marcar'; cumplio: 0 | 1 }[] {
-  const resultadoDe = new Map(marcas.map((m) => [m.periodo, m.resultado]));
+  marcas: readonly { periodo: string; resultado: string; razon?: string | null }[],
+): { que: string; vence: Fecha; resultado: 'hecho' | 'no_pude' | 'sin_marcar'; cumplio: 0 | 1; razon: string }[] {
+  const marcaDe = new Map(marcas.map((m) => [m.periodo, m]));
   return ocurrencias.map((o) => {
-    const r = resultadoDe.get(o.periodo);
-    const resultado = r === 'hecho' ? 'hecho' : r === 'no_pude' ? 'no_pude' : 'sin_marcar';
-    return { que: o.periodo, vence: o.vence, resultado, cumplio: resultado === 'hecho' ? 1 : 0 };
+    const m = marcaDe.get(o.periodo);
+    const resultado = m?.resultado === 'hecho' ? 'hecho' : m?.resultado === 'no_pude' ? 'no_pude' : 'sin_marcar';
+    return {
+      que: o.periodo,
+      vence: o.vence,
+      resultado,
+      cumplio: resultado === 'hecho' ? 1 : 0,
+      razon: (resultado === 'no_pude' && m?.razon) || '',
+    };
   });
 }
