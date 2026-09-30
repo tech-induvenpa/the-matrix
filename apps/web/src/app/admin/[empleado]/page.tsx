@@ -11,6 +11,7 @@ import { Enviar } from '../../boton';
 import { Formulario } from './formulario';
 import { Reparto } from './reparto';
 import { Propuesta } from './propuesta';
+import { Cuenta } from './cuenta';
 import { Ir } from '../../ir';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
@@ -24,10 +25,10 @@ export default async function Cargo({
   searchParams,
 }: {
   params: Promise<{ empleado: string }>;
-  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string }>;
+  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string }>;
 }) {
   const { empleado } = await params;
-  const { editar, peso, tarea } = await searchParams;
+  const { editar, peso, tarea, entra } = await searchParams;
   const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
@@ -41,6 +42,8 @@ export default async function Cargo({
 
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
+  const nueva = repartiendo && entra ? cargo.funciones.find((f) => f.id === entra && f.sinPublicar) : undefined;
+  const pesoPropuesto = (id: string) => cargo.borrador.find((b) => b.funcionId === id)?.ponderacion ?? 0;
 
   // Un peso en la URL es una propuesta esperando aprobacion, no un cambio
   // hecho: nada se toco todavia.
@@ -179,7 +182,22 @@ export default async function Cargo({
             </div>
 
             {repartiendo ? (
-              <Reparto empleadoId={empleado} funciones={cargo.funciones} borrador={cargo.borrador} />
+              <>
+                {/* Recien creada: la cuenta de como entra, antes de publicar (CEB-209). */}
+                {nueva && (
+                  <Cuenta
+                    titulo="Así quedaría con la función nueva"
+                    funciones={cargo.funciones.filter((f) => !f.sinPublicar)}
+                    cambio={{ entra: { funcionId: nueva.id, ponderacion: pesoPropuesto(nueva.id) } }}
+                    nombreDeLaNueva={nueva.texto}
+                  >
+                    <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>
+                      Todavía nadie lo ve. Ajústalo abajo si quieres y publícalo.
+                    </span>
+                  </Cuenta>
+                )}
+                <Reparto empleadoId={empleado} funciones={cargo.funciones} borrador={cargo.borrador} />
+              </>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {cargo.funciones.map((f) => (

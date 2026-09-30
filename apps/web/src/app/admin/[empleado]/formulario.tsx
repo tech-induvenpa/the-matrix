@@ -105,7 +105,7 @@ export function Formulario({
               name="ponderacion"
               type="number"
               min={0}
-              max={100}
+              max={90}
               required
               defaultValue={funcion?.ponderacion ?? ''}
               style={CAMPO}
@@ -114,7 +114,8 @@ export function Formulario({
         </div>
 
         <span style={{ fontSize: 12, color: 'var(--gris)' }}>
-          Las demás funciones se reacomodan para que el cargo siga sumando 100. Lo ves antes de que cambie nada.
+          Hasta 90: la cotidianidad nunca baja de 10. Las demás funciones y la cotidianidad se reacomodan en
+          proporción, y lo ves antes de que cambie nada.
         </span>
 
         <Enviar

@@ -111,7 +111,7 @@ export async function crearFuncion(empleadoId: string, formulario: FormData) {
   }
 
   revalidatePath(`/admin/${empleadoId}`);
-  redirect(`/admin/${empleadoId}?editar=reparto`);
+  redirect(`/admin/${empleadoId}?editar=reparto&entra=${funcion.id}`);
 }
 
 // Editar el nombre no toca la identidad: la funcion es la misma y su historial
