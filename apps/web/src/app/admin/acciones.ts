@@ -2,8 +2,8 @@
 
 import { ADMITE_DIA_TOPE, leerPertenencia, PISO_DE_COTIDIANIDAD, proponerReparto, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { esAdministrador, gente } from '@/lib/administrador';
-import { nominaDelMes } from '@/lib/nomina';
+import { esAdministrador } from '@/lib/administrador';
+import { tomarLasFotos } from '@/lib/nomina';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -169,6 +169,11 @@ export async function editarFuncion(funcionId: string, empleadoId: string, formu
 export async function archivarFuncion(funcionId: string, empleadoId: string) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
 
+  // Antes de mover un peso, un bono o una empresa, la foto de los meses
+  // cerrados que no la tienen: si no, la base lo rechaza (ADR 0017).
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
+
   const supabase = await clienteDelServidor();
 
   const { data: vigentes } = await supabase
@@ -193,6 +198,9 @@ export async function archivarFuncion(funcionId: string, empleadoId: string) {
 // si ya tiene historia, y entonces lo que corresponde es archivarla (0022).
 export async function eliminarFuncion(funcionId: string, empleadoId: string) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -226,6 +234,9 @@ export async function aplicarPonderacion(funcionId: string, empleadoId: string, 
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
   if (!Number.isInteger(nueva) || nueva < 0 || nueva > TOPE)
     return { mensaje: `Un peso va de cero a ${TOPE}, y es un entero.`, celebra: false };
+
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -295,6 +306,9 @@ export async function guardarBorrador(empleadoId: string, formulario: FormData) 
 export async function publicarReparto(empleadoId: string) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
 
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
+
   const supabase = await clienteDelServidor();
 
   const { data: borrador } = await supabase
@@ -343,6 +357,9 @@ export async function descartarBorrador(empleadoId: string) {
 // sin saber lo que gana (ADR 0007).
 export async function traspasar(funcionId: string, deQuien: string, formulario: FormData) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
 
   const aQuien = String(formulario.get('aQuien') ?? '');
   const pesoNuevo = Number(formulario.get('pesoNuevo') ?? 0);
@@ -477,6 +494,9 @@ export async function declararCobertura(formulario: FormData) {
 export async function editarEmpleado(empleadoId: string, formulario: FormData) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
 
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
+
   const nombre = String(formulario.get('nombre') ?? '').trim();
   const correo = String(formulario.get('correo') ?? '').trim().toLowerCase();
 
@@ -508,6 +528,9 @@ export async function editarEmpleado(empleadoId: string, formulario: FormData) {
 // no esta accion, asi que aqui solo se valida el monto.
 export async function fijarBono(empleadoId: string, formulario: FormData) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
+
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
 
   const monto = Number(String(formulario.get('monto') ?? '').replace(',', '.'));
   if (!Number.isFinite(monto) || monto < 0) return { mensaje: 'Ese monto no parece un monto.', celebra: false };
@@ -552,17 +575,13 @@ export async function reabrirMes(formulario: FormData) {
   const razon = String(formulario.get('razon') ?? '').trim();
   if (!razon) return { mensaje: 'Reabrir un mes pide una razón.', celebra: false };
 
-  // Lo que cada quien tenia a pagar antes de reabrir, para que su nomina diga
-  // que cambio (CEB-232). Quien no tiene bono ese mes no tiene total.
-  // ponytail: una nomina por persona, una tras otra; son decenas, no miles.
-  const totales = [];
-  for (const { id } of await gente()) {
-    const { nomina } = await nominaDelMes(id, mes);
-    if (nomina) totales.push({ empleado_id: id, total: nomina.total });
-  }
+  // La foto del mes, si no la tiene: de ella salen lo que cada quien tenia a
+  // pagar antes de reabrir (CEB-232), y la base la descarta al reabrir.
+  const sinFoto = await tomarLasFotos();
+  if (sinFoto) return { mensaje: sinFoto, celebra: false };
 
   const supabase = await clienteDelServidor();
-  const { error } = await supabase.rpc('reabrir_mes', { el_mes: mes, la_razon: razon, totales });
+  const { error } = await supabase.rpc('reabrir_mes', { el_mes: mes, la_razon: razon });
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath('/', 'layout');

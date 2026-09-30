@@ -76,3 +76,5 @@ export { cierreDelMes, comoSeCerro, estadoDelMes, mesDe, ultimoHabilDelMes } fro
 export type { EstadoDelMes, Reapertura, Recierre } from './cierre-del-mes';
 export { conceptoDe, merecenFuegos, nominaDe, partesDelMes, reaperturasDeLaNomina, tareasDelMes, UMBRAL_DE_FUEGOS } from './nomina';
 export type { FuncionDeLaNomina, ImprevistoDeLaNomina, LineaDeNomina, Nomina, ParteDelCargo, ReaperturaDeLaNomina } from './nomina';
+export { fotoDelCierre, nominaDeLaFoto } from './foto-del-cierre';
+export type { FotoDelCierre, ParteDeLaFoto } from './foto-del-cierre';

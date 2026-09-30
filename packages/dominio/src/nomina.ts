@@ -39,6 +39,8 @@ export type ImprevistoDeLaNomina = {
 // En un flujo, los dias habiles atrasados sobre los del mes; en la
 // cotidianidad, los imprevistos sin cumplir sobre los esperados.
 export type ParteDelCargo = {
+  // La funcion de la que sale; la cotidianidad no es una funcion y no lo lleva.
+  funcionId?: string;
   parte: string;
   tipo: 'entregable' | 'flujo' | 'cotidianidad';
   ponderacion: number;
@@ -71,12 +73,12 @@ export function partesDelMes(entrada: {
       if (f.tipo === 'flujo') {
         const dias = atrasosDelFlujo(f.eventos, tramo, calendario).reduce((t, a) => t + a.dias, 0);
         const veces = diasHabilesDelMes({ desde: tramo.desde, hasta: finDe(mes) }, calendario);
-        return { parte: f.nombre, tipo: 'flujo', ponderacion: f.ponderacion, sinCumplir: dias, veces };
+        return { funcionId: f.funcionId, parte: f.nombre, tipo: 'flujo', ponderacion: f.ponderacion, sinCumplir: dias, veces };
       }
       const ocurrencias = ocurrenciasEntre(f, calendario, tramo.desde, tramo.hasta).filter((o) => o.vence <= tramo.hasta);
       const hechos = hechosDeEntregable(ocurrencias, f.marcas);
       const sinCumplir = hechos.filter((h) => h.cumplio === 0).length;
-      return { parte: f.nombre, tipo: 'entregable', ponderacion: f.ponderacion, sinCumplir, veces: hechos.length };
+      return { funcionId: f.funcionId, parte: f.nombre, tipo: 'entregable', ponderacion: f.ponderacion, sinCumplir, veces: hechos.length };
     });
 
   const { filas, veces } = hechosDeHolgura(entrada.imprevistos, tramo, hoy);
@@ -88,18 +90,18 @@ export function partesDelMes(entrada: {
 // cumplido no aparece, y tampoco lo que no pesa. Cada descuento se redondea
 // al centavo y el total es el bono menos los descuentos ya redondeados, asi
 // que siempre cuadra.
+export const descuenta = (p: ParteDelCargo) => p.sinCumplir > 0 && p.veces > 0 && p.ponderacion > 0;
+
+// ponytail: toFixed antes de redondear, para que un ,5 que la coma flotante
+// deja en ,4999999 suba como en la hoja de calculo.
+export const centavosDe = (bonoEnCentavos: number, p: ParteDelCargo) =>
+  Math.round(Number(((bonoEnCentavos * p.ponderacion * p.sinCumplir) / (100 * p.veces)).toFixed(6)));
+
 export function nominaDe(bono: number | null, partes: readonly ParteDelCargo[]): Nomina | null {
   if (bono === null) return null;
 
   const bonoEnCentavos = Math.round(bono * 100);
-  // ponytail: toFixed antes de redondear, para que un ,5 que la coma flotante
-  // deja en ,4999999 suba como en la hoja de calculo.
-  const lineas = partes
-    .filter((p) => p.sinCumplir > 0 && p.veces > 0 && p.ponderacion > 0)
-    .map((p) => ({
-      ...p,
-      centavos: Math.round(Number(((bonoEnCentavos * p.ponderacion * p.sinCumplir) / (100 * p.veces)).toFixed(6))),
-    }));
+  const lineas = partes.filter(descuenta).map((p) => ({ ...p, centavos: centavosDe(bonoEnCentavos, p) }));
 
   return {
     bono: bonoEnCentavos / 100,
