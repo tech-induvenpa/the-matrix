@@ -59,3 +59,5 @@ export { haySinLeer, lineaDeTiempo, listaDeTareas, loLeen, sinLeer } from './per
 export type { Comentario, EnLaLista, EventoDelPerfil, MarcaDelPerfil, TareaDelPerfil, TipoDeEvento } from './perfil';
 export { proponerReparto } from './propuesta-de-reparto';
 export type { CambioDeReparto, PropuestaDeReparto } from './propuesta-de-reparto';
+export { cierreDelMes, estadoDelMes, mesDe, ultimoHabilDelMes } from './cierre-del-mes';
+export type { EstadoDelMes } from './cierre-del-mes';

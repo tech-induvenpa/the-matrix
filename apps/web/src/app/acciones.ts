@@ -40,17 +40,25 @@ const AL_TERMINAR = [
 
 const alAzar = (mensajes: string[]) => mensajes[Math.floor(Math.random() * mensajes.length)]!;
 
+// El cierre del mes (CEB-228): la base rechaza lo que mueve un mes cerrado y
+// dice cual ("septiembre ya cerró"). Eso es lo que se le muestra a la persona,
+// no un error generico.
+const siCerro = (error: { message: string; hint?: string } | null): Aviso | null =>
+  error?.hint === 'mes_cerrado'
+    ? { mensaje: `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}: lo de ese mes ya no se mueve.`, celebra: false }
+    : null;
+
 // Marcar cierra la ocurrencia (funcion, periodo). La seguridad por fila decide
 // si esa funcion es de quien marca: aqui no se filtra a mano.
 async function marcar(funcionId: string, periodo: string, resultado: 'hecho' | 'no_pude', razon?: string) {
   const supabase = await clienteDelServidor();
-  await supabase.from('marca').insert({ funcion_id: funcionId, periodo, resultado, razon: razon ?? null });
+  const { error } = await supabase.from('marca').insert({ funcion_id: funcionId, periodo, resultado, razon: razon ?? null });
   revalidatePath('/');
+  return error;
 }
 
 export async function marcarHecho(funcionId: string, periodo: string): Promise<Aviso> {
-  await marcar(funcionId, periodo, 'hecho');
-  return { mensaje: alAzar(AL_TERMINAR), celebra: true };
+  return siCerro(await marcar(funcionId, periodo, 'hecho')) ?? { mensaje: alAzar(AL_TERMINAR), celebra: true };
 }
 
 // "No pude" puede traer los imprevistos que lo causaron (intromision). La base
@@ -73,6 +81,8 @@ export async function marcarNoPude(
     la_razon: razon,
     imprevistos,
   });
+  const cerro = siCerro(error);
+  if (cerro) return cerro;
   if (error) throw error;
 
   revalidatePath('/');
@@ -107,7 +117,8 @@ export async function cambiarEstadoFlujo(
 
   const supabase = await clienteDelServidor();
   if (estado === 'al_dia') {
-    await supabase.from('evento_flujo').insert({ funcion_id: funcionId, estado, razon: null });
+    const cerro = siCerro((await supabase.from('evento_flujo').insert({ funcion_id: funcionId, estado, razon: null })).error);
+    if (cerro) return cerro;
   } else {
     // El atraso puede traer los imprevistos que lo causaron, pedidos desde que
     // el flujo estuvo al dia por ultima vez.
@@ -121,6 +132,8 @@ export async function cambiarEstadoFlujo(
       .maybeSingle();
     const imprevistos = await soloVinculables(formulario, { alDiaDesde: (ultimo?.en as string | undefined) ?? null });
     const { error } = await supabase.rpc('atrasar_flujo', { la_funcion: funcionId, la_razon: razon, imprevistos });
+    const cerro = siCerro(error);
+    if (cerro) return cerro;
     if (error) throw error;
   }
   revalidatePath('/');
@@ -137,7 +150,9 @@ export async function cambiarEstadoFlujo(
 // seguridad por fila ya decide que solo se puede deshacer lo propio.
 export async function deshacerMarca(funcionId: string, periodo: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
-  await supabase.from('marca').delete().eq('funcion_id', funcionId).eq('periodo', periodo);
+  const { error } = await supabase.from('marca').delete().eq('funcion_id', funcionId).eq('periodo', periodo);
+  const cerro = siCerro(error);
+  if (cerro) return cerro;
   revalidatePath('/');
   llevarRazonesAlDocumento();
 
@@ -172,6 +187,8 @@ export async function registrarImprevisto(empleadoId: string, formulario: FormDa
 export async function marcarImprevistoHecho(id: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('marcar_imprevisto', { el_imprevisto: id, el_resultado: 'hecho', la_razon: null });
+  const cerro = siCerro(error);
+  if (cerro) return cerro;
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: alAzar(AL_TERMINAR), celebra: true };
@@ -188,6 +205,8 @@ export async function marcarImprevistoSinHacer(
 
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('marcar_imprevisto', { el_imprevisto: id, el_resultado: resultado, la_razon: razon });
+  const cerro = siCerro(error);
+  if (cerro) return cerro;
   if (error) throw error;
   revalidatePath('/', 'layout');
   return {
@@ -199,6 +218,8 @@ export async function marcarImprevistoSinHacer(
 export async function desmarcarImprevisto(id: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('desmarcar_imprevisto', { el_imprevisto: id });
+  const cerro = siCerro(error);
+  if (cerro) return cerro;
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: 'Deshecho. Vuelve a estar abierto.', celebra: false };
@@ -208,6 +229,8 @@ export async function desmarcarImprevisto(id: string): Promise<Aviso> {
 export async function borrarImprevisto(id: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('borrar_imprevisto', { el_imprevisto: id });
+  const cerro = siCerro(error);
+  if (cerro) return cerro;
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: 'Borrado.', celebra: false };
@@ -247,7 +270,7 @@ export async function devolver(delegacionId: string, formulario: FormData): Prom
   // A la misma persona o a otra, en el mismo acto; vacio, se la queda quien delego.
   const aQuien = String(formulario.get('aQuien') ?? '') || null;
   const { error } = await supabase.rpc('devolver', { la_delegacion: delegacionId, la_razon: razon, a_quien: aQuien });
-  if (error) return { mensaje: error.message, celebra: false };
+  if (error) return siCerro(error) ?? { mensaje: error.message, celebra: false };
 
   revalidatePath('/', 'layout');
   return {
