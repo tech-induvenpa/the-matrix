@@ -4,13 +4,13 @@ import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/
 import { Filtrar } from '../filtro';
 import { esAdministrador } from '@/lib/administrador';
 import { loDeMiGente, type PersonaACargo } from '@/lib/supervisor';
-import { barrasDe } from '@/lib/tablero';
+import { barrasDe, lineasDelArrastre } from '@/lib/tablero';
 import { DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
 import { perfiles } from '../perfil';
 import { Punto } from '../abrir';
 import { Ir } from '../ir';
-import { Patrones, SinCumplir } from '../tablero';
+import { DesdeCuando, Patrones, SinCumplir } from '../tablero';
 
 // El equipo (CEB-215): el mismo tablero que ve el administrador, con su gente
 // y sin montos (ADR 0015). Debajo, la lista de personas: cada una lleva a su
@@ -35,6 +35,7 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
     .filter((p) => delFiltro(p, p.funciones, (f) => f.texto, filtro) !== null);
   const quienes = new Set(gente.map((p) => p.id));
   const barras = barrasDe(datos, hoy, calendario).filter((b) => quienes.has(b.persona.id));
+  const lineas = lineasDelArrastre(datos, hoy, calendario).filter((l) => quienes.has(l.persona.id));
 
   return (
     <>
@@ -46,6 +47,7 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
         <Filtrar opciones={opciones} valores={parametros} />
 
         <SinCumplir barras={barras} perfilDe={(id) => `/equipo/${id}`} />
+        <DesdeCuando lineas={lineas} hoy={hoy} perfilDe={(id) => `/equipo/${id}`} />
 
         <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
         {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14, margin: 0 }}>Nadie de tu equipo coincide con el filtro.</p>}

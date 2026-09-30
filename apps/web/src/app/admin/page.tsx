@@ -1,8 +1,8 @@
 import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
 import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
 import { datosDelEquipo } from '@/lib/equipo';
-import { barrasDe } from '@/lib/tablero';
-import { Patrones, SinCumplir } from '../tablero';
+import { barrasDe, lineasDelArrastre } from '@/lib/tablero';
+import { DesdeCuando, Patrones, SinCumplir } from '../tablero';
 import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../filtro';
 import { darDeAlta } from './acciones';
@@ -35,7 +35,9 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
     .filter((e) => delFiltro(e, e.funciones, (f) => f, filtro) !== null);
   // El filtro acota tambien las graficas: las mismas personas que la lista.
   const quienes = new Set(equipo.map((e) => e.id));
-  const barras = barrasDe(datos, calendario.hoy, Calendario.con(calendario.dias)).filter((b) => quienes.has(b.persona.id));
+  const dias = Calendario.con(calendario.dias);
+  const barras = barrasDe(datos, calendario.hoy, dias).filter((b) => quienes.has(b.persona.id));
+  const lineas = lineasDelArrastre(datos, calendario.hoy, dias).filter((l) => quienes.has(l.persona.id));
   // Un porcentaje del cargo, en dolares del bono de este mes. Sin bono, nada.
   const montoDe = (id: string, peso: number) => (bonos.has(id) ? montoNoCumplido(peso, bonos.get(id)!) : null);
 
@@ -54,6 +56,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
       <AvisoDeCobertura cobertura={calendario.cobertura} cargadoHasta={calendario.cargadoHasta} enlazar />
 
       <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
+      <DesdeCuando lineas={lineas} hoy={calendario.hoy} perfilDe={(id) => `/admin/${id}`} />
 
       <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
 

@@ -99,3 +99,22 @@ export function barrasDe(datos: DatosDelEquipo, hoy: string, calendario: Calenda
     })),
   );
 }
+
+// La linea del arrastre (CEB-222): cada funcion con arrastre es un tramo desde
+// que empezo hasta hoy. Una capa fina sobre el arrastre: quien no arrastra no
+// ocupa espacio, y lo mas viejo va primero, que es lo que mas salta.
+export function lineasDelArrastre(datos: DatosDelEquipo, hoy: string, calendario: Calendario) {
+  return datos.gente
+    .map((p) => ({
+      persona: { id: p.id, nombre: p.nombre },
+      tramos: comoVanSusFunciones(datos, p.id, hoy, calendario)
+        .flatMap((f) =>
+          f.arrastre?.periodos && f.arrastre.desde
+            ? [{ funcionId: f.id, texto: f.texto, periodos: f.arrastre.periodos, desde: f.arrastre.desde }]
+            : [],
+        )
+        .sort((a, b) => a.desde.localeCompare(b.desde) || a.texto.localeCompare(b.texto)),
+    }))
+    .filter((p) => p.tramos.length > 0)
+    .sort((a, b) => a.tramos[0]!.desde.localeCompare(b.tramos[0]!.desde) || a.persona.nombre.localeCompare(b.persona.nombre));
+}
