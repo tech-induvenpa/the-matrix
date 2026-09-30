@@ -19,7 +19,7 @@ Además, el supervisor y el administrador no pueden abrir las ocurrencias de nad
 | Devuelto por X: *razón* | ↩️ | delegación que nace de una devuelta |
 | Comentario | 💬 | cada uno, con autor y fecha |
 | Venció sin marca | ⏰ | solo si pasó el vencimiento sin marcar |
-| Hecho / No pude / No lo tomé (*razón*) | ✅ / ❌ / 🙅 | al final, si está marcada |
+| Hecho / No pude / No lo tomé (*razón*) | ✅ / ❌ / 🙅 | primero, si está marcada |
 
 Una ocurrencia no tiene evento de nacimiento: es calculada, empieza con su primer comentario. Los flujos no tienen perfil: no se marcan.
 
@@ -55,7 +55,7 @@ El perfil dice quién lo lee. La delegación y la ocurrencia que cumple tienen c
 8. Como empleado, quiero ver en el perfil de un imprevisto quién me lo pidió y cuándo, para tener el contexto al lado de la conversación.
 9. Como empleado, quiero ver en el perfil de una delegación quién me la delegó y, si viene de una devuelta, la razón con que me la devolvieron, para saber qué corregir.
 10. Como empleado, quiero ver en el perfil cuándo venció una tarea que no marqué a tiempo, para situar los comentarios antes y después de vencer.
-11. Como empleado, quiero ver al final del perfil mi marca con su razón, para que la historia termine donde terminó.
+11. Como empleado, quiero ver arriba del perfil mi marca con su razón, para saber de un vistazo cómo terminó.
 12. Como empleado, quiero poder abrir el perfil de una tarea ya marcada desde "ya resueltas" o desde el mes, para releer lo que se dijo.
 13. Como empleado, quiero que una tarea marcada ya no acepte comentarios, para que nadie reescriba la historia después del cierre.
 14. Como empleado, quiero que al deshacer una marca se pueda volver a comentar, para que la tarea reabierta vuelva a estar viva.
@@ -109,7 +109,7 @@ Prueba: S comenta en una tarea de A → para A está sin leer, en la tarjeta; pa
 
 **El dominio puro**
 
-- **Línea de tiempo**: `lineaDeTiempo(tarea, comentarios, hoy)` devuelve los eventos ordenados por fecha, cada uno `{ tipo, emoji, quien, cuando, texto? }`. `tarea` es una ocurrencia (con su vencimiento y su marca, si tiene) o un imprevisto (con quien lo pidió, cuándo, si es delegación, la devolución que lo originó y su marca). Arma 📥, 🤝, ↩️, 💬, ⏰ (solo si `vence < hoy` y no hay marca, fechado en el vencimiento) y ✅/❌/🙅 con razón. Es el módulo profundo: toda la regla del perfil vive aquí y la pantalla solo pinta.
+- **Línea de tiempo**: `lineaDeTiempo(tarea, comentarios, hoy)` devuelve los eventos de lo más reciente a lo más viejo, con la marca primero, cada uno `{ tipo, emoji, quien, cuando, texto? }`. `tarea` es una ocurrencia (con su vencimiento y su marca, si tiene) o un imprevisto (con quien lo pidió, cuándo, si es delegación, la devolución que lo originó y su marca). Arma 📥, 🤝, ↩️, 💬, ⏰ (solo si `vence < hoy` y no hay marca, fechado en el vencimiento) y ✅/❌/🙅 con razón. Es el módulo profundo: toda la regla del perfil vive aquí y la pantalla solo pinta.
 - **Sin leer**: `sinLeer(comentarios, vistoEn, yo, marcada)` es verdadero si hay un comentario de otro posterior a `vistoEn` (o cualquiera de otro si nunca se abrió) y la tarea no está marcada. Un agregado por persona (`haySinLeer` sobre sus tareas) alimenta el punto junto al nombre.
 - **Lista por persona**: `listaDeTareas(ocurrencias, imprevistos, hoy, calendario)` mezcla las abiertas (sin marca, vencidas o no, sin borrar) y ordena por urgencia descendente, luego importancia descendente; un imprevisto cuenta con importancia 0. No mira la ponderación.
 - **Círculo**: quién lee es regla de la base, no del dominio; el dominio solo arma el texto de "lo leen: …" para la pantalla.
@@ -134,7 +134,7 @@ Prueba: S comenta en una tarea de A → para A está sin leer, en la tarjeta; pa
 ## Testing Decisions
 
 - Un buen test prueba comportamiento externo --entradas del dominio contra salidas, o sesiones reales contra la base-- y nunca la forma interna.
-- **Dominio, línea de tiempo**: orden por fecha; emoji de cada tipo; ⏰ solo si venció sin marca, y no si se marcó antes o todavía no vence; la marca al final con su razón; imprevisto con 📥, delegación con 🤝, delegación que viene de una devuelta con ↩️ y su razón; ocurrencia sin evento de nacimiento. Prior art: `delegacion.test.ts`, `intromision.test.ts`.
+- **Dominio, línea de tiempo**: lo más reciente arriba; emoji de cada tipo; ⏰ solo si venció sin marca, y no si se marcó antes o todavía no vence; la marca primero con su razón; imprevisto con 📥, delegación con 🤝, delegación que viene de una devuelta con ↩️ y su razón; ocurrencia sin evento de nacimiento. Prior art: `delegacion.test.ts`, `intromision.test.ts`.
 - **Dominio, sin leer**: comentario de otro posterior a la vista → sí; anterior → no; propio → no; nunca abierto → sí; marcada → no; el agregado por persona. Prior art: `racha.test.ts`.
 - **Dominio, lista por persona**: mezcla ocurrencias e imprevistos; solo abiertas (incluye vencidas); orden por urgencia y luego importancia; imprevisto con importancia 0 va al final de su empate; la ponderación no altera el orden. Prior art: `seleccion.test.ts`, `urgencia.test.ts`.
 - **Base**: INV-34, INV-35, INV-36 e INV-37 en `pruebas/` contra Supabase local con sesiones reales. Prior art: `inv-25-supervisor.test.ts` (círculo del supervisor), `inv-15-traspaso.test.ts` (traspaso), `inv-18-imprevistos.test.ts`.

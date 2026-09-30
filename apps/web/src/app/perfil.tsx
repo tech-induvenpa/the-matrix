@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { lineaDeTiempo, loLeen, sinLeer, type EventoDelPerfil, type TareaDelPerfil } from '@matriz/dominio';
 import { claveDeOcurrencia, losComentarios, type FilaComentario } from '@/lib/comentarios';
-import { fechaCorta, hoyISO } from '@/lib/datos';
+import { hoyISO, momentoCorto } from '@/lib/datos';
 import { comentar } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
@@ -77,18 +77,8 @@ function PerfilDeTarea({
   return (
     <div style={PANEL}>
       <AlAbrir clave={clave} />
-      {eventos.length === 0 && <p style={{ margin: 0, color: 'var(--gris)', fontSize: 13.5 }}>Todavía nadie ha dicho nada.</p>}
-      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {eventos.map((e, n) => (
-          <li key={n} style={{ display: 'flex', gap: 9, alignItems: 'baseline', fontSize: 13.5, lineHeight: 1.4 }}>
-            <span aria-hidden style={{ flexShrink: 0 }}>{e.emoji}</span>
-            <span style={{ flexGrow: 1, minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{enPalabras(e)}</span>
-            <span style={{ fontSize: 12, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{fechaCorta(e.cuando.slice(0, 10))}</span>
-          </li>
-        ))}
-      </ol>
-
-      {/* Marcada, solo se lee: lo que se dijo antes de la marca no cambia despues. */}
+      {/* Arriba, junto a lo ultimo que se dijo. Marcada, solo se lee: lo que se
+          dijo antes de la marca no cambia despues. */}
       {!tarea.marca && (
         <Accion accion={comentar.bind(null, clave)} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
           <textarea name="texto" required rows={2} placeholder="Escribe un comentario" aria-label="Comentario" style={CAJA} />
@@ -98,6 +88,16 @@ function PerfilDeTarea({
         </Accion>
       )}
       <p style={{ margin: 0, fontSize: 12, color: 'var(--gris)' }}>{loLeen(lectores)}</p>
+      {eventos.length === 0 && <p style={{ margin: 0, color: 'var(--gris)', fontSize: 13.5 }}>Todavía nadie ha dicho nada.</p>}
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {eventos.map((e, n) => (
+          <li key={n} style={{ display: 'flex', gap: 9, alignItems: 'baseline', fontSize: 13.5, lineHeight: 1.4 }}>
+            <span aria-hidden style={{ flexShrink: 0 }}>{e.emoji}</span>
+            <span style={{ flexGrow: 1, minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{enPalabras(e)}</span>
+            <span style={{ fontSize: 12, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{momentoCorto(e.cuando)}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

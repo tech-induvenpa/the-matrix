@@ -19,6 +19,7 @@ import {
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
+import { Confirmar } from './confirmar';
 import { CIRCULO, Numero } from './tarjeta';
 import { Titulo, type Perfil } from './perfil';
 
@@ -104,13 +105,16 @@ export function TarjetaDeImprevisto({
       )}
 
       {puedeBorrar && (
-        <Accion accion={borrarImprevisto.bind(null, i.id)}>
-          <Enviar style={{ ...REDONDO, fontSize: 13 }} enviando="…">
-            <span title="Borrar: lo registré por error" aria-label="Borrar">
-              🗑
-            </span>
-          </Enviar>
-        </Accion>
+        <Confirmar
+          accion={borrarImprevisto.bind(null, i.id)}
+          titulo="Borrar: lo registré por error"
+          pregunta={`¿Borrar «${i.texto}»?`}
+          detalle="Al borrar la tarea no impacta en su ponderación y desaparece de su lista."
+          si="Borrar"
+          estilo={{ ...REDONDO, fontSize: 13 }}
+        >
+          🗑
+        </Confirmar>
       )}
       {perfil?.contenido}
     </article>
@@ -127,6 +131,7 @@ export function NuevoImprevisto({
   hoy,
   calendario,
   rotulo = '＋ Me cayó un imprevisto',
+  fila = false,
 }: {
   empleadoId: string;
   quienesPiden: readonly QuienPide[];
@@ -134,14 +139,16 @@ export function NuevoImprevisto({
   hoy: string;
   calendario: Calendario;
   rotulo?: string;
+  // Como una fila mas, en gris, al final de la lista.
+  fila?: boolean;
 }) {
   const cuando = (vence: string) => (vence === hoy ? 'hoy' : vence === sumarDias(hoy, 1) ? 'mañana' : fechaConDia(vence));
 
   return (
-    <details style={{ fontSize: 14 }}>
+    <details className={fila ? 'nuevo-item' : undefined} style={{ fontSize: 14 }}>
       <summary style={{ cursor: 'pointer', color: 'var(--gris)', fontWeight: 600 }}>{rotulo}</summary>
       <Accion accion={registrarImprevisto.bind(null, empleadoId)} style={FORMULARIO}>
-        <input name="texto" required placeholder="¿Qué te pidieron?" style={{ ...CAMPO, flex: '1 1 220px' }} />
+        <input name="texto" required placeholder="¿Qué hay que hacer?" style={{ ...CAMPO, flex: '1 1 220px' }} />
         <select name="urgencia" defaultValue="8" style={CAMPO} aria-label="Urgencia: para cuándo">
           {opcionesDeUrgencia(hoy, calendario).map((o) => (
             <option key={o.urgencia} value={o.urgencia}>

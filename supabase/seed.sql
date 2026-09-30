@@ -25,8 +25,9 @@ insert into funcion (id, hash_identidad, texto, importancia, periodicidad, tipo_
   -- en ellos, pero la columna es obligatoria.
   ('00000000-0000-0000-0000-000000000005', 'siembra-005', 'Cuentas por pagar MDV', 5, 'diaria', 'flujo', null, '2026-08-01'),
   ('00000000-0000-0000-0000-000000000006', 'siembra-006', 'Pagos en bolívares a proveedores', 8, 'diaria', 'flujo', null, '2026-08-01'),
-  ('00000000-0000-0000-0000-000000000007', 'siembra-007', 'Revisar y validar pagos y expedientes de venta', 7, 'diaria', 'flujo', null, '2026-08-01'),
-  ('00000000-0000-0000-0000-000000000008', 'siembra-008', 'Holgura para imprevistos', 5, 'mensual', 'holgura', null, '2026-08-01');
+  ('00000000-0000-0000-0000-000000000007', 'siembra-007', 'Revisar y validar pagos y expedientes de venta', 7, 'diaria', 'flujo', null, '2026-08-01');
+-- Sin funcion de holgura: lo que no pesan las funciones (21) es la
+-- cotidianidad, el resto del cargo (ADR 0014).
 
 insert into titularidad (funcion_id, empleado_id, ponderacion, desde, publicado_en)
 select f.id, '11111111-1111-1111-1111-111111111111', p.ponderacion, '2026-08-01', now()
@@ -37,8 +38,7 @@ from (values
   ('00000000-0000-0000-0000-000000000004'::uuid, 5),
   ('00000000-0000-0000-0000-000000000005'::uuid, 5),
   ('00000000-0000-0000-0000-000000000006'::uuid, 7),
-  ('00000000-0000-0000-0000-000000000007'::uuid, 10),
-  ('00000000-0000-0000-0000-000000000008'::uuid, 21)
+  ('00000000-0000-0000-0000-000000000007'::uuid, 10)
 ) as p (id, ponderacion)
 join funcion f on f.id = p.id;
 

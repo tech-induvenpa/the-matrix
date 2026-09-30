@@ -10,6 +10,10 @@ describe('lo que propone el agente', () => {
     });
   });
 
+  it('la holgura ya no es un tipo: es la cotidianidad (ADR 0014)', () => {
+    expect(interpretar({ tipo: 'holgura', confianza: 0.99 })).toEqual({ acepta: false, motivo: 'tipo_desconocido' });
+  });
+
   it('se descarta si inventa un tipo que no existe', () => {
     expect(interpretar({ tipo: 'urgente', confianza: 0.99 })).toEqual({
       acepta: false,
@@ -31,7 +35,7 @@ describe('lo que propone el agente', () => {
     });
   });
 
-  it('un area o una holgura no llevan dia tope: no se agendan', () => {
+  it('un area no lleva dia tope: no se agenda', () => {
     expect(interpretar({ tipo: 'area', diaTope: 10, confianza: 0.9 })).toEqual({
       acepta: true,
       tipo: 'area',

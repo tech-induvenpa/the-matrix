@@ -45,7 +45,7 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   return (
     <>
       <Navegacion entradas={DEL_SUPERVISOR} salida={salir} />
-      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
 
         <Filtrar opciones={opciones} valores={parametros} />
@@ -68,51 +68,58 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
                   {resumenDe(p, abiertos.length)}
                 </span>
               </summary>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 12 }}>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {p.funciones.map((f) => (
-                  <div key={f.id} style={FILA}>
-                    <span style={{ flexGrow: 1, minWidth: 0 }}>{f.texto}</span>
-                    <span style={{ whiteSpace: 'nowrap', fontSize: 13, ...colorDe(f) }}>{comoVa(f)}</span>
-                  </div>
-                ))}
-                {p.funciones.length === 0 && <p style={NADA}>Todavía no tiene funciones publicadas.</p>}
-              </div>
-
-              <h3 style={SUBTITULO}>Sus tareas abiertas</h3>
-              <ListaDeTareas
-                lista={tareas.get(p.id) ?? []}
-                hoy={hoy}
-                calendario={calendario}
-                quienesPiden={quienesPiden}
-                perfiles={conPerfil}
-                puedeBorrar={() => false}
-              />
-              <NuevoImprevisto
-                empleadoId={p.id}
-                quienesPiden={quienesPiden}
-                pidioPorDefecto={yo}
-                hoy={hoy}
-                calendario={calendario}
-                rotulo="＋ Pedirle un imprevisto"
-              />
-
-              {p.razones.length > 0 && (
-                <>
-                  <h3 style={SUBTITULO}>Lo que dijo</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {p.razones.slice(0, 10).map((r, n) => (
-                      <div key={n} style={{ ...FILA, alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: 12.5, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{fechaCorta(r.en)}</span>
-                        <span style={{ flexGrow: 1, minWidth: 0 }}>
-                          <strong>{r.quePaso}</strong> en {r.funcion}: “{r.razon}”
-                        </span>
+              {/* El mismo perfil que ve el administrador (admin/[empleado]), sin
+                  pesos ni bono (INV-3): sus funciones a un lado, lo del dia al otro. */}
+              <div className="perfil" style={{ paddingTop: 14 }}>
+                <aside style={FIJO}>
+                  <h3 style={SUBTITULO}>Sus funciones</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {p.funciones.map((f) => (
+                      <div key={f.id} style={FILA}>
+                        <span style={{ flexGrow: 1, minWidth: 0 }}>{f.texto}</span>
+                        <span style={{ fontSize: 12.5, ...colorDe(f) }}>{comoVa(f)}</span>
                       </div>
                     ))}
+                    {p.funciones.length === 0 && <p style={NADA}>Todavía no tiene funciones publicadas.</p>}
                   </div>
-                </>
-              )}
+                </aside>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+                  <h3 style={SUBTITULO}>Sus tareas abiertas 🌪️</h3>
+                  <ListaDeTareas
+                    lista={tareas.get(p.id) ?? []}
+                    hoy={hoy}
+                    calendario={calendario}
+                    quienesPiden={quienesPiden}
+                    perfiles={conPerfil}
+                    puedeBorrar={() => false}
+                  />
+                  <NuevoImprevisto
+                    empleadoId={p.id}
+                    quienesPiden={quienesPiden}
+                    pidioPorDefecto={yo}
+                    hoy={hoy}
+                    calendario={calendario}
+                    rotulo="＋ Nueva tarea"
+                    fila
+                  />
+
+                  {p.razones.length > 0 && (
+                    <>
+                      <h3 style={{ ...SUBTITULO, marginTop: 8 }}>Lo que dijo</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {p.razones.slice(0, 10).map((r, n) => (
+                          <div key={n} style={{ ...FILA, background: 'var(--suave)', alignItems: 'flex-start' }}>
+                            <span style={{ fontSize: 12.5, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{fechaCorta(r.en)}</span>
+                            <span style={{ flexGrow: 1, minWidth: 0 }}>
+                              <strong>{r.quePaso}</strong> en {r.funcion}: “{r.razon}”
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </details>
           );
@@ -150,15 +157,19 @@ function comoVa(f: ComoVaUnaFuncion): string {
 const colorDe = (f: ComoVaUnaFuncion) =>
   f.atrasadoDesde || f.arrastre?.periodos ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' };
 
+// La columna fija, como en el perfil del administrador.
+const FIJO = { background: 'var(--panel)', borderRadius: 18, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 } as const;
+
 const FILA = {
   display: 'flex',
   alignItems: 'center',
-  gap: 12,
-  background: 'var(--suave)',
+  flexWrap: 'wrap',
+  gap: '4px 12px',
+  background: '#fff',
   borderRadius: 12,
   padding: '9px 14px',
   fontSize: 14,
 } as const;
 
-const SUBTITULO = { fontSize: 15, fontWeight: 700, margin: '6px 0 0' } as const;
+const SUBTITULO = { fontSize: 15, fontWeight: 700, margin: 0 } as const;
 const NADA = { color: 'var(--gris)', fontSize: 14, margin: 0 } as const;

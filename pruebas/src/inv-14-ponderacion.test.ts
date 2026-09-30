@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { reescalarA } from '@matriz/dominio';
+import { proponerReparto } from '@matriz/dominio';
 import { comoAdministrador, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
-// Cambiar el peso de una funcion suelta sin romper el cien (INV-14). El
-// sistema hace la parte aritmetica: las demas conservan sus proporciones
-// dentro de lo que queda.
+// Cambiar el peso de una funcion suelta sin dejar la cotidianidad bajo el piso
+// (INV-14, ADR 0014). El sistema hace la parte aritmetica: las demas y la
+// cotidianidad conservan sus proporciones dentro de lo que queda.
 describe('ajustar la ponderacion de una funcion', () => {
   let ana: string;
   let gorda: string;
@@ -19,7 +19,7 @@ describe('ajustar la ponderacion de una funcion', () => {
       hash_identidad: 'm', texto: 'La mediana', periodicidad: 'mensual', importancia: 6, ponderacion: 30,
     });
     await sembrarFuncion(ana, {
-      hash_identidad: 'f', texto: 'La flaca', periodicidad: 'mensual', importancia: 3, ponderacion: 20,
+      hash_identidad: 'f', texto: 'La flaca', periodicidad: 'mensual', importancia: 3, ponderacion: 10,
     });
   });
 
@@ -32,37 +32,40 @@ describe('ajustar la ponderacion de una funcion', () => {
     return data ?? [];
   };
 
-  it('bajar una sube las demas, y el total sigue en cien', async () => {
+  it('bajar una sube las demas y la cotidianidad, en proporcion', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
     const antes = await pesos();
-    const resto = antes
-      .filter((t) => t.funcion_id !== gorda)
-      .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+    const { despues: propuesta } = proponerReparto(
+      antes.map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number })),
+      { cambia: { funcionId: gorda, ponderacion: 20 } },
+    );
 
     const { error } = await jefa.rpc('ajustar_ponderacion', {
       la_funcion: gorda,
       quien: ana,
       nueva: 20,
-      pesos_del_resto: reescalarA(resto, 80).map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion })),
+      pesos_del_resto: propuesta
+        .filter((p) => p.funcionId !== gorda)
+        .map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion })),
     });
     expect(error).toBeNull();
 
     const despues = await pesos();
-    expect(despues.reduce((t, p) => t + (p.ponderacion as number), 0)).toBe(100);
     expect(despues.find((p) => p.funcion_id === gorda)?.ponderacion).toBe(20);
 
-    // 30 y 20 dentro de 80: siguen siendo tres a dos.
-    const otras = despues.filter((p) => p.funcion_id !== gorda).map((p) => p.ponderacion).sort();
-    expect(otras).toEqual([32, 48]);
+    // 30, 10 y la cotidianidad, 10, se reparten 80: tres a uno a uno.
+    const otras = despues.filter((p) => p.funcion_id !== gorda).map((p) => p.ponderacion).sort((a, b) => a - b);
+    expect(otras).toEqual([16, 48]);
+    expect(100 - despues.reduce((t, p) => t + (p.ponderacion as number), 0)).toBe(16);
   });
 
-  it('dejar el reparto sin cuadrar lo rechaza la base', async () => {
+  it('dejar la cotidianidad bajo el piso lo rechaza la base', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
 
     const { error } = await jefa.rpc('ajustar_ponderacion', {
       la_funcion: gorda,
       quien: ana,
-      nueva: 20,
+      nueva: 60,
       pesos_del_resto: [],
     });
 

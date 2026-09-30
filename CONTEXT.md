@@ -83,7 +83,8 @@ modelo.
 Lo que se ve al abrir una ocurrencia o un imprevisto: su historia en una sola
 linea de tiempo. Hoy la forman quien la pidio o la delego (un imprevisto), la
 devolucion que la origino (una delegacion), sus **comentarios**, el
-**vencimiento** solo si paso sin marca, y al final su **marca** con su razon. Una ocurrencia no tiene evento de nacimiento: es
+**vencimiento** solo si paso sin marca, y su **marca** con su razon. Se lee
+de lo mas reciente a lo mas viejo: la marca, si la hay, arriba. Una ocurrencia no tiene evento de nacimiento: es
 calculada.
 Se abre igual despues de marcada, pero entonces solo se lee.
 _Avoid_: detalle, ficha, hilo (el hilo es solo la parte de los comentarios).
@@ -109,7 +110,8 @@ Encuadre, no entidad. Se usa al hablarle al empleado de por que algo pesa lo que
 pesa; nunca como nombre de una funcion en el modelo.
 
 **Tipo**:
-De cual de las cuatro clases es una funcion. Lo propone el agente en la ingesta y
+De cual de las clases es una funcion: entregable, flujo o area (la cotidianidad,
+antes holgura, no es una funcion). Lo propone el agente en la ingesta y
 lo confirma el responsable tecnico; decide si la funcion entra al plan semanal.
 
 **Entregable**:
@@ -125,15 +127,21 @@ _Avoid_: tarea continua, operativa.
 Funcion que nombra un dominio del rol y no un acto. Existe para repartir sueldo.
 _Avoid_: categoria, macro-tarea.
 
-**Holgura**:
-La porcion del cargo reservada a lo no planificado, presupuestada de antemano.
-Es por donde pesan los imprevistos: ninguno trae peso propio, se miden contra
-la holgura de su empleado. La asigna el administrador en el reparto como
-cualquier ponderacion; quien no tiene holgura recibe imprevistos igual, y
-cuentan, pero no pesan. Se cumple con imprevistos hechos sobre los que se
+**Cotidianidad**:
+Lo que queda del cargo despues de sus funciones: cien menos la suma de sus
+ponderaciones. Todo empleado nace con cotidianidad cien, y cada cambio de su
+**reparto** la mueve junto con las demas partes. No es una
+funcion: no se crea, no se edita aparte y no se traspasa (decidido el
+30/09/2026; antes era una funcion mas del reparto). Nunca baja del diez por
+ciento: un reparto cuyas funciones suman mas de noventa no se publica. Es por
+donde pesan los imprevistos: ninguno trae peso propio, se miden contra la
+cotidianidad de su empleado, y como siempre hay cotidianidad, todo imprevisto
+pesa. Se cumple con imprevistos hechos sobre los que se
 esperaba hacer: "no pude", devueltos y abiertos vencidos cuentan en contra, "no lo tome"
 es neutro (rechazar a tiempo no es fallar), y un mes sin imprevistos
 esperables no cuenta ni a favor ni en contra.
+_Avoid_: holgura (su nombre hasta el 30/09/2026, cuando era una funcion), colchon,
+disponibilidad.
 
 **Imprevisto**:
 Trabajo que llega sin estar en el reparto de nadie y se hace una sola vez. No es
@@ -156,7 +164,7 @@ imprevisto borrado no cuenta en ninguna cifra, pero no desaparece: queda quien
 lo borro y cuando. Un imprevisto que vuelve con regularidad es una
 funcion que nadie ha dado de alta.
 _Avoid_: urgente (la urgencia se calcula, no se declara), encargo, comodin,
-funcion de holgura (la holgura es la porcion del cargo; el imprevisto no es
+funcion de cotidianidad (la cotidianidad es la porcion del cargo; el imprevisto no es
 una funcion).
 
 **Delegacion**:
@@ -170,7 +178,7 @@ supervisor la revisa y marca su ocurrencia el, o la devuelve --a la misma
 persona o a otra--, y eso es una delegacion nueva. Devolver un "hecho" lo
 convierte en **devuelto**, con razon obligatoria, y cuenta en contra como un
 "no pude": si no, marcar hecho algo mal hecho no costaria nada. Si no se cumple, pierden los
-dos: el supervisor su ocurrencia y quien la recibio su holgura.
+dos: el supervisor su ocurrencia y quien la recibio su cotidianidad.
 Solo se delegan ocurrencias que todavia no vencieron, y cada una tiene a lo sumo
 una delegacion abierta; un flujo no se delega. Una delegacion que se
 repite es un traspaso que nadie ha hecho.
@@ -179,8 +187,9 @@ _Avoid_: traspaso (ese mueve la funcion), reasignacion, encargo.
 ### Los tres ejes
 
 **Ponderacion**:
-El peso fijo de una funcion dentro del cargo de una persona. Suma cien por
-persona y no cambia nunca por posicion en la matriz.
+El peso fijo de una funcion dentro del cargo de una persona. Las de una persona
+suman a lo sumo noventa, y la **cotidianidad** completa el cien. No cambia nunca por
+posicion en la matriz.
 _Avoid_: peso (reservado), prioridad, porcentaje.
 
 **Seguimiento sin peso**:
@@ -191,15 +200,21 @@ mueva sueldo -- una convencion que hoy vive en la memoria de la gente.
 _Avoid_: opcional (no lo es), secundaria, informativa.
 
 **Reparto**:
-Las funciones de una persona con sus ponderaciones, tomadas como un todo que
-suma cien. Nadie cambia la ponderacion de una funcion suelta: se redistribuye el
-reparto de alguien. Es la unidad de edicion y la unidad de publicacion.
+Las funciones de una persona con sus ponderaciones, y su cotidianidad, tomadas como
+un todo que suma cien. Nadie cambia la ponderacion de una funcion suelta: se
+redistribuye el reparto de alguien. Una sola regla para todo lo que mueve un
+peso -- dar de alta, cambiar, archivar, eliminar o traspasar una funcion --: lo
+que entra o sale se compensa en proporcion entre todo el resto,
+cotidianidad incluida; si la cuenta deja la cotidianidad bajo el piso, queda en el piso y lo que
+falta sale de las funciones. El sistema lo propone con la cuenta a la vista, y
+el administrador lo ajusta si quiere y lo aprueba. Es la unidad de edicion y la
+unidad de publicacion.
 _Avoid_: cargo (es el puesto, no el documento), asignacion (es del sueldo).
 
 **Publicar**:
 Hacer vigente un reparto. Lo que ve el empleado es siempre el ultimo reparto
 publicado; mientras JFS edita, nada cambia en la pantalla de nadie. Un reparto
-que no suma cien no se puede publicar, y por eso nunca hay un estado a medias
+que no suma cien, o cuya cotidianidad queda bajo el piso, no se puede publicar, y por eso nunca hay un estado a medias
 vigente.
 _Avoid_: guardar (se guarda el borrador, se publica el reparto), importar
 (era el acto de publicar cuando la entrada era el documento).
@@ -360,7 +375,7 @@ _Avoid_: problema, falla (senalan a la persona).
   **Ponderacion** ordena dentro de el
 - Un **Imprevisto** pertenece a exactamente un empleado y no a una **Funcion**;
   no entra a la **Ventana de la semana**, y al **Cumplimiento ponderado** solo
-  entra a traves de la **Holgura** de su empleado. Lo
+  entra a traves de la **Cotidianidad** de su empleado. Lo
   previsto y lo imprevisto se miden cada uno con sus cifras: el imprevisto
   afecta a lo previsto por intromision (le quita tiempo), nunca por conteo
 - Un **Empleado** pertenece a exactamente una **Empresa**: la que le paga, no

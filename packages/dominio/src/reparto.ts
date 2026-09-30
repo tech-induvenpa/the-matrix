@@ -1,34 +1,28 @@
 // El empleado nunca ve un monto. Ve como se reparte su cargo entre lo que
 // hace: la ponderacion en porcentaje, sin moneda ni sueldo.
-export type TipoDeFuncion = 'entregable' | 'flujo' | 'area' | 'holgura';
+export type TipoDeFuncion = 'entregable' | 'flujo' | 'area';
 
 export type FuncionDelMes = {
   funcionId: string;
   nombre: string;
-  tipo: TipoDeFuncion;
+  // La cotidianidad es una porcion del cargo, no un tipo de funcion (ADR 0014).
+  tipo: TipoDeFuncion | 'cotidianidad';
   ponderacion: number;
 };
 
 export type Tajada = FuncionDelMes & { porcentaje: number };
 
-// El ultimo carga el redondeo para que la suma de exactamente cien: un
-// reparto que suma 99,7 se lee como un error del sistema.
+// Cada funcion vale su ponderacion, y lo que no pesan las funciones es la
+// cotidianidad, que completa el cien (ADR 0014). Sin funciones, todo el cargo
+// es cotidianidad.
+// ponytail: si las funciones suman mas de cien -- datos de antes del piso --,
+// no hay cotidianidad y el total pasa de cien; la base ya no lo permite.
 export function repartoDelMes(funciones: readonly FuncionDelMes[]): Tajada[] {
-  const total = funciones.reduce((t, f) => t + f.ponderacion, 0);
-  if (total <= 0) return [];
+  const suma = funciones.reduce((t, f) => t + f.ponderacion, 0);
+  const cotidianidad: FuncionDelMes[] =
+    suma < 100 ? [{ funcionId: 'cotidianidad', nombre: 'Cotidianidad', tipo: 'cotidianidad', ponderacion: 100 - suma }] : [];
 
-  const ordenadas = [...funciones].sort(
-    (a, b) => b.ponderacion - a.ponderacion || a.nombre.localeCompare(b.nombre),
-  );
-
-  const tajadas = ordenadas.map((f) => ({
-    ...f,
-    porcentaje: Math.round((f.ponderacion / total) * 100),
-  }));
-
-  const ultima = tajadas[tajadas.length - 1]!;
-  const sobra = tajadas.reduce((t, f) => t + f.porcentaje, 0) - 100;
-  ultima.porcentaje -= sobra;
-
-  return tajadas;
+  return [...funciones, ...cotidianidad]
+    .sort((a, b) => b.ponderacion - a.ponderacion || a.nombre.localeCompare(b.nombre))
+    .map((f) => ({ ...f, porcentaje: f.ponderacion }));
 }

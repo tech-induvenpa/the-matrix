@@ -22,7 +22,7 @@ beforeAll(async () => {
   ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
   porError = await sembrarFuncion(ana, { ...funcion('Por error'), ponderacion: 20 });
   conHistoria = await sembrarFuncion(ana, { ...funcion('Con historia'), ponderacion: 30 });
-  queda = await sembrarFuncion(ana, { ...funcion('Queda'), ponderacion: 50 });
+  queda = await sembrarFuncion(ana, { ...funcion('Queda'), ponderacion: 40 });
   await comoServicio().from('marca').insert({ funcion_id: conHistoria, periodo: '2026-01', resultado: 'hecho' });
 });
 
@@ -40,14 +40,14 @@ describe('eliminar una funcion por completo', () => {
   it('la creada por error desaparece y el reparto se reacomoda en el mismo acto', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
     const pesos = [
-      { funcion_id: conHistoria, ponderacion: 38 },
-      { funcion_id: queda, ponderacion: 62 },
+      { funcion_id: conHistoria, ponderacion: 34 },
+      { funcion_id: queda, ponderacion: 45 },
     ];
     expect((await jefa.rpc('eliminar_funcion', { la_funcion: porError, quien: ana, pesos })).error).toBeNull();
 
     const servicio = comoServicio();
     expect((await servicio.from('funcion').select('id').eq('id', porError)).data).toEqual([]);
     const { data } = await servicio.from('titularidad').select('ponderacion').eq('empleado_id', ana).order('ponderacion');
-    expect(data?.map((t) => t.ponderacion)).toEqual([38, 62]);
+    expect(data?.map((t) => t.ponderacion)).toEqual([34, 45]);
   });
 });

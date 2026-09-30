@@ -76,7 +76,7 @@ criterio('ana: punto de sin leer en su tarjeta', html.includes(PUNTO));
 criterio('ana: cerrado, el perfil no se pinta', !html.includes('COMENTARIO-DE-SARA'));
 
 html = await pagina(cAna, `/?tarea=${deCaja}`);
-criterio('ana: abierto, la historia con los comentarios en orden', html.indexOf('COMENTARIO-DE-SARA') > 0 && html.indexOf('COMENTARIO-DE-SARA') < html.indexOf('COMENTARIO-DE-LA-JEFA'));
+criterio('ana: abierto, la historia con lo mas reciente arriba', html.indexOf('COMENTARIO-DE-LA-JEFA') > 0 && html.indexOf('COMENTARIO-DE-LA-JEFA') < html.indexOf('COMENTARIO-DE-SARA'));
 criterio('ana: sabe quien lo lee', html.includes('Lo leen: ANA, SARA y el administrador'));
 criterio('ana: puede comentar', html.includes('Escribe un comentario'));
 

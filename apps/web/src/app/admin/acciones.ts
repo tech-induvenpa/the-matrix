@@ -1,12 +1,23 @@
 'use server';
 
-import { ADMITE_DIA_TOPE, leerPertenencia, reescalarA, reescalarACien, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
+import { ADMITE_DIA_TOPE, leerPertenencia, PISO_DE_COTIDIANIDAD, proponerReparto, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
+
+// Ninguna funcion puede pesar tanto que deje la cotidianidad bajo el piso.
+const TOPE = 100 - PISO_DE_COTIDIANIDAD;
+
+// Todo lo que mueve un peso pasa por la misma propuesta del dominio (ADR 0014),
+// y la base recibe lo que la propuesta calculo.
+const vigentesDe = (filas: { funcion_id: unknown; ponderacion: unknown }[] | null) =>
+  (filas ?? []).map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+
+const enFilas = (pesos: readonly { funcionId: string; ponderacion: number }[]) =>
+  pesos.map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion }));
 
 // Una sola respuesta: las preguntas son excluyentes y se eligen como tal.
 const si = (f: FormData, campo: string) => f.get('tipo') === campo;
@@ -25,7 +36,7 @@ function loQueSeEscribio(formulario: FormData) {
   });
 
   const topeEscrito = Number(formulario.get('diaTope') ?? 0);
-  const diaTope = SE_AGENDA[tipo] && ADMITE_DIA_TOPE(periodicidad) && topeEscrito >= 1 && topeEscrito <= 31
+  const diaTope = tipo && SE_AGENDA[tipo] && ADMITE_DIA_TOPE(periodicidad) && topeEscrito >= 1 && topeEscrito <= 31
     ? topeEscrito
     : null;
 
@@ -34,21 +45,26 @@ function loQueSeEscribio(formulario: FormData) {
 
 function noSirve(datos: ReturnType<typeof loQueSeEscribio>): string | null {
   if (!datos.texto) return 'Sin nombre no se puede crear.';
+  if (!datos.tipo) return 'Elige qué tipo de trabajo es.';
   if (!PERIODICIDADES.includes(datos.periodicidad)) return 'Esa periodicidad no existe.';
   if (!Number.isInteger(datos.importancia) || datos.importancia < 0 || datos.importancia > 9)
     return 'La importancia va de cero a nueve.';
   return null;
 }
 
-// Una funcion nueva nace pesando cero: el reparto de su titular sigue sumando
-// cien y nadie se queda con un cargo roto por crear trabajo. Darle su peso es
-// redistribuir el reparto, que es otra pantalla (CEB-132).
+// Una funcion nueva nace con el peso que se le da, pero en el borrador: las
+// demas se reacomodan para que el cargo siga sumando cien, y eso se ve en el
+// reparto antes de publicarlo. Crear no cambia lo que ve nadie (CEB-132).
 export async function crearFuncion(empleadoId: string, formulario: FormData) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
 
   const datos = loQueSeEscribio(formulario);
   const mal = noSirve(datos);
   if (mal) return { mensaje: mal, celebra: false };
+
+  const peso = Number(formulario.get('ponderacion') ?? 0);
+  if (!Number.isInteger(peso) || peso < 0 || peso > TOPE)
+    return { mensaje: `Un peso va de cero a ${TOPE}, y es un entero.`, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -65,13 +81,37 @@ export async function crearFuncion(empleadoId: string, formulario: FormData) {
     .single();
   if (error) return { mensaje: error.message, celebra: false };
 
-  const { error: sinVinculo } = await supabase
+  // Lo que tiene hoy: lo publicado, y encima lo que el administrador ya haya
+  // dejado en el borrador, para no perderlo.
+  const { data: vigentes } = await supabase
     .from('titularidad')
-    .insert({ funcion_id: funcion.id, empleado_id: empleadoId, ponderacion: 0 });
-  if (sinVinculo) return { mensaje: sinVinculo.message, celebra: false };
+    .select('funcion_id, ponderacion, publicado_en, funcion!inner(activa)')
+    .eq('empleado_id', empleadoId)
+    .is('hasta', null)
+    .eq('funcion.activa', true);
+  const actual = new Map<string, number>();
+  for (const t of [...(vigentes ?? [])].sort((a, b) => Number(a.publicado_en === null) - Number(b.publicado_en === null))) {
+    actual.set(t.funcion_id as string, t.ponderacion as number);
+  }
+
+  const { despues: propuestos } = proponerReparto(
+    [...actual].map(([funcionId, ponderacion]) => ({ funcionId, ponderacion })),
+    { entra: { funcionId: funcion.id as string, ponderacion: peso } },
+  );
+
+  await supabase.from('titularidad').delete().eq('empleado_id', empleadoId).is('publicado_en', null);
+  const { error: sinBorrador } = await supabase.from('titularidad').insert(
+    propuestos.map((p) => ({ funcion_id: p.funcionId, empleado_id: empleadoId, ponderacion: p.ponderacion, publicado_en: null })),
+  );
+  if (sinBorrador) {
+    // Son dos escrituras: sin su borrador, la funcion quedaria huerfana, sin
+    // titular. Nace sin historia, asi que se puede eliminar.
+    await supabase.rpc('eliminar_funcion', { la_funcion: funcion.id, quien: empleadoId, pesos: [] });
+    return { mensaje: sinBorrador.message, celebra: false };
+  }
 
   revalidatePath(`/admin/${empleadoId}`);
-  return { mensaje: 'Creada. Le falta su peso en el reparto.', celebra: true };
+  redirect(`/admin/${empleadoId}?editar=reparto&entra=${funcion.id}`);
 }
 
 // Editar el nombre no toca la identidad: la funcion es la misma y su historial
@@ -110,7 +150,7 @@ export async function editarFuncion(funcionId: string, empleadoId: string, formu
     .is('hasta', null)
     .maybeSingle();
 
-  if (Number.isInteger(pedida) && pedida >= 0 && pedida <= 100 && actual && actual.ponderacion !== pedida) {
+  if (Number.isInteger(pedida) && pedida >= 0 && pedida <= TOPE && actual && actual.ponderacion !== pedida) {
     revalidatePath(`/admin/${empleadoId}`);
     redirect(`/admin/${empleadoId}?editar=${funcionId}&peso=${pedida}`);
   }
@@ -137,19 +177,15 @@ export async function archivarFuncion(funcionId: string, empleadoId: string) {
     .is('hasta', null)
     .not('publicado_en', 'is', null);
 
-  const quedan = (vigentes ?? [])
-    .filter((t) => t.funcion_id !== funcionId)
-    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
-
   const { error } = await supabase.rpc('archivar_funcion', {
     la_funcion: funcionId,
     quien: empleadoId,
-    pesos: reescalarACien(quedan).map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion })),
+    pesos: enFilas(proponerReparto(vigentesDe(vigentes), { sale: funcionId }).despues),
   });
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath(`/admin/${empleadoId}`);
-  return { mensaje: 'Archivada. Su historial sigue ahí y el reparto se reacomodó.', celebra: false };
+  redirect(`/admin/${empleadoId}`);
 }
 
 // Eliminar por completo: para la funcion creada por error. La base la rechaza
@@ -166,14 +202,10 @@ export async function eliminarFuncion(funcionId: string, empleadoId: string) {
     .is('hasta', null)
     .not('publicado_en', 'is', null);
 
-  const quedan = (vigentes ?? [])
-    .filter((t) => t.funcion_id !== funcionId)
-    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
-
   const { error } = await supabase.rpc('eliminar_funcion', {
     la_funcion: funcionId,
     quien: empleadoId,
-    pesos: reescalarACien(quedan).map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion })),
+    pesos: enFilas(proponerReparto(vigentesDe(vigentes), { sale: funcionId }).despues),
   });
   if (error) return { mensaje: error.message, celebra: false };
 
@@ -191,8 +223,8 @@ export async function eliminarFuncion(funcionId: string, empleadoId: string) {
 // que se aplica es exactamente lo que se enseño, no lo que viaje en el formulario.
 export async function aplicarPonderacion(funcionId: string, empleadoId: string, nueva: number) {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
-  if (!Number.isInteger(nueva) || nueva < 0 || nueva > 100)
-    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
+  if (!Number.isInteger(nueva) || nueva < 0 || nueva > TOPE)
+    return { mensaje: `Un peso va de cero a ${TOPE}, y es un entero.`, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -203,18 +235,13 @@ export async function aplicarPonderacion(funcionId: string, empleadoId: string, 
     .is('hasta', null)
     .not('publicado_en', 'is', null);
 
-  const resto = (vigentes ?? [])
-    .filter((t) => t.funcion_id !== funcionId)
-    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+  const { despues } = proponerReparto(vigentesDe(vigentes), { cambia: { funcionId, ponderacion: nueva } });
 
   const { error } = await supabase.rpc('ajustar_ponderacion', {
     la_funcion: funcionId,
     quien: empleadoId,
     nueva,
-    pesos_del_resto: reescalarA(resto, 100 - nueva).map((p) => ({
-      funcion_id: p.funcionId,
-      ponderacion: p.ponderacion,
-    })),
+    pesos_del_resto: enFilas(despues.filter((p) => p.funcionId !== funcionId)),
   });
   if (error) return { mensaje: error.message, celebra: false };
 
@@ -254,7 +281,9 @@ export async function guardarBorrador(empleadoId: string, formulario: FormData) 
   revalidatePath(`/admin/${empleadoId}`);
   const suma = sumaDe(propuestos);
   return {
-    mensaje: suma === 100 ? 'Guardado. Ya cuadra: puedes publicarlo.' : `Guardado. Va por ${suma} de 100.`,
+    mensaje: sePuedePublicar(propuestos).publicable
+      ? `Guardado. Su cotidianidad queda en ${100 - suma}: puedes publicarlo.`
+      : `Guardado. Las funciones suman ${suma}: la cotidianidad quedaría bajo ${PISO_DE_COTIDIANIDAD}.`,
     celebra: false,
   };
 }
@@ -281,11 +310,9 @@ export async function publicarReparto(empleadoId: string) {
   const veredicto = sePuedePublicar(pesos);
   if (!veredicto.publicable) {
     const mensaje =
-      veredicto.motivo === 'no_suma_cien'
-        ? `Suma ${veredicto.suma}. ${veredicto.falta > 0 ? `Faltan ${veredicto.falta}` : `Sobran ${-veredicto.falta}`}.`
-        : veredicto.motivo === 'cargo_vacio'
-          ? 'No hay nada que publicar.'
-          : 'Algún peso no es posible.';
+      veredicto.motivo === 'bajo_el_piso'
+        ? `Las funciones suman ${veredicto.suma}: la cotidianidad quedaría en ${100 - veredicto.suma}, y nunca baja de ${PISO_DE_COTIDIANIDAD}. Sobran ${veredicto.sobra}.`
+        : 'Algún peso no es posible.';
     return { mensaje, celebra: false };
   }
 
@@ -321,8 +348,8 @@ export async function traspasar(funcionId: string, deQuien: string, formulario: 
 
   if (!aQuien) return { mensaje: '¿A quién se la pasas?', celebra: false };
   if (aQuien === deQuien) return { mensaje: 'Esa función ya es suya.', celebra: false };
-  if (!Number.isInteger(pesoNuevo) || pesoNuevo < 0 || pesoNuevo > 100)
-    return { mensaje: 'Un peso va de cero a cien, y es un entero.', celebra: false };
+  if (!Number.isInteger(pesoNuevo) || pesoNuevo < 0 || pesoNuevo > TOPE)
+    return { mensaje: `Un peso va de cero a ${TOPE}, y es un entero.`, celebra: false };
 
   const supabase = await clienteDelServidor();
 
@@ -340,26 +367,25 @@ export async function traspasar(funcionId: string, deQuien: string, formulario: 
     }));
   };
 
-  const quedan = (await cargoDe(deQuien)).filter((t) => t.funcionId !== funcionId);
-  const reciben = await cargoDe(aQuien);
-
-  const enFilas = (pesos: { funcionId: string; ponderacion: number }[]) =>
-    pesos.map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion }));
+  // La misma regla de los dos lados (ADR 0014): a quien entrega le sale, a
+  // quien recibe le entra.
+  const entrega = proponerReparto(await cargoDe(deQuien), { sale: funcionId }).despues;
+  const recibe = proponerReparto(await cargoDe(aQuien), { entra: { funcionId, ponderacion: pesoNuevo } }).despues;
 
   const { error } = await supabase.rpc('traspasar', {
     la_funcion: funcionId,
     de_quien: deQuien,
     a_quien: aQuien,
     peso_nuevo: pesoNuevo,
-    pesos_de_quien_entrega: enFilas(reescalarACien(quedan)),
-    pesos_de_quien_recibe: enFilas(reescalarA(reciben, 100 - pesoNuevo)),
+    pesos_de_quien_entrega: enFilas(entrega),
+    pesos_de_quien_recibe: enFilas(recibe.filter((p) => p.funcionId !== funcionId)),
   });
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath(`/admin/${deQuien}`);
   revalidatePath(`/admin/${aQuien}`);
   revalidatePath('/admin');
-  return { mensaje: '¡Traspasada! Su historial se fue con ella.', celebra: true };
+  redirect(`/admin/${deQuien}`);
 }
 
 // --- La gente y el calendario (CEB-134, CEB-135) ----------------------------
@@ -473,7 +499,8 @@ export async function editarEmpleado(empleadoId: string, formulario: FormData) {
 
   revalidatePath(`/admin/${empleadoId}`);
   revalidatePath('/admin');
-  return { mensaje: 'Guardado. Entrará con ese correo.', celebra: false };
+  // Guardado, el formulario se cierra: el nombre nuevo ya se ve arriba.
+  redirect(`/admin/${empleadoId}`);
 }
 
 // El bono (ADR 0010): rige siempre desde el mes siguiente. Lo decide la base,

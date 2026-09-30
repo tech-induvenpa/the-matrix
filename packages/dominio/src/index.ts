@@ -20,7 +20,7 @@ export type { FlujoDelMes, Patron, PeriodoCumplido } from './cierre';
 export { coberturaDe, HORIZONTE } from './cobertura';
 export type { Cobertura, EstadoDeCobertura } from './cobertura';
 export { repartoDelMes } from './reparto';
-export { reescalarA, reescalarACien, sePuedePublicar, sumaDe } from './reparto-de-un-cargo';
+export { cotidianidadDe, PISO_DE_COTIDIANIDAD, reescalarA, reescalarACien, sePuedePublicar, sumaDe } from './reparto-de-un-cargo';
 export type { Peso, Veredicto as VeredictoDelReparto } from './reparto-de-un-cargo';
 export type { FuncionDelMes, Tajada, TipoDeFuncion } from './reparto';
 export { identidadDe, normalizar, reconciliar } from './documento';
@@ -57,3 +57,5 @@ export { delFiltro, leerPertenencia, opcionesDePertenencia } from './filtro-del-
 export type { Filtrable, FiltroDelEquipo, Opcion } from './filtro-del-equipo';
 export { haySinLeer, lineaDeTiempo, listaDeTareas, loLeen, sinLeer } from './perfil';
 export type { Comentario, EnLaLista, EventoDelPerfil, MarcaDelPerfil, TareaDelPerfil, TipoDeEvento } from './perfil';
+export { proponerReparto } from './propuesta-de-reparto';
+export type { CambioDeReparto, PropuestaDeReparto } from './propuesta-de-reparto';

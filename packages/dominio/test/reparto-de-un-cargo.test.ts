@@ -1,47 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { reescalarA, reescalarACien, sePuedePublicar, sumaDe } from '../src/reparto-de-un-cargo';
+import { cotidianidadDe, PISO_DE_COTIDIANIDAD, reescalarA, reescalarACien, sePuedePublicar, sumaDe } from '../src/reparto-de-un-cargo';
 
 const pesos = (...n: number[]) => n.map((ponderacion, i) => ({ funcionId: `f-${i}`, ponderacion }));
 
+// La cotidianidad es el resto del cargo, nunca menos del piso (ADR 0014): las
+// funciones de una persona suman a lo sumo noventa.
 describe('publicar el reparto de un cargo', () => {
-  it('cien exacto se publica', () => {
-    expect(sePuedePublicar(pesos(25, 25, 50))).toEqual({ publicable: true });
+  it('noventa en funciones se publica: la cotidianidad queda en el piso', () => {
+    expect(sePuedePublicar(pesos(40, 50))).toEqual({ publicable: true });
+    expect(cotidianidadDe(pesos(40, 50))).toBe(10);
   });
 
-  it('noventa y nueve no, y dice cuanto falta', () => {
-    expect(sePuedePublicar(pesos(25, 25, 49))).toEqual({
-      publicable: false,
-      motivo: 'no_suma_cien',
-      suma: 99,
-      falta: 1,
-    });
+  it('menos de noventa tambien: el resto es cotidianidad', () => {
+    expect(sePuedePublicar(pesos(25, 25))).toEqual({ publicable: true });
+    expect(cotidianidadDe(pesos(25, 25))).toBe(50);
   });
 
-  it('ciento uno tampoco, y lo que falta es negativo: sobra', () => {
-    expect(sePuedePublicar(pesos(50, 51))).toEqual({
-      publicable: false,
-      motivo: 'no_suma_cien',
-      suma: 101,
-      falta: -1,
-    });
+  it('mas de noventa no, y dice cuanto sobra', () => {
+    expect(sePuedePublicar(pesos(50, 45))).toEqual({ publicable: false, motivo: 'bajo_el_piso', suma: 95, sobra: 5 });
   });
 
-  it('un cargo vacio no se publica: nadie trabaja el cero por ciento del tiempo', () => {
-    expect(sePuedePublicar([])).toEqual({ publicable: false, motivo: 'cargo_vacio' });
+  it('un cargo sin funciones se publica: es todo cotidianidad', () => {
+    expect(sePuedePublicar([])).toEqual({ publicable: true });
+    expect(cotidianidadDe([])).toBe(100);
   });
 
-  it('un peso negativo o mayor que cien no es un peso', () => {
-    expect(sePuedePublicar(pesos(-10, 110))).toEqual({ publicable: false, motivo: 'peso_imposible' });
+  it('un peso negativo o mayor que noventa no es un peso', () => {
+    expect(sePuedePublicar(pesos(-10, 50))).toEqual({ publicable: false, motivo: 'peso_imposible' });
     expect(sePuedePublicar([{ funcionId: 'f', ponderacion: 33.3 }])).toEqual({
       publicable: false,
       motivo: 'peso_imposible',
     });
   });
 
-  // Una funcion nueva nace en cero (CEB-131) y el cargo sigue sumando cien:
-  // crear trabajo no puede romperle el reparto a nadie.
-  it('un cero no estorba mientras el resto sume cien', () => {
-    expect(sePuedePublicar(pesos(60, 40, 0))).toEqual({ publicable: true });
+  it('un cero no estorba: es seguimiento sin peso', () => {
+    expect(sePuedePublicar(pesos(60, 30, 0))).toEqual({ publicable: true });
+  });
+
+  it('el piso es diez', () => {
+    expect(PISO_DE_COTIDIANIDAD).toBe(10);
   });
 });
 

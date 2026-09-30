@@ -16,15 +16,16 @@ describe('INV-15 e INV-16: traspasar sin partir la historia', () => {
     ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
     benito = await sembrarEmpleado('BENITO', 'benito@prueba.test');
 
-    // Ana reparte 30/70; Benito, 100 en una sola.
+    // Ana reparte 30/60 y Benito 90 en una sola: a los dos les queda la
+    // cotidianidad en el piso (ADR 0014).
     cierre = await sembrarFuncion(ana, {
       hash_identidad: 'c-1', texto: 'Cierre financiero', periodicidad: 'mensual', importancia: 9, ponderacion: 30,
     });
     await sembrarFuncion(ana, {
-      hash_identidad: 'p-1', texto: 'Pagos', periodicidad: 'semanal', importancia: 5, ponderacion: 70,
+      hash_identidad: 'p-1', texto: 'Pagos', periodicidad: 'semanal', importancia: 5, ponderacion: 60,
     });
     await sembrarFuncion(benito, {
-      hash_identidad: 'b-1', texto: 'Compras', periodicidad: 'semanal', importancia: 6, ponderacion: 100,
+      hash_identidad: 'b-1', texto: 'Compras', periodicidad: 'semanal', importancia: 6, ponderacion: 90,
     });
 
     await comoServicio()
@@ -42,15 +43,15 @@ describe('INV-15 e INV-16: traspasar sin partir la historia', () => {
       de_quien: ana,
       a_quien: benito,
       peso_nuevo: pesoNuevo,
-      pesos_de_quien_entrega: await restoDe(ana, cierre, 100),
-      pesos_de_quien_recibe: leHaceSitio ? await restoDe(benito, cierre, 100 - pesoNuevo) : [],
+      pesos_de_quien_entrega: await propuestaDe(ana, { sale: cierre }),
+      pesos_de_quien_recibe: leHaceSitio ? await propuestaDe(benito, { entra: { funcionId: cierre, ponderacion: pesoNuevo } }) : [],
     });
 
   it('la funcion cambia de manos y su marca se queda donde estaba', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
 
-    // Ana se queda solo con Pagos, que pasa de 70 a 100: la proporcion se
-    // conserva porque no queda nadie con quien compararse.
+    // Ana se queda con Pagos y su cotidianidad, que se reparten el cien en su
+    // proporcion; Benito le hace sitio al cierre con la misma regla.
     const { error } = await traspaso(jefa, 25);
     expect(error).toBeNull();
 
@@ -103,19 +104,20 @@ describe('INV-15 e INV-16: traspasar sin partir la historia', () => {
   });
 });
 
-// El resto del cargo de alguien, reescalado a lo que le toque: lo que el
-// dominio calcula y la base solo aplica.
-async function restoDe(quien: string, sinEsta: string, objetivo: number) {
-  const { reescalarA } = await import('@matriz/dominio');
+// Lo que la propuesta del dominio calcula para el resto del cargo de alguien, y
+// la base solo aplica (ADR 0014).
+async function propuestaDe(quien: string, cambio: { sale: string } | { entra: { funcionId: string; ponderacion: number } }) {
+  const { proponerReparto } = await import('@matriz/dominio');
   const { data } = await comoServicio()
     .from('titularidad')
     .select('funcion_id, ponderacion')
     .eq('empleado_id', quien)
     .is('hasta', null);
 
-  const quedan = (data ?? [])
-    .filter((t) => t.funcion_id !== sinEsta)
-    .map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+  const vigentes = (data ?? []).map((t) => ({ funcionId: t.funcion_id as string, ponderacion: t.ponderacion as number }));
+  const cambia = 'sale' in cambio ? cambio.sale : cambio.entra.funcionId;
 
-  return reescalarA(quedan, objetivo).map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion }));
+  return proponerReparto(vigentes, cambio)
+    .despues.filter((p) => p.funcionId !== cambia)
+    .map((p) => ({ funcion_id: p.funcionId, ponderacion: p.ponderacion }));
 }

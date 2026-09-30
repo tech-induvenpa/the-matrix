@@ -13,17 +13,22 @@ type Valores = {
 
 const PERIODICIDADES = ['diaria', 'semanal', 'quincenal', 'mensual', 'trimestral'];
 
-// El tipo no se elige de una lista de sustantivos: se responden tres preguntas
-// sobre el trabajo y el dominio decide (ADR 0006). Asi el criterio se lee cada
-// vez que alguien crea una funcion, en vez de vivir en la cabeza de quien la
-// creo la primera vez.
-const PREGUNTAS = [
-  { campo: 'quedaTerminado', texto: '¿Se entrega algo concreto y queda terminado?', si: ['entregable'] },
-  { campo: 'seAtiendeMientrasHaya', texto: '¿Se atiende mientras haya, sin que exista un “ya está”?', si: ['flujo'] },
-  // ponytail: el area ya no se crea desde aqui (29/09/2026): no se mide y esta
-  // por repensar. Las que existen siguen siendo areas hasta que se editen.
+// El tipo sigue saliendo del criterio de ADR 0006, pero se elige de una vez y
+// en palabras de todos los dias: cada opcion dice que significa. Los valores
+// son los campos de `Respuestas`, asi el servidor lo resuelve igual que antes.
+const TIPOS = [
+  { valor: 'quedaTerminado', texto: 'Una entrega: se termina y se marca como hecha' },
+  { valor: 'seAtiendeMientrasHaya', texto: 'Un flujo: se atiende mientras haya, nunca queda terminado' },
+  // Sin holgura: la cotidianidad es el resto del cargo y no se crea (ADR 0014).
 ] as const;
 
+const tipoElegido = (tipo: string | null | undefined) =>
+  tipo === 'flujo' ? 'seAtiendeMientrasHaya' : tipo === 'area' ? 'nombraUnAmbito' : 'quedaTerminado';
+
+// Cada campo aparece solo si aplica a lo elegido (ver globals.css): la entrega
+// tiene periodicidad, importancia y dia tope si es mensual; el flujo, solo
+// importancia; la holgura, nada. Los ocultos igual viajan, y el servidor
+// ignora lo que no aplica.
 export function Formulario({
   funcionId,
   empleadoId,
@@ -39,18 +44,35 @@ export function Formulario({
 
   return (
     <Accion accion={guardar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <input
-          name="texto"
-          defaultValue={funcion?.texto ?? ''}
-          placeholder="Cierre financiero Auto Bengala"
-          required
-          style={CAMPO}
-        />
+      <div className="formulario-funcion" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <label style={ETIQUETA}>
+          Qué se hace
+          <input
+            name="texto"
+            defaultValue={funcion?.texto ?? ''}
+            placeholder="Cierre financiero Auto Bengala"
+            required
+            style={CAMPO}
+          />
+        </label>
+
+        <label style={ETIQUETA}>
+          Qué tipo de trabajo es
+          {/* Nueva, arranca como entrega: es lo que casi siempre se crea. */}
+          <select name="tipo" defaultValue={tipoElegido(funcion?.tipo)} style={CAMPO}>
+            {TIPOS.map((t) => (
+              <option key={t.valor} value={t.valor}>
+                {t.texto}
+              </option>
+            ))}
+            {/* Un area que ya existe no se vuelve holgura por editarle otra cosa. */}
+            {funcion?.tipo === 'area' && <option value="nombraUnAmbito">Un área del cargo</option>}
+          </select>
+        </label>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <label style={ETIQUETA}>
-            Cada cuánto
+          <label className="solo-entrega" style={ETIQUETA}>
+            Cada cuánto se entrega
             <select name="periodicidad" defaultValue={funcion?.periodicidad ?? 'mensual'} style={CAMPO}>
               {PERIODICIDADES.map((p) => (
                 <option key={p} value={p}>
@@ -60,8 +82,13 @@ export function Formulario({
             </select>
           </label>
 
-          <label style={ETIQUETA}>
-            Importancia (0–9)
+          <label className="solo-entrega dia-tope" style={ETIQUETA}>
+            Día del mes en que vence (opcional)
+            <input name="diaTope" type="number" min={1} max={31} defaultValue={funcion?.diaTope ?? ''} style={CAMPO} />
+          </label>
+
+          <label className="con-importancia" style={ETIQUETA}>
+            Importancia (0 a 9)
             <input
               name="importancia"
               type="number"
@@ -72,49 +99,24 @@ export function Formulario({
             />
           </label>
 
-          {funcionId && (
-            <label style={ETIQUETA}>
-              Cuánto pesa en su cargo
-              <input name="ponderacion" type="number" min={0} max={100} defaultValue={funcion?.ponderacion ?? 0} style={CAMPO} />
-            </label>
-          )}
-
           <label style={ETIQUETA}>
-            Día tope, si lo tiene
-            <input name="diaTope" type="number" min={1} max={31} defaultValue={funcion?.diaTope ?? ''} style={CAMPO} />
+            Cuánto pesa en su cargo (%)
+            <input
+              name="ponderacion"
+              type="number"
+              min={0}
+              max={90}
+              required
+              defaultValue={funcion?.ponderacion ?? ''}
+              style={CAMPO}
+            />
           </label>
         </div>
 
-        <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Una sola: las preguntas son excluyentes. */}
-          {PREGUNTAS.map((p) => (
-            <label key={p.campo} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
-              <input
-                type="radio"
-                name="tipo"
-                value={p.campo}
-                defaultChecked={funcion?.tipo ? p.si.includes(funcion.tipo as never) : false}
-              />
-              {p.texto}
-            </label>
-          ))}
-          {/* Un area que ya existe no se vuelve holgura por editarle otra cosa. */}
-          {funcion?.tipo === 'area' && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
-              <input type="radio" name="tipo" value="nombraUnAmbito" defaultChecked />
-              Es un área del cargo
-            </label>
-          )}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5 }}>
-            <input type="radio" name="tipo" value="" defaultChecked={!funcion?.tipo || funcion.tipo === 'holgura'} />
-            Ninguna: es holgura, la parte del cargo reservada a lo no planificado
-          </label>
-          {funcionId && (
-            <span style={{ fontSize: 12, color: 'var(--gris)' }}>
-              Si cambias el peso, las demás funciones se reacomodan para que siga sumando 100.
-            </span>
-          )}
-        </fieldset>
+        <span style={{ fontSize: 12, color: 'var(--gris)' }}>
+          Hasta 90: la cotidianidad nunca baja de 10. Las demás funciones y la cotidianidad se reacomodan en
+          proporción, y lo ves antes de que cambie nada.
+        </span>
 
         <Enviar
           style={{

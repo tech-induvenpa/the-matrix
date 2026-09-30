@@ -4,9 +4,10 @@ import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrar
 // INV-13 · Un borrador nunca llega a la pantalla de un empleado. Lo que ve es
 // siempre el ultimo reparto publicado.
 //
-// INV-14 · Un reparto que no suma cien no se publica, ni por la interfaz ni por
-// la base.
-describe('INV-13 e INV-14: el borrador y el cien', () => {
+// INV-14 (reescrito, ADR 0014) · Ningun reparto publicado deja la cotidianidad
+// bajo el piso: las funciones suman a lo sumo noventa, ni por la interfaz ni
+// por la base.
+describe('INV-13 e INV-14: el borrador y el piso', () => {
   let ana: string;
   let cierre: string;
   let pagos: string;
@@ -19,7 +20,7 @@ describe('INV-13 e INV-14: el borrador y el cien', () => {
       hash_identidad: 'c-1', texto: 'Cierre de Ana', periodicidad: 'mensual', importancia: 9, ponderacion: 60,
     });
     pagos = await sembrarFuncion(ana, {
-      hash_identidad: 'p-1', texto: 'Pagos de Ana', periodicidad: 'semanal', importancia: 5, ponderacion: 40,
+      hash_identidad: 'p-1', texto: 'Pagos de Ana', periodicidad: 'semanal', importancia: 5, ponderacion: 30,
     });
 
     await comoServicio().from('titularidad').update({ publicado_en: new Date().toISOString() }).eq('empleado_id', ana);
@@ -30,7 +31,7 @@ describe('INV-13 e INV-14: el borrador y el cien', () => {
 
     await jefa.from('titularidad').insert([
       { funcion_id: cierre, empleado_id: ana, ponderacion: 10, publicado_en: null },
-      { funcion_id: pagos, empleado_id: ana, ponderacion: 90, publicado_en: null },
+      { funcion_id: pagos, empleado_id: ana, ponderacion: 80, publicado_en: null },
     ]);
 
     const empleada = await comoEmpleado('ana@prueba.test');
@@ -41,17 +42,17 @@ describe('INV-13 e INV-14: el borrador y el cien', () => {
 
     expect(data).toEqual([
       { texto: 'Cierre de Ana', titularidad: [{ ponderacion: 60 }] },
-      { texto: 'Pagos de Ana', titularidad: [{ ponderacion: 40 }] },
+      { texto: 'Pagos de Ana', titularidad: [{ ponderacion: 30 }] },
     ]);
   });
 
-  it('publicar un reparto que no suma cien lo rechaza la base', async () => {
+  it('publicar un reparto que deja la cotidianidad bajo el piso lo rechaza la base', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
 
     await jefa.from('titularidad').delete().eq('empleado_id', ana).is('publicado_en', null);
     await jefa.from('titularidad').insert([
       { funcion_id: cierre, empleado_id: ana, ponderacion: 10, publicado_en: null },
-      { funcion_id: pagos, empleado_id: ana, ponderacion: 89, publicado_en: null },
+      { funcion_id: pagos, empleado_id: ana, ponderacion: 85, publicado_en: null },
     ]);
 
     const { error } = await jefa.rpc('publicar_reparto', { quien: ana });
@@ -68,16 +69,16 @@ describe('INV-13 e INV-14: el borrador y el cien', () => {
       .not('publicado_en', 'is', null)
       .order('ponderacion');
 
-    expect(data?.map((t) => t.ponderacion)).toEqual([40, 60]);
+    expect(data?.map((t) => t.ponderacion)).toEqual([30, 60]);
   });
 
-  it('cuando suma cien, se publica y el empleado lo ve', async () => {
+  it('con la cotidianidad en el piso, se publica y el empleado lo ve', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
 
     await jefa.from('titularidad').delete().eq('empleado_id', ana).is('publicado_en', null);
     await jefa.from('titularidad').insert([
       { funcion_id: cierre, empleado_id: ana, ponderacion: 30, publicado_en: null },
-      { funcion_id: pagos, empleado_id: ana, ponderacion: 70, publicado_en: null },
+      { funcion_id: pagos, empleado_id: ana, ponderacion: 60, publicado_en: null },
     ]);
 
     const { error } = await jefa.rpc('publicar_reparto', { quien: ana });
@@ -88,8 +89,15 @@ describe('INV-13 e INV-14: el borrador y el cien', () => {
 
     expect(data).toEqual([
       { texto: 'Cierre de Ana', titularidad: [{ ponderacion: 30 }] },
-      { texto: 'Pagos de Ana', titularidad: [{ ponderacion: 70 }] },
+      { texto: 'Pagos de Ana', titularidad: [{ ponderacion: 60 }] },
     ]);
+  });
+
+  it('una persona sin funciones es toda cotidianidad, y es valida', async () => {
+    const jefa = await comoAdministrador('jefa@prueba.test');
+    const nadie = await sembrarEmpleado('BRUNO', 'bruno@prueba.test');
+    const { error } = await jefa.rpc('publicar_reparto', { quien: nadie });
+    expect(error).toBeNull();
   });
 
   // Cambiar un peso no es cambiar de manos: el historial tiene que seguir

@@ -203,6 +203,18 @@ export function comoVence(vence: string, hoy: string): string {
 // La version corta, para las filas del mes.
 export const fechaCorta = (fecha: string) => `${+fecha.slice(8, 10)} ${mesCortoDe(fecha)}`;
 
+// Un momento, con dia y hora de Caracas: "30 sept - 10:15". La pantalla se arma
+// en el servidor, que corre en UTC; sin la zona, la hora saldria 4 horas
+// adelantada y cerca de medianoche hasta el dia seria otro.
+export const momentoCorto = (instante: string) => {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(instante))
+      .map((x) => [x.type, x.value]),
+  );
+  return `${fechaCorta(`${p.year}-${p.month}-${p.day}`)} - ${p.hour}:${p.minute}`;
+};
+
 // Con el dia de la semana, para el selector de urgencia: "mié 7 oct".
 export const fechaConDia = (fecha: string) =>
   `${new Intl.DateTimeFormat('es', { weekday: 'short', timeZone: 'UTC' })
