@@ -38,10 +38,16 @@ export function Reparto({
   // aplica al salir del campo, no con cada tecla: si no, escribir "25" pasaria
   // por "2", que cae bajo el piso.
   const [cotidianidadEscrita, setCotidianidadEscrita] = useState<string | null>(null);
+  // Si se pidio menos del piso, se aplica el piso y se dice por que: si no,
+  // parece que el campo ignoro lo que se escribio.
+  const [quedoEnElPiso, setQuedoEnElPiso] = useState(false);
+  const escribiendoBajoElPiso =
+    cotidianidadEscrita !== null && cotidianidadEscrita !== '' && Number(cotidianidadEscrita) < PISO_DE_COTIDIANIDAD;
   const ajustarCotidianidad = () => {
     const pedida = Number(cotidianidadEscrita);
     setCotidianidadEscrita(null);
     if (cotidianidadEscrita === null || !Number.isInteger(pedida)) return;
+    setQuedoEnElPiso(pedida < PISO_DE_COTIDIANIDAD);
     const { despues } = proponerReparto(
       Object.entries(pesos).map(([funcionId, ponderacion]) => ({ funcionId, ponderacion })),
       { cotidianidad: pedida },
@@ -137,7 +143,10 @@ export function Reparto({
               max={100}
               aria-label="Cotidianidad"
               value={cotidianidadEscrita ?? cotidianidad}
-              onChange={(e) => setCotidianidadEscrita(e.target.value)}
+              onChange={(e) => {
+                setCotidianidadEscrita(e.target.value);
+                setQuedoEnElPiso(false);
+              }}
               onBlur={ajustarCotidianidad}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -160,6 +169,12 @@ export function Reparto({
             />
             <span style={{ fontSize: 13 }}>%</span>
           </div>
+
+          {/* Por que existe el piso, dicho donde se choca con el (ADR 0014). */}
+          <p role="status" aria-live="polite" style={{ margin: '-2px 0 0', fontSize: 12.5, lineHeight: 1.45, color: '#9E3322', minHeight: 0 }}>
+            {(escribiendoBajoElPiso || quedoEnElPiso || !publicable) &&
+              `${quedoEnElPiso ? `Quedó en ${PISO_DE_COTIDIANIDAD}%. ` : ''}La cotidianidad no baja de ${PISO_DE_COTIDIANIDAD}%: es la parte del cargo por la que pesa todo lo que le piden fuera de sus funciones. Con menos, ese trabajo casi no contaría en su bono.`}
+          </p>
 
           {hayQueHacerAlgo && (
             <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
