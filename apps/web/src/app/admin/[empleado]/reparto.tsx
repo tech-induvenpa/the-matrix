@@ -41,6 +41,9 @@ export function Reparto({
   // Si se pidio menos del piso, se aplica el piso y se dice por que: si no,
   // parece que el campo ignoro lo que se escribio.
   const [quedoEnElPiso, setQuedoEnElPiso] = useState(false);
+  // Publicado, queda en el historial como un ajuste de la cotidianidad y no
+  // como un cambio de pesos: desde la base no se distinguen (ADR 0017).
+  const [ajustoLaCotidianidad, setAjustoLaCotidianidad] = useState(false);
   const escribiendoBajoElPiso =
     cotidianidadEscrita !== null && cotidianidadEscrita !== '' && Number(cotidianidadEscrita) < PISO_DE_COTIDIANIDAD;
   const ajustarCotidianidad = () => {
@@ -48,6 +51,7 @@ export function Reparto({
     setCotidianidadEscrita(null);
     if (cotidianidadEscrita === null || !Number.isInteger(pedida)) return;
     setQuedoEnElPiso(pedida < PISO_DE_COTIDIANIDAD);
+    setAjustoLaCotidianidad(true);
     const { despues } = proponerReparto(
       Object.entries(pesos).map(([funcionId, ponderacion]) => ({ funcionId, ponderacion })),
       { cotidianidad: pedida },
@@ -81,6 +85,7 @@ export function Reparto({
       </div>
 
       <Accion accion={guardarBorrador.bind(null, empleadoId)}>
+        <input type="hidden" name="movimiento" value={ajustoLaCotidianidad ? 'cotidianidad' : 'cambio'} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {funciones.map((f) => (
             <label

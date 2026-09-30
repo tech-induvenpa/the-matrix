@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { VENTANA_DE_DELEGACION } from '@matriz/dominio';
-import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
+import { bonoDe, cargoDe, historialDelReparto, imprevistosDe } from '@/lib/administrador';
 import { enPalabras, pertenencias } from '@/lib/pertenencia';
 import { dolares } from '@/lib/datos';
 import { NuevoImprevisto } from '../../imprevistos';
@@ -23,6 +23,7 @@ import { ComoVa } from '../../como-va';
 import { CerradasDelMes } from '../../cerradas';
 import { nombreDelMes, nominaDelMes } from '@/lib/nomina';
 import { EstadoDeCuenta, ultimosMeses } from '../../nomina';
+import { HistorialDelReparto } from './historial';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
 // repartir y la de editar, con los mismos nombres repetidos uno debajo del otro.
@@ -43,7 +44,7 @@ export default async function Cargo({
   // anterior, fija. La misma que ve la persona en "El mes".
   const esteMes = new Date().toISOString().slice(0, 7);
   const mesDeLaNomina = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedida) && pedida <= esteMes ? pedida : esteMes;
-  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil, datos, delegaciones, suNomina] = await Promise.all([
+  const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil, datos, delegaciones, suNomina, historial] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
     bonoDe(empleado),
@@ -52,6 +53,7 @@ export default async function Cargo({
     datosDelEquipo(empleado),
     lasDelegaciones(false),
     nominaDelMes(empleado, mesDeLaNomina),
+    historialDelReparto(empleado),
   ]);
 
   // Quien no existe -- o una ruta vieja, como /admin/reporte -- es un 404.
@@ -411,6 +413,9 @@ export default async function Cargo({
               </div>
             )}
           </section>
+
+          {/* Plegado: quien movio cada peso, y cuando (CEB-236). */}
+          <HistorialDelReparto versiones={historial} />
 
           {/* Plegado: la ficha es para leer el cargo, y crear es lo raro. */}
           <details className="nuevo-item">

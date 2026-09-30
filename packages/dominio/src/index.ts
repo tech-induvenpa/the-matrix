@@ -78,3 +78,5 @@ export { conceptoDe, merecenFuegos, nominaDe, partesDelMes, reaperturasDeLaNomin
 export type { FuncionDeLaNomina, ImprevistoDeLaNomina, LineaDeNomina, Nomina, ParteDelCargo, ReaperturaDeLaNomina } from './nomina';
 export { fotoDelCierre, nominaDeLaFoto } from './foto-del-cierre';
 export type { FotoDelCierre, ParteDeLaFoto } from './foto-del-cierre';
+export { parteAParte } from './historial-del-reparto';
+export type { Movimiento, ParteDelHistorial, PesoDeUnaParte } from './historial-del-reparto';
