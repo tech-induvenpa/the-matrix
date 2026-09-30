@@ -154,8 +154,8 @@ una funcion: no se repite, no tiene periodicidad ni ponderacion, y no se
 traspasa. Lo que lo hace imprevisto es que se hace una vez y no esta en ningun
 reparto, no que apriete: puede no ser ni urgente ni importante (decidido el
 29/09/2026; antes vencia a mas tardar el dia habil siguiente). Quien lo anota
-dice para cuando lo necesita eligiendo una urgencia, y eso se convierte en su
-vencimiento (una **delegacion** vence con su ocurrencia). Desde ahi su urgencia
+dice cuan importante es y para cuando lo necesita eligiendo una urgencia, y
+esta se convierte en su vencimiento (una **delegacion** vence con su ocurrencia). Desde ahi su urgencia
 se calcula igual que la de cualquier ocurrencia y sube sola con los dias: lo
 que se escribe es la fecha, nunca el numero. No arrastra, porque no tiene serie: si vence sin marca sigue
 abierto en la pantalla de su empleado hasta que alguien lo marque, y cuenta su
@@ -176,8 +176,9 @@ una funcion).
 Un imprevisto que un supervisor le pide a alguien a su cargo para cumplir una
 ocurrencia de su propio reparto. La ocurrencia sigue siendo del supervisor: no
 es un traspaso, no mueve ponderacion y el supervisor responde por ella. Vence
-cuando vence la ocurrencia, no al dia habil siguiente, porque lo delegado ya
-estaba previsto; lo imprevisto es solo a quien le llega. Quien la recibe la
+cuando vence la ocurrencia, no al dia habil siguiente, y hereda la
+**importancia** que la funcion tenia el dia en que se delego, porque lo
+delegado ya estaba previsto; lo imprevisto es solo a quien le llega. Quien la recibe la
 marca como cualquier imprevisto, y esa marca no cierra la ocurrencia: el
 supervisor la revisa y marca su ocurrencia el, o la devuelve --a la misma
 persona o a otra--, y eso es una delegacion nueva. Devolver un "hecho" lo
@@ -241,7 +242,10 @@ el administrador lo escribe.
 _Avoid_: sueldo (incluye la base, que no se mueve), asignacion, incentivo.
 
 **Importancia**:
-El unico juicio que JFS escribe a mano. Cero a nueve.
+El unico juicio que se escribe a mano, cero a nueve, y lo escribe quien da de
+alta la tarea: JFS en una funcion, quien lo anota en un **imprevisto**
+(decidido el 30/09/2026). En un imprevisto no se edita, como el resto de el.
+Nunca toca dinero ni ponderacion: solo decide el cuadrante y el orden.
 
 **Periodicidad**:
 Cada cuanto se repite una funcion: diaria, semanal, quincenal, mensual o
@@ -302,7 +306,9 @@ el que cae en uno se corre al habil siguiente sin avisar.
 
 **Cuadrante**:
 Uno de tres: hacer ya, ponle fecha, mantener al dia. El cuarto no existe: toda
-funcion es al menos minimamente importante.
+funcion es al menos minimamente importante. Un **imprevisto** tambien cae en
+uno, con las mismas reglas, pero se muestra en su propio bloque: no entra a la
+**Ventana de la semana**.
 _Avoid_: prioridad alta/baja, los nombres clasicos de Eisenhower.
 
 ### El registro

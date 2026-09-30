@@ -24,6 +24,8 @@ export type FilaImprevisto = {
   texto: string;
   pedido_en: string;
   vence: string;
+  // De 0 a 9, la escribe quien lo anota o la hereda de la funcion que se delega.
+  importancia: number;
   // Un administrador o un supervisor; si no, lo dice `pedido_por_otro`.
   pedido_por: string | null;
   pedido_por_otro: string | null;
@@ -62,7 +64,7 @@ export const escapar = (v: string | number) => {
 };
 
 export const COLUMNAS_DE_IMPREVISTO =
-  'id, empleado_id, texto, pedido_en, vence, pedido_por, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en, delega_funcion, delega_periodo, devuelto_en, devuelto_razon';
+  'id, empleado_id, texto, pedido_en, vence, importancia, pedido_por, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en, delega_funcion, delega_periodo, devuelto_en, devuelto_razon';
 
 // Quien lo pidio, en palabras: un administrador o un supervisor por su nombre,
 // o lo que se escribio en "otro".

@@ -165,6 +165,9 @@ export async function registrarImprevisto(empleadoId: string, formulario: FormDa
   const texto = String(formulario.get('texto') ?? '').trim();
   const elegida = Number(formulario.get('urgencia') || 8);
   const urgencia = Number.isInteger(elegida) && elegida >= 0 && elegida <= 9 ? elegida : 8;
+  // Cuan importante es, de 0 a 9 (CEB-241). Si llega algo raro, el 5 de siempre.
+  const pesa = Number(formulario.get('importancia') || 5);
+  const importancia = Number.isInteger(pesa) && pesa >= 0 && pesa <= 9 ? pesa : 5;
   const pidio = String(formulario.get('pidio') ?? '');
   const otro = String(formulario.get('otro') ?? '').trim();
   if (!texto || (pidio === 'otro' && !otro)) return;
@@ -175,6 +178,7 @@ export async function registrarImprevisto(empleadoId: string, formulario: FormDa
     empleado_id: empleadoId,
     texto,
     vence: vencimientoPorUrgencia(hoyISO(), urgencia, Calendario.con(dias ?? [])),
+    importancia,
     pedido_por: pidio === 'otro' ? null : pidio,
     pedido_por_otro: pidio === 'otro' ? otro : null,
   });
