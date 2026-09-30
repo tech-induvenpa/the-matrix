@@ -5,6 +5,7 @@ import {
   Calendario,
   cotidianidadDe,
   diasHabilesDelMes,
+  estadoDelMes,
   hechosDeEntregable,
   hechosDeHolgura,
   ocurrenciasEntre,
@@ -14,6 +15,8 @@ import {
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { esAdministrador } from '@/lib/administrador';
 import { comoCambios, escapar, hoyISO, quienPidio, type QuienPide } from '@/lib/datos';
+import { ahoraEnLaBase, lasReaperturas } from '@/lib/cierre-del-mes';
+import { comoFoto, tomarLasFotos } from '@/lib/nomina';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // La salida hacia la hoja de sueldos. Es una funcion de la pantalla, no una
@@ -55,6 +58,15 @@ const RESULTADO: Record<string, string> = {
   sin_marcar: 'vencio sin marcar',
 };
 
+type Cargo = {
+  empleadoId: string;
+  persona: string;
+  empresaId: string | null;
+  bono: number | null;
+  funciones: { id: string; texto: string; tipo: 'entregable' | 'flujo'; periodicidad: Periodicidad; diaTope?: number; fechaAlta: string; ponderacion: number }[];
+  cotidianidad: number;
+};
+
 const finDe = (mes: string) =>
   new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 0)).toISOString().slice(0, 10);
 
@@ -84,6 +96,8 @@ export async function GET(request: NextRequest) {
     { data: bonos },
     { data: quienes },
     { data: empleados },
+    reaperturas,
+    ahora,
   ] =
     await Promise.all([
       supabase.from('dia_no_habil').select('desde, hasta'),
@@ -103,15 +117,75 @@ export async function GET(request: NextRequest) {
       supabase.from('bono').select('empleado_id, monto, rige_desde'),
       supabase.rpc('quienes_piden'),
       supabase.from('empleado').select('id, nombre_bloque, empresa_id').order('nombre_bloque'),
+      lasReaperturas(),
+      ahoraEnLaBase(),
     ]);
-
-  const empresaDe = new Map(((empleados ?? []) as { id: string; empresa_id: string | null }[]).map((e) => [e.id, e.empresa_id]));
-  const entra = (empleadoId: string) =>
-    (personas.length === 0 || personas.includes(empleadoId)) &&
-    (empresa === TODAS || (empresa === SIN_EMPRESA ? !empresaDe.get(empleadoId) : empresaDe.get(empleadoId) === empresa));
 
   const calendario = Calendario.con(dias ?? []);
   const bonosDe = (empleadoId: string) => comoCambios((bonos ?? []).filter((b) => b.empleado_id === empleadoId));
+
+  // El cargo de cada persona en el mes: sus funciones con su peso, su
+  // cotidianidad, su bono y su empresa. En el mes en curso, los de hoy. En un
+  // mes cerrado, los de su foto del cierre (ADR 0017): asi la descarga nunca
+  // contradice a la nomina de ese mes, aunque despues cambie un peso, un bono
+  // o una empresa, o se archive una funcion. Lo que no cambia son las filas:
+  // salen de las mismas marcas, que de un mes cerrado no se mueven.
+  const cargos: Cargo[] = [];
+  const cerrado = estadoDelMes(mes, calendario, ahora, reaperturas).estado === 'cerrado' && !(await tomarLasFotos());
+  const { data: fotos } = cerrado
+    ? await supabase.from('foto_del_cierre').select('empleado_id, empresa_id, bono, total, partes, empleado(nombre_bloque)').eq('mes', mes)
+    : { data: null };
+
+  if (fotos?.length) {
+    for (const f of fotos as Record<string, unknown>[]) {
+      const foto = comoFoto(f);
+      cargos.push({
+        empleadoId: f.empleado_id as string,
+        persona: (f.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '',
+        empresaId: foto.empresaId,
+        bono: foto.bono,
+        funciones: foto.partes.flatMap((p) =>
+          p.funcionId && p.tipo !== 'cotidianidad' && p.periodicidad && p.fechaAlta
+            ? [{ id: p.funcionId, texto: p.parte, tipo: p.tipo, periodicidad: p.periodicidad, diaTope: p.diaTope, fechaAlta: p.fechaAlta, ponderacion: p.ponderacion }]
+            : [],
+        ),
+        cotidianidad: foto.partes.find((p) => p.tipo === 'cotidianidad')?.ponderacion ?? 0,
+      });
+    }
+    cargos.sort((a, b) => a.persona.localeCompare(b.persona));
+  } else {
+    for (const e of (empleados ?? []) as { id: string; nombre_bloque: string; empresa_id: string | null }[]) {
+      const suyas = ((titularidades ?? []) as Record<string, unknown>[]).filter((t) => t.empleado_id === e.id && (t.funcion as { activa: boolean }).activa);
+      cargos.push({
+        empleadoId: e.id,
+        persona: e.nombre_bloque,
+        empresaId: e.empresa_id,
+        bono: bonoDelMes(bonosDe(e.id), mes),
+        funciones: suyas.flatMap((t) => {
+          const f = t.funcion as Record<string, unknown>;
+          const tipo = (f.tipo_corregido ?? f.tipo_generado) as string | null;
+          if (tipo !== 'entregable' && tipo !== 'flujo') return [];
+          return [
+            {
+              id: f.id as string,
+              texto: f.texto as string,
+              tipo,
+              periodicidad: f.periodicidad as Periodicidad,
+              diaTope: (f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined) as number | undefined,
+              fechaAlta: f.fecha_alta as string,
+              ponderacion: t.ponderacion as number,
+            },
+          ];
+        }),
+        // Todas las activas, areas incluidas: lo que no pesan es la cotidianidad.
+        cotidianidad: cotidianidadDe(suyas.map((t) => ({ funcionId: (t.funcion as { id: string }).id, ponderacion: t.ponderacion as number }))),
+      });
+    }
+  }
+
+  const entra = (c: Cargo) =>
+    (personas.length === 0 || personas.includes(c.empleadoId)) &&
+    (empresa === TODAS || (empresa === SIN_EMPRESA ? !c.empresaId : c.empresaId === empresa));
   const marcasDe = (funcionId: string) =>
     (marcas ?? [])
       .filter((m) => m.funcion_id === funcionId)
@@ -185,31 +259,24 @@ export async function GET(request: NextRequest) {
   // cumplir.
   const tramoDe = (mes: string) => ({ desde: `${mes}-01`, hasta: mes === hoy.slice(0, 7) ? hoy : finDe(mes) });
 
-  for (const t of (titularidades ?? []) as Record<string, unknown>[]) {
-    const f = t.funcion as Record<string, unknown>;
-    const tipo = (f.tipo_corregido ?? f.tipo_generado) as string | null;
-    if (!f.activa || (tipo !== 'entregable' && tipo !== 'flujo')) continue;
-
-    const funcionId = f.id as string;
-    const empleadoId = t.empleado_id as string;
-    if (!entra(empleadoId)) continue;
-    const diaTope = (f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined) as number | undefined;
+  for (const { c, f } of cargos.filter(entra).flatMap((c) => c.funciones.map((f) => ({ c, f })))) {
+    const { id: funcionId, tipo, diaTope } = f;
 
     for (const mes of meses) {
       const tramo = tramoDe(mes);
       const base = {
         mes,
-        persona: (t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '',
-        funcion: f.texto as string,
+        persona: c.persona,
+        funcion: f.texto,
         tipo,
-        periodicidad: f.periodicidad as string,
-        ponderacion: t.ponderacion as number,
-        bono: bonoDelMes(bonosDe(empleadoId), mes),
+        periodicidad: f.periodicidad,
+        ponderacion: f.ponderacion,
+        bono: c.bono,
       };
 
       if (tipo === 'entregable') {
         const ocurrencias = ocurrenciasEntre(
-          { periodicidad: f.periodicidad as Periodicidad, diaTope, fechaAlta: f.fecha_alta as string },
+          { periodicidad: f.periodicidad, diaTope, fechaAlta: f.fechaAlta },
           calendario,
           tramo.desde,
           tramo.hasta,
@@ -250,25 +317,18 @@ export async function GET(request: NextRequest) {
   // La cotidianidad de cada persona: lo que no pesan sus funciones, cumplido
   // con sus imprevistos (INV-39, ADR 0014). Todos la tienen, tambien quien no
   // tiene ninguna funcion: entonces es todo su cargo.
-  for (const e of (empleados ?? []) as { id: string; nombre_bloque: string }[]) {
-    if (!entra(e.id)) continue;
-    const cotidianidad = cotidianidadDe(
-      ((titularidades ?? []) as Record<string, unknown>[])
-        .filter((t) => t.empleado_id === e.id && (t.funcion as { activa: boolean }).activa)
-        .map((t) => ({ funcionId: (t.funcion as { id: string }).id, ponderacion: t.ponderacion as number })),
-    );
-
+  for (const c of cargos.filter(entra)) {
     for (const mes of meses) {
       const base = {
         mes,
-        persona: e.nombre_bloque,
+        persona: c.persona,
         funcion: 'Cotidianidad',
         tipo: 'cotidianidad',
         periodicidad: '',
-        ponderacion: cotidianidad,
-        bono: bonoDelMes(bonosDe(e.id), mes),
+        ponderacion: c.cotidianidad,
+        bono: c.bono,
       };
-      const { filas: hechos, veces } = hechosDeHolgura(imprevistosDe(e.id), tramoDe(mes), hoy);
+      const { filas: hechos, veces } = hechosDeHolgura(imprevistosDe(c.empleadoId), tramoDe(mes), hoy);
       for (const h of hechos) {
         escribir(base, {
           ...h,

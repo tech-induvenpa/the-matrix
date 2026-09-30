@@ -84,6 +84,18 @@ describe('la foto del cierre', () => {
     expect(nominaDeLaFoto(foto)).toBeNull();
   });
 
+  it('guarda como era cada funcion, para rehacer sus filas aunque despues se archive o se edite', () => {
+    const foto = guardadaYLeida(fotoDelCierre({ empresaId: null, bono: 500, partes, funciones: [caja, pagos, conciliacion] }));
+    expect(foto.partes.map((p) => [p.funcionId ?? null, p.periodicidad ?? null, p.diaTope ?? null, p.fechaAlta ?? null])).toEqual([
+      ['caja', 'semanal', null, '2026-01-01'],
+      ['conciliacion', 'diaria', null, '2026-01-01'],
+      ['pagos', 'mensual', null, '2026-01-01'],
+      [null, null, null, null],
+    ]);
+    // Y la nomina que se lee de ella es la misma.
+    expect(nominaDeLaFoto(foto)).toEqual(nominaDe(500, partes));
+  });
+
   it('la foto no se recalcula: lo que dice su descuento es lo que se lee', () => {
     const foto = guardadaYLeida(fotoDelCierre({ empresaId: null, bono: 500, partes }));
     // Si despues cambiara la cuenta, lo pagado sigue siendo lo que dice la foto.
