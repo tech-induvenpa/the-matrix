@@ -42,9 +42,12 @@ otro rol: responde por su gente, no asigna).
 Un empleado que responde por otros: tiene su propio reparto y ademas gente a
 cargo. De ella ve lo que necesita para actuar el mismo dia --sus funciones con
 su estado y su arrastre, sus razones, sus imprevistos y delegaciones-- y le
-pide imprevistos. No ve ponderaciones, tasas, bonos ni montos de nadie: un peso
-es una conversacion de sueldo y esa es del administrador. No reparte, no
-pondera, no traspasa y no toca el bono de nadie.
+pide imprevistos. Ve tambien sus ponderaciones, cotidianidad incluida, y cuanto
+de su cargo esta sin cumplirse en peso (**ponderacion arrastrada**): sin eso no
+sabe cuanto le pesa lo que le pide (decidido el 30/09/2026, ADR 0015; antes no
+veia ningun peso). No ve bonos ni montos de nadie: el dinero es una
+conversacion de sueldo y esa es del administrador. No reparte, no pondera, no
+traspasa y no toca el bono de nadie.
 Cada empleado tiene a lo sumo un supervisor, y quien supervisa no tiene
 supervisor: hay un solo nivel. Lo decide el administrador. Ve a quien tiene a
 cargo hoy, con todo su pasado; cuando se lo cambian, deja de verlo.
@@ -183,7 +186,10 @@ convierte en **devuelto**, con razon obligatoria, y cuenta en contra como un
 dos: el supervisor su ocurrencia y quien la recibio su cotidianidad.
 Solo se delegan ocurrencias que todavia no vencieron, y cada una tiene a lo sumo
 una delegacion abierta; un flujo no se delega. Una delegacion que se
-repite es un traspaso que nadie ha hecho.
+repite es un traspaso que nadie ha hecho. Cuanto se repite se mide como la
+proporcion de las ocurrencias de esa funcion que se delegaron en los ultimos
+noventa dias, nunca en veces: contar veces pondria siempre las diarias arriba,
+igual que en el arrastre. Una sola delegacion no es repetirse.
 _Avoid_: traspaso (ese mueve la funcion), reasignacion, encargo.
 
 ### Los tres ejes
