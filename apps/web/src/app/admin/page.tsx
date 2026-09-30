@@ -1,7 +1,7 @@
-import { Calendario, delFiltro, emojiDe, montoNoCumplido } from '@matriz/dominio';
+import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
+import { claveDeLaTarea, ListaDeTareas } from '../lista';
 import { tareasAbiertasDe } from '@/lib/tareas';
-import { comoVence } from '@/lib/datos';
-import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
+import { bonosDelMes, elCalendario, gente, imprevistosDe } from '@/lib/administrador';
 import { datosDelEquipo, lasDelegaciones } from '@/lib/equipo';
 import { barrasDe, cargasDe, imprevistosQueSeBuscan, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
 import { Carga, DesdeCuando, MasDelegadas, Resumen, SinCumplir } from '../tablero';
@@ -19,21 +19,24 @@ import { Punto } from '../abrir';
 // debajo la lista de personas, que lleva al perfil de cada una. Es la misma
 // pantalla que la del supervisor (equipo/page.tsx); el administrador ve ademas
 // los montos, y da de alta a alguien nuevo.
-export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { vista?: string }> }) {
-  const { vista: pedida, ...parametros } = await searchParams;
+export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { vista?: string; tarea?: string }> }) {
+  const { vista: pedida, tarea, ...parametros } = await searchParams;
   // Dos pestanas: el equipo como tal (las personas y dar de alta), primero, y el
   // tablero. La pestana viaja en la URL: recargar o volver atras no la pierde.
   const vista = pedida === 'tablero' ? 'tablero' : 'equipo';
   const enlaceA = (v: string) => `?${new URLSearchParams({ ...parametros, ...(v === 'tablero' ? { vista: v } : {}) } as Record<string, string>)}`;
-  const [todos, calendario, { opciones, deIds }, { sinLeerDe }, datos, bonos, delegaciones] = await Promise.all([
+  const [todos, calendario, { opciones, deIds }, conPerfil, datos, bonos, delegaciones, { quienesPiden }] = await Promise.all([
     gente(),
     elCalendario(),
     pertenencias(),
-    perfiles(undefined),
+    // El perfil abierto de una tarea (su historia), si hay uno en la URL.
+    perfiles(tarea),
     datosDelEquipo(),
     bonosDelMes(),
     lasDelegaciones(false),
+    imprevistosDe(),
   ]);
+  const { sinLeerDe } = conPerfil;
 
   // El filtro solo acota lo que ya se leyo con la sesion de quien mira (INV-29).
   const filtro = filtroDe(parametros);
@@ -116,7 +119,12 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
-          <details key={e.id} className="acordeon" open={abiertos} style={{ background: 'var(--suave)', borderRadius: 14 }}>
+          <details
+            key={e.id}
+            className="acordeon"
+            // Abierto si se busca por texto, o si su tarea tiene la historia abierta.
+            open={abiertos || (tareas.get(e.id) ?? []).some((t) => claveDeLaTarea(t) === tarea)}
+            style={{ background: 'var(--suave)', borderRadius: 14 }}>
             <summary style={FILA_PERSONA}>
               {/* El rol, primero: responsable (con gente a cargo) o empleado. */}
               <span
@@ -162,18 +170,16 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
                 </svg>
               </Ir>
             </summary>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '0 12px 12px' }}>
-              {(tareas.get(e.id) ?? []).map((t) => (
-                <div key={t.tipo === 'ocurrencia' ? `${t.tarea.funcionId}|${t.tarea.periodo}` : t.tarea.id} style={FILA_TAREA}>
-                  <span aria-hidden>{emojiDe(t.urgencia)}</span>
-                  <span style={{ flexGrow: 1, minWidth: 0 }}>{t.tarea.texto}</span>
-                  <span style={{ fontSize: 12, color: 'var(--gris)', whiteSpace: 'nowrap' }}>
-                    {t.tipo === 'imprevisto' ? 'imprevisto · ' : ''}
-                    {comoVence(t.tarea.vence, calendario.hoy)}
-                  </span>
-                </div>
-              ))}
-              {!tareas.get(e.id)?.length && <p style={{ fontSize: 13.5, color: 'var(--gris)', margin: '4px 4px 0' }}>Nada abierto.</p>}
+            {/* Las mismas tarjetas que en su perfil: el titulo abre su historia. */}
+            <div style={{ padding: '0 12px 12px' }}>
+              <ListaDeTareas
+                lista={tareas.get(e.id) ?? []}
+                hoy={calendario.hoy}
+                calendario={dias}
+                quienesPiden={quienesPiden}
+                perfiles={conPerfil}
+                puedeBorrar={() => true}
+              />
             </div>
           </details>
         ))}
@@ -258,15 +264,6 @@ const FILA_PERSONA = {
   listStyle: 'none',
 } as const;
 
-const FILA_TAREA = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  background: '#fff',
-  borderRadius: 10,
-  padding: '8px 12px',
-  fontSize: 14,
-} as const;
 
 const ICONO = {
   display: 'flex',
