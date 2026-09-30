@@ -129,7 +129,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
         periodicidad: f.periodicidad,
       })),
     )
-    .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
+    .map((o) => ({ ...o, faltan: calendario.habilesHasta(hoy, o.vence) }));
 
   // Lo delegado (ADR 0012). Cuenta la ultima delegacion de cada ocurrencia:
   // mientras espera a su gente o espera su revision, sale de la lista y va a
@@ -244,7 +244,9 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   const aviso = avisoDe({
     sinCobertura: cobertura.estado === 'sin_cobertura',
     noHabilesEnLaVentana: noHabilesDeLaSemana,
-    venceHoyOManana: plan.some((o) => o.faltan <= 1),
+    // En dias corridos desde hoy, no en `faltan`: un sabado, lo del martes no
+    // vence "manana" aunque su urgencia ya cuente desde el lunes.
+    venceHoyOManana: plan.some((o) => calendario.habilesEntre(hoy, o.vence) <= 1),
     diasDelFlujoMasAtrasado,
     hayAtrasoSinConstancia: abiertas.some((o) => o.vence < hoy),
   });
@@ -267,7 +269,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     vencidas: abiertas.filter((o) => o.vence < hoy).length,
     dias: diasDelFlujoMasAtrasado,
     proxima: plan[0]?.texto ?? '',
-    faltan: plan[0]?.faltan ?? 0,
+    venceHoy: (plan[0]?.vence ?? hoy) <= hoy,
     solaEnLaSemana: abiertasDeLaSemana.size === 1,
   });
 
@@ -549,7 +551,7 @@ function Arco({ llenos, emoji }: { llenos: number; emoji: string }) {
 // El banner siempre dice algo; el color se reserva para lo excepcional.
 function textoDelAviso(
   aviso: Aviso,
-  datos: { noHabiles: number; vencidas: number; dias: number; proxima: string; faltan: number; solaEnLaSemana: boolean },
+  datos: { noHabiles: number; vencidas: number; dias: number; proxima: string; venceHoy: boolean; solaEnLaSemana: boolean },
 ): { titulo: string; nota: string } {
   switch (aviso.clave) {
     case 'sin_cobertura':
@@ -567,7 +569,7 @@ function textoDelAviso(
       };
     case 'vence_pronto':
       return {
-        titulo: `${datos.faltan <= 0 ? 'Hoy' : 'Mañana'} vence ${datos.proxima.toLowerCase()}`,
+        titulo: `${datos.venceHoy ? 'Hoy' : 'Mañana'} vence ${datos.proxima.toLowerCase()}`,
         nota: datos.solaEnLaSemana
           ? 'Es lo único de esta semana que todavía no tiene marca.'
           : 'Es lo más próximo que tienes.',

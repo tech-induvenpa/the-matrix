@@ -4,9 +4,11 @@ import { emojiDe, MARGEN } from './urgencia';
 // Un imprevisto es trabajo que se hace una sola vez y no esta en el reparto de
 // nadie (ADR 0009). Quien lo anota elige una urgencia de 0 a 9 y se guarda el
 // vencimiento que le corresponde, no el numero (ADR 0013): el tope de su tramo
-// en dias habiles. Desde ahi sube solo, como cualquier ocurrencia.
+// en dias habiles. Desde ahi sube solo, como cualquier ocurrencia. Se cuenta
+// desde el habil siguiente, como la urgencia (Calendario.habilesHasta): un
+// sabado, 9 vence el lunes y 8 el martes.
 export const vencimientoPorUrgencia = (pedido: Fecha, urgencia: number, calendario: Calendario): Fecha =>
-  calendario.sumarHabiles(pedido, MARGEN[urgencia] ?? MARGEN[0]);
+  calendario.sumarHabiles(calendario.habilSiguiente(pedido), MARGEN[urgencia] ?? MARGEN[0]);
 
 export type OpcionDeUrgencia = { urgencia: number; emoji: string; vence: Fecha };
 

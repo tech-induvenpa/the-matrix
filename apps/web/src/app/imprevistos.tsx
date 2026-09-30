@@ -46,7 +46,7 @@ export function TarjetaDeImprevisto({
   nota?: string;
   perfil?: Perfil;
 }) {
-  const urgencia = urgenciaDe(calendario.habilesEntre(hoy, i.vence));
+  const urgencia = urgenciaDe(calendario.habilesHasta(hoy, i.vence));
   const retraso = retrasoDe(i.vence, hoy, calendario);
   const pedido = cuandoSePidio(i.pedido_en, hoy);
 

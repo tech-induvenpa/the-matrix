@@ -62,7 +62,7 @@ export async function tareasAbiertasDe(empleadoId: string, hoy: string, calendar
   );
 
   const ocurrencias = unaPorFuncion(abiertas).map((o): OcurrenciaAbierta => {
-    const faltan = calendario.habilesEntre(hoy, o.vence);
+    const faltan = calendario.habilesHasta(hoy, o.vence);
     const urgencia = urgenciaDe(faltan);
     return {
       ...o,

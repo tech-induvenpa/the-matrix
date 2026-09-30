@@ -68,7 +68,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
         periodicidad: f.periodicidad,
       })),
     )
-    .map((o) => ({ ...o, faltan: calendario.habilesEntre(hoy, o.vence) }));
+    .map((o) => ({ ...o, faltan: calendario.habilesHasta(hoy, o.vence) }));
 
   const abiertas = new Set(pendientes(ocurrencias, cerradas).map((o) => `${o.funcionId}|${o.periodo}`));
   const yaResueltas = ocurrencias.filter((o) => !abiertas.has(`${o.funcionId}|${o.periodo}`));
