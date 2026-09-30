@@ -4,7 +4,7 @@ import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/
 import { Filtrar } from '../filtro';
 import { esAdministrador } from '@/lib/administrador';
 import { loDeMiGente, type PersonaACargo } from '@/lib/supervisor';
-import { barrasDe, cargasDe, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
+import { barrasDe, cargasDe, imprevistosQueSeBuscan, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
 import { lasDelegaciones } from '@/lib/equipo';
 import { DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
@@ -34,7 +34,7 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   const filtro = filtroDe(parametros);
   const gente = todos
     .map((p) => ({ ...p, ...deIds(p.empresaId, p.sedeId) }))
-    .filter((p) => delFiltro(p, p.funciones, (f) => f.texto, filtro) !== null);
+    .filter((p) => delFiltro(p, [...p.funciones.map((f) => f.texto), ...imprevistosQueSeBuscan(datos, p.id, hoy)], (t) => t, filtro) !== null);
   const quienes = new Set(gente.map((p) => p.id));
   const barras = barrasDe(datos, hoy, calendario).filter((b) => quienes.has(b.persona.id));
   const lineas = lineasDelArrastre(datos, hoy, calendario).filter((l) => quienes.has(l.persona.id));

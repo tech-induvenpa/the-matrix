@@ -1,7 +1,7 @@
 import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
 import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
 import { datosDelEquipo, lasDelegaciones } from '@/lib/equipo';
-import { barrasDe, cargasDe, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
+import { barrasDe, cargasDe, imprevistosQueSeBuscan, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
 import { Carga, DesdeCuando, MasDelegadas, Resumen, SinCumplir } from '../tablero';
 import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../filtro';
@@ -37,7 +37,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   const filtro = filtroDe(parametros);
   const equipo = todos
     .map((e) => ({ ...e, ...deIds(e.empresaId, e.sedeId) }))
-    .filter((e) => delFiltro(e, e.funciones, (f) => f, filtro) !== null);
+    .filter((e) => delFiltro(e, [...e.funciones, ...imprevistosQueSeBuscan(datos, e.id, calendario.hoy)], (f) => f, filtro) !== null);
   // El filtro acota tambien las graficas: las mismas personas que la lista.
   const quienes = new Set(equipo.map((e) => e.id));
   const dias = Calendario.con(calendario.dias);
