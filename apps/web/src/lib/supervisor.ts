@@ -3,9 +3,9 @@ import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { hoyISO, type FilaImprevisto, type QuienPide } from '@/lib/datos';
 
 // Lo que un supervisor ve de su gente (CEB-145): lo necesario para actuar el
-// mismo dia, y nada de sueldo. Llega por una sola funcion de la base que no
-// devuelve pesos, tasas ni bonos (INV-3): el supervisor no tiene politica
-// sobre las tablas donde vive la ponderacion.
+// mismo dia. Llega por una sola funcion de la base, que le devuelve pesos y
+// nunca un monto (ADR 0015, INV-40): el supervisor no tiene politica sobre las
+// tablas donde vive la ponderacion.
 
 type FuncionDeSuGente = {
   id: string;
@@ -17,6 +17,7 @@ type FuncionDeSuGente = {
   dia_tope: number | null;
   fecha_alta: string;
   desde: string;
+  ponderacion: number;
 };
 
 type MarcaDeSuGente = { funcion_id: string; periodo: string; resultado: string; razon: string | null; marcada_en: string };
@@ -33,11 +34,16 @@ export type ComoVaUnaFuncion = {
 
 export type Razon = { en: string; funcion: string; quePaso: string; razon: string };
 
+// Una fila de su reparto: el peso de cada funcion en su cargo (ADR 0015).
+export type PesoDeUnaFuncion = { id: string; texto: string; tipo: string | null; periodicidad: string; ponderacion: number };
+
 export type PersonaACargo = {
   id: string;
   nombre: string;
   empresaId: string | null;
   sedeId: string | null;
+  cotidianidad: number;
+  reparto: PesoDeUnaFuncion[];
   funciones: ComoVaUnaFuncion[];
   razones: Razon[];
   imprevistos: FilaImprevisto[];
@@ -56,7 +62,7 @@ export async function loDeMiGente() {
 
   const calendario = Calendario.con(dias ?? []);
   const todo = (data ?? {}) as {
-    gente?: { id: string; nombre: string; empresa: string | null; sede: string | null }[];
+    gente?: { id: string; nombre: string; empresa: string | null; sede: string | null; cotidianidad: number }[];
     funciones?: FuncionDeSuGente[];
     marcas?: MarcaDeSuGente[];
     eventos?: EventoDeSuGente[];
@@ -120,6 +126,11 @@ export async function loDeMiGente() {
       nombre: p.nombre,
       empresaId: p.empresa,
       sedeId: p.sede,
+      cotidianidad: p.cotidianidad,
+      reparto: funciones
+        .filter((f) => f.empleado_id === p.id)
+        .map((f) => ({ id: f.id, texto: f.texto, tipo: f.tipo, periodicidad: f.periodicidad, ponderacion: f.ponderacion }))
+        .sort((a, b) => b.ponderacion - a.ponderacion || a.texto.localeCompare(b.texto)),
       funciones: comoVan,
       razones,
       imprevistos: (todo.imprevistos ?? []).filter((i) => i.empleado_id === p.id),

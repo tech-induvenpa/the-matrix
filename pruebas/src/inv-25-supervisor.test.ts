@@ -95,7 +95,7 @@ describe('INV-28: solo el administrador decide quien supervisa a quien, en un so
 describe('INV-2: la supervisora ve a su gente de hoy, y a nadie mas', () => {
   it('obtiene lo de benito y nada de carla', async () => {
     const { data } = await sesionAna.rpc('lo_de_mi_gente');
-    expect(data.gente).toEqual([{ id: benito, nombre: 'BENITO', empresa: null, sede: null }]);
+    expect(data.gente).toEqual([{ id: benito, nombre: 'BENITO', empresa: null, sede: null, cotidianidad: 63 }]);
     expect(data.funciones.map((f: { id: string }) => f.id)).toEqual([deBenito]);
     expect(data.marcas.map((m: { razon: string }) => m.razon)).toEqual(['sin sistema']);
   });
@@ -111,17 +111,26 @@ describe('INV-2: la supervisora ve a su gente de hoy, y a nadie mas', () => {
     await jefa.rpc('asignar_supervisor', { el_empleado: benito, el_supervisor: null });
     expect((await sesionAna.rpc('lo_de_mi_gente')).data.gente).toEqual([]);
     await jefa.rpc('asignar_supervisor', { el_empleado: benito, el_supervisor: ana });
-    expect((await sesionAna.rpc('lo_de_mi_gente')).data.gente).toEqual([{ id: benito, nombre: 'BENITO', empresa: null, sede: null }]);
+    expect((await sesionAna.rpc('lo_de_mi_gente')).data.gente).toEqual([{ id: benito, nombre: 'BENITO', empresa: null, sede: null, cotidianidad: 63 }]);
   });
 });
 
-describe('INV-3 e INV-1: ni pesos ni bonos de su gente', () => {
-  it('lo que obtiene de su gente no trae ponderacion, cumplimiento ni montos', async () => {
+// El supervisor ve pesos, no montos (ADR 0015): la parte del supervisor de
+// INV-3 paso a ser INV-40.
+describe('INV-40 e INV-1: los pesos de su gente, nunca un monto', () => {
+  it('obtiene la ponderacion de cada funcion de benito y su cotidianidad', async () => {
     const { data } = await sesionAna.rpc('lo_de_mi_gente');
-    expect(claves(data).filter((k) => /ponder|cumpl|bono|monto|peso|desplaz|arrastr/i.test(k))).toEqual([]);
+    expect(data.funciones.map((f: { id: string; ponderacion: number }) => [f.id, f.ponderacion])).toEqual([[deBenito, 37]]);
+    expect(data.gente.map((p: { cotidianidad: number }) => p.cotidianidad)).toEqual([63]);
   });
 
-  it('por las tablas tampoco: ni titularidades ni bonos de benito', async () => {
+  it('lo que obtiene de su gente no trae bono, monto ni dolares', async () => {
+    const { data } = await sesionAna.rpc('lo_de_mi_gente');
+    expect(claves(data).filter((k) => /bono|monto|dolar/i.test(k))).toEqual([]);
+    expect(JSON.stringify(data)).not.toContain('777');
+  });
+
+  it('por las tablas sigue sin nada: ni titularidades ni bonos de benito', async () => {
     expect((await sesionAna.from('titularidad').select('ponderacion').eq('empleado_id', benito)).data).toEqual([]);
     const { data } = await sesionAna.from('bono').select('empleado_id, monto');
     expect(data).toEqual([{ empleado_id: ana, monto: 1000 }]);
