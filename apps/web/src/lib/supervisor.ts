@@ -1,7 +1,8 @@
 import { Calendario } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { hoyISO, type FilaImprevisto, type QuienPide } from '@/lib/datos';
-import { comoVanSusFunciones, type ComoVaUnaFuncion, type DatosDelEquipo } from '@/lib/equipo';
+import type { DatosDelEquipo } from '@/lib/equipo';
+import { comoVanSusFunciones, type ComoVaUnaFuncion } from '@/lib/tablero';
 
 // Lo que un supervisor ve de su gente (CEB-145): lo necesario para actuar el
 // mismo dia. Llega por una sola funcion de la base, que le devuelve pesos y

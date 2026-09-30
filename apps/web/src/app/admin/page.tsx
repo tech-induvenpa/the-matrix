@@ -1,5 +1,8 @@
-import { delFiltro } from '@matriz/dominio';
-import { elCalendario, gente } from '@/lib/administrador';
+import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
+import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
+import { datosDelEquipo } from '@/lib/equipo';
+import { barrasDe } from '@/lib/tablero';
+import { Patrones, SinCumplir } from '../tablero';
 import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../filtro';
 import { darDeAlta } from './acciones';
@@ -10,15 +13,19 @@ import { Ir } from '../ir';
 import { perfiles } from '../perfil';
 import { Punto } from '../abrir';
 
-// El trazador del backoffice: quien asigna entra y ve a su gente. Nada mas.
-// Lo que decide esta pantalla no es lo que muestra, es quien puede verla.
+// El equipo (CEB-215): un tablero que lee como esta la gente ahora mismo, y
+// debajo la lista de personas, que lleva al perfil de cada una. Es la misma
+// pantalla que la del supervisor (equipo/page.tsx); el administrador ve ademas
+// los montos, y da de alta a alguien nuevo.
 export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
   const parametros = await searchParams;
-  const [todos, calendario, { opciones, deIds }, { sinLeerDe }] = await Promise.all([
+  const [todos, calendario, { opciones, deIds }, { sinLeerDe }, datos, bonos] = await Promise.all([
     gente(),
     elCalendario(),
     pertenencias(),
     perfiles(undefined),
+    datosDelEquipo(),
+    bonosDelMes(),
   ]);
 
   // El filtro solo acota lo que ya se leyo con la sesion de quien mira (INV-29).
@@ -26,9 +33,15 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   const equipo = todos
     .map((e) => ({ ...e, ...deIds(e.empresaId, e.sedeId) }))
     .filter((e) => delFiltro(e, e.funciones, (f) => f, filtro) !== null);
+  // El filtro acota tambien las graficas: las mismas personas que la lista.
+  const quienes = new Set(equipo.map((e) => e.id));
+  const barras = barrasDe(datos, calendario.hoy, Calendario.con(calendario.dias)).filter((b) => quienes.has(b.persona.id));
+  // Un porcentaje del cargo, en dolares del bono de este mes. Sin bono, nada.
+  const montoDe = (id: string, peso: number) => (bonos.has(id) ? montoNoCumplido(peso, bonos.get(id)!) : null);
 
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Patrones />
       <header>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
@@ -40,6 +53,10 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
 
       <AvisoDeCobertura cobertura={calendario.cobertura} cargadoHasta={calendario.cargadoHasta} enlazar />
 
+      <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
+
+      <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
           <Ir
@@ -48,7 +65,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 14,
+              flexWrap: 'wrap',
+              gap: '4px 14px',
               background: 'var(--suave)',
               borderRadius: 14,
               padding: '12px 16px',
@@ -75,8 +93,10 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
           </p>
         )}
       </div>
-      <section style={{ borderTop: '1px solid rgba(26,23,19,0.10)', paddingTop: 18 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Alguien nuevo</h2>
+      {/* Plegado al final: dar de alta es lo raro. */}
+      <details className="nuevo-item">
+        <summary>＋ Alguien nuevo</summary>
+        <div style={{ paddingTop: 14 }}>
         <Accion accion={darDeAlta}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--gris)' }}>
@@ -108,7 +128,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         <p style={{ fontSize: 12, color: 'var(--gris)', margin: '10px 0 0' }}>
           Entra con un enlace a su correo, sin contraseña. Hasta que tenga funciones, verá su pantalla vacía.
         </p>
-      </section>
+        </div>
+      </details>
 
     </main>
   );

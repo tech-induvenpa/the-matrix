@@ -1,4 +1,4 @@
-import { arrastreDe, estadosVigentes, ocurrenciasEntre, type Arrastre, type Calendario, type Periodicidad } from '@matriz/dominio';
+import type { Periodicidad } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { COLUMNAS_DE_IMPREVISTO, sumarDias, type FilaImprevisto } from '@/lib/datos';
 
@@ -112,51 +112,4 @@ export async function datosDelEquipo(soloDe?: string): Promise<DatosDelEquipo> {
       evento_flujo_id: (x.evento_flujo_id as string | null) ?? null,
     })),
   };
-}
-
-export type ComoVaUnaFuncion = {
-  id: string;
-  texto: string;
-  periodicidad: string;
-  tipo: string | null;
-  ponderacion: number;
-  // Un entregable arrastra; un flujo esta al dia o atrasado desde una fecha,
-  // con su razon vigente. Un area no se mide: ninguna de las dos.
-  arrastre: Arrastre | null;
-  atraso: { desde: string; razon: string | null } | null;
-};
-
-// Como va cada funcion de una persona, ahora mismo.
-export function comoVanSusFunciones(datos: DatosDelEquipo, empleadoId: string, hoy: string, calendario: Calendario): ComoVaUnaFuncion[] {
-  const vigentes = new Map(
-    estadosVigentes(
-      datos.eventos.map((e) => ({ funcionId: e.funcion_id, estado: e.estado, razon: e.razon ?? undefined, en: e.en })),
-    ).map((e) => [e.funcionId, e]),
-  );
-
-  return datos.funciones
-    .filter((f) => f.empleado_id === empleadoId)
-    .map((f): ComoVaUnaFuncion => {
-      const base = { id: f.id, texto: f.texto, periodicidad: f.periodicidad, tipo: f.tipo, ponderacion: f.ponderacion, arrastre: null, atraso: null };
-      if (f.tipo === 'flujo') {
-        const v = vigentes.get(f.id);
-        // El atraso empieza con el primer "atrasado" despues del ultimo "al dia";
-        // la razon es la del ultimo que se declaro.
-        if (v?.estado !== 'atrasado') return base;
-        const ultimoAlDia = datos.eventos.filter((e) => e.funcion_id === f.id && e.estado === 'al_dia').at(-1)?.en ?? '';
-        const primero = datos.eventos.find((e) => e.funcion_id === f.id && e.estado === 'atrasado' && e.en > ultimoAlDia);
-        return { ...base, atraso: { desde: (primero ?? v).en.slice(0, 10), razon: v.razon ?? null } };
-      }
-      if (f.tipo !== 'entregable') return base;
-      // El arrastre de quien la tiene hoy empieza cuando empezo a tenerla. Solo
-      // "hecho" cumple: un "no pude" no corta el arrastre.
-      const ocurrencias = ocurrenciasEntre(
-        { periodicidad: f.periodicidad, diaTope: f.dia_tope ?? undefined, fechaAlta: f.fecha_alta },
-        calendario,
-        f.desde,
-        hoy,
-      );
-      const cerradas = datos.marcas.filter((m) => m.funcion_id === f.id && m.resultado === 'hecho');
-      return { ...base, arrastre: arrastreDe(ocurrencias, cerradas, hoy) };
-    });
 }

@@ -1,5 +1,5 @@
 import { fechaCorta } from '@/lib/datos';
-import type { ComoVaUnaFuncion } from '@/lib/equipo';
+import type { ComoVaUnaFuncion } from '@/lib/tablero';
 
 // Como va una funcion, dicho en su fila del reparto (CEB-219): igual en el
 // perfil del administrador y en la pagina del supervisor. El arrastre en

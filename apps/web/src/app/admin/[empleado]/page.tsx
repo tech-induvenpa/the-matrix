@@ -14,7 +14,8 @@ import { Propuesta } from './propuesta';
 import { Cuenta } from './cuenta';
 import { Ir } from '../../ir';
 import { Confirmar } from '../../confirmar';
-import { comoVanSusFunciones, datosDelEquipo } from '@/lib/equipo';
+import { datosDelEquipo } from '@/lib/equipo';
+import { comoVanSusFunciones } from '@/lib/tablero';
 import { ComoVa } from '../../como-va';
 import { CerradasDelMes } from '../../cerradas';
 

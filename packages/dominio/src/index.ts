@@ -61,3 +61,5 @@ export { proponerReparto } from './propuesta-de-reparto';
 export type { CambioDeReparto, PropuestaDeReparto } from './propuesta-de-reparto';
 export { cerradasDelMes } from './cerradas';
 export type { Cerrada } from './cerradas';
+export { barrasDelEquipo, periodosDesplazados } from './barras';
+export type { Barra, FuncionDeLaBarra, Segmento } from './barras';

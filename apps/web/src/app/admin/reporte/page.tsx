@@ -1,4 +1,5 @@
-import { bonosDelMes, delegacionesDelMes, imprevistosDelEquipo, reporte } from '@/lib/reporte';
+import { delegacionesDelMes, imprevistosDelEquipo, reporte } from '@/lib/reporte';
+import { bonosDelMes } from '@/lib/administrador';
 import { delFiltro, montoNoCumplido } from '@matriz/dominio';
 import { filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../../filtro';
