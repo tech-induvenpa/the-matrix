@@ -41,6 +41,9 @@ const CABECERA = [
   'PESO NO CUMPLIDO', // M
   'BONO', // N: el del mes de la fila, no el de hoy (ADR 0010)
   'MONTO NO CUMPLIDO', // O
+  // Al final, para no descuadrar la hoja de quien ya la usa (CEB-218): el texto
+  // tal cual de un "no pude", un "no lo tome", una devolucion o un atraso.
+  'RAZON', // P
 ];
 
 const RESULTADO: Record<string, string> = {
@@ -58,7 +61,7 @@ const finDe = (mes: string) =>
 // coma no aparece hoy, pero basta con que alguien lo escriba una vez.
 const escapar = (v: string | number) => {
   const s = String(v);
-  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[";\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
 export async function GET(request: NextRequest) {
@@ -95,11 +98,11 @@ export async function GET(request: NextRequest) {
         )
         .is('hasta', null)
         .not('publicado_en', 'is', null),
-      supabase.from('marca').select('funcion_id, periodo, resultado'),
-      supabase.from('evento_flujo').select('funcion_id, estado, en').order('en'),
+      supabase.from('marca').select('funcion_id, periodo, resultado, razon'),
+      supabase.from('evento_flujo').select('funcion_id, estado, razon, en').order('en'),
       supabase
         .from('imprevisto')
-        .select('empleado_id, texto, vence, resultado, borrado_en, devuelto_en, delega_funcion, pedido_por, pedido_por_otro')
+        .select('empleado_id, texto, vence, resultado, razon, borrado_en, devuelto_en, devuelto_razon, delega_funcion, pedido_por, pedido_por_otro')
         .gte('vence', desde),
       supabase.from('bono').select('empleado_id, monto, rige_desde'),
       supabase.rpc('quienes_piden'),
@@ -109,11 +112,13 @@ export async function GET(request: NextRequest) {
   const calendario = Calendario.con(dias ?? []);
   const bonosDe = (empleadoId: string) => comoCambios((bonos ?? []).filter((b) => b.empleado_id === empleadoId));
   const marcasDe = (funcionId: string) =>
-    (marcas ?? []).filter((m) => m.funcion_id === funcionId).map((m) => ({ periodo: m.periodo as string, resultado: m.resultado as string }));
+    (marcas ?? [])
+      .filter((m) => m.funcion_id === funcionId)
+      .map((m) => ({ periodo: m.periodo as string, resultado: m.resultado as string, razon: m.razon as string | null }));
   const eventosDe = (funcionId: string) =>
     (eventos ?? [])
       .filter((e) => e.funcion_id === funcionId)
-      .map((e) => ({ estado: e.estado as 'al_dia' | 'atrasado', en: e.en as string }));
+      .map((e) => ({ estado: e.estado as 'al_dia' | 'atrasado', en: e.en as string, razon: e.razon as string | null }));
   const imprevistosDe = (empleadoId: string) =>
     (imprevistos ?? [])
       .filter((i) => i.empleado_id === empleadoId)
@@ -123,6 +128,8 @@ export async function GET(request: NextRequest) {
           ? `${i.texto} (delegado por ${quienPidio(i as { pedido_por: string | null; pedido_por_otro: string | null }, (quienes ?? []) as QuienPide[])})`
           : (i.texto as string),
         devueltoEn: i.devuelto_en as string | null,
+        devueltoRazon: i.devuelto_razon as string | null,
+        razon: i.razon as string | null,
         vence: i.vence as string,
         resultado: i.resultado as Resultado | null,
         borradoEn: i.borrado_en as string | null,
@@ -145,6 +152,7 @@ export async function GET(request: NextRequest) {
       dias: number | '';
       veces: number;
       peso: (n: number) => string | number;
+      razon: string;
     },
   ) => {
     const n = filas.length + 2; // la fila 1 es la cabecera
@@ -165,6 +173,7 @@ export async function GET(request: NextRequest) {
         celdas.peso(n),
         base.bono ?? '',
         base.bono === null ? '' : `=M${n}*N${n}/100`,
+        celdas.razon,
       ]
         .map(escapar)
         .join(';'),
@@ -230,6 +239,7 @@ export async function GET(request: NextRequest) {
             dias: a.dias,
             veces,
             peso: (n) => `=K${n}/L${n}*J${n}`,
+            razon: a.razon ?? '',
           });
         }
       }

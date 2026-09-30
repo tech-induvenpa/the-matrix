@@ -122,3 +122,65 @@ describe('los hechos de un entregable', () => {
     ]);
   });
 });
+
+// La columna RAZON (CEB-218): el texto tal cual, para analizarlo fuera del
+// sistema. Vacia donde no hubo razon que dar.
+describe('la razon de cada fila', () => {
+  it('un "no pude" lleva su razon; lo hecho y lo vencido sin marcar van vacios', () => {
+    const hechos = hechosDeEntregable(
+      [
+        { periodo: '2026-09-07', vence: '2026-09-11' },
+        { periodo: '2026-09-14', vence: '2026-09-18' },
+        { periodo: '2026-09-21', vence: '2026-09-25' },
+      ],
+      [
+        { periodo: '2026-09-07', resultado: 'hecho', razon: null },
+        { periodo: '2026-09-14', resultado: 'no_pude', razon: 'sin sistema; volvio el lunes' },
+      ],
+    );
+    expect(hechos.map((h) => h.razon)).toEqual(['', 'sin sistema; volvio el lunes', '']);
+  });
+
+  it('en un imprevisto: "no pude", "no lo tome" y la razon de la devolucion', () => {
+    const { filas } = hechosDeHolgura(
+      [
+        { texto: 'Informe', vence: '2026-09-10', resultado: 'hecho', razon: null, borradoEn: null },
+        { texto: 'Factura', vence: '2026-09-11', resultado: 'no_pude', razon: 'no llego\nel proveedor', borradoEn: null },
+        { texto: 'Auditor', vence: '2026-09-12', resultado: 'no_lo_tome', razon: 'no es mio', borradoEn: null },
+        { texto: 'Cierre', vence: '2026-09-13', resultado: 'hecho', razon: null, borradoEn: null, devueltoEn: '2026-09-13T15:00:00Z', devueltoRazon: 'faltan los anexos' },
+        { texto: 'Olvidado', vence: '2026-09-14', resultado: null, razon: null, borradoEn: null },
+      ],
+      SEPTIEMBRE,
+      '2026-09-29',
+    );
+    expect(filas.map((f) => [f.que, f.razon])).toEqual([
+      ['Informe', ''],
+      ['Factura', 'no llego\nel proveedor'],
+      ['Auditor', 'no es mio'],
+      ['Cierre', 'faltan los anexos'],
+      ['Olvidado', ''],
+    ]);
+  });
+
+  it('un imprevisto borrado sigue sin salir, aunque tenga razon', () => {
+    const { filas } = hechosDeHolgura(
+      [{ texto: 'Error', vence: '2026-09-10', resultado: 'no_pude', razon: 'me equivoque', borradoEn: '2026-09-10T10:00:00Z' }],
+      SEPTIEMBRE,
+      '2026-09-29',
+    );
+    expect(filas).toEqual([]);
+  });
+
+  it('un atraso de flujo lleva la razon vigente de su episodio', () => {
+    const eventos = [
+      { estado: 'atrasado' as const, en: '2026-09-10T10:00:00Z', razon: 'cola de facturas' },
+      { estado: 'atrasado' as const, en: '2026-09-11T10:00:00Z', razon: 'sigue la cola; y falta gente' },
+      { estado: 'al_dia' as const, en: '2026-09-14T10:00:00Z' },
+      { estado: 'atrasado' as const, en: '2026-09-21T10:00:00Z', razon: 'cierre del mes' },
+    ];
+    expect(atrasosDelFlujo(eventos, SEPTIEMBRE, calendario).map((a) => a.razon)).toEqual([
+      'sigue la cola; y falta gente',
+      'cierre del mes',
+    ]);
+  });
+});
