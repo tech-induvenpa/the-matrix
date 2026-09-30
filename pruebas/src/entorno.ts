@@ -105,17 +105,19 @@ export async function comoAdministrador(correo: string): Promise<SupabaseClient>
   return cliente;
 }
 
-// Cada prueba monta su escenario desde cero: nada de datos heredados.
+// Cada prueba monta su escenario desde cero: nada de datos heredados. El reloj
+// no se vacia: vuelve al de las pruebas.
 export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
-  for (const tabla of ['reloj', 'reapertura', 'bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
-    const columna = tabla === 'administrador' ? 'auth_user_id' : tabla === 'reloj' ? 'unico' : 'id';
+  for (const tabla of ['reapertura', 'bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
+    const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
     // Tragarse este error costo una tarde: una restriccion nueva bloqueaba el
     // borrado, las tablas quedaban con datos de la corrida anterior, y el fallo
     // aparecia lejos, como una clave duplicada.
     const { error } = await servicio.from(tabla).delete().not(columna, 'is', null);
     if (error) throw new Error(`No se pudo vaciar ${tabla}: ${error.message}`);
   }
+  await fijarReloj(RELOJ_DE_LAS_PRUEBAS);
 }
 
 // Una funcion y su vinculo con el titular, que desde CEB-130 son dos filas.
@@ -176,7 +178,7 @@ export async function sede(empresaId: string, nombre: string): Promise<string> {
 // sus reaperturas -- pregunta a ahora(), que es este instante si hay uno y
 // now() si no. Asi se prueba el minuto antes y el minuto despues del cierre
 // sin esperar a fin de mes, con la base real. Solo lo mueve la llave de
-// servicio; vaciar() lo devuelve a now(). Con null, tambien.
+// servicio; vaciar() lo devuelve al de las pruebas, y null a now().
 export async function fijarReloj(instante: string | null): Promise<void> {
   const servicio = comoServicio();
   const { error } = instante
@@ -184,6 +186,16 @@ export async function fijarReloj(instante: string | null): Promise<void> {
     : await servicio.from('reloj').delete().eq('unico', true);
   if (error) throw error;
 }
+
+// Las pruebas corren con el reloj de la base a mitad del mes en curso: el 15,
+// al mediodia de Caracas (ADR 0017). Con la fecha real, lo que marca "este
+// mes" fallaria cada fin de mes que cae en fin de semana o feriado, entre el
+// cierre del ultimo habil y el fin del mes calendario. Lo fija reloj.ts antes
+// de cada archivo y lo deja vacio al terminar; las del cierre (INV-43, INV-44)
+// fijan el suyo.
+export const RELOJ_DE_LAS_PRUEBAS = new Date(
+  `${new Date(Date.now() - 4 * 3600_000).toISOString().slice(0, 7)}-15T12:00:00-04:00`,
+).toISOString();
 
 // Las descargas son CSV con punto y coma, como las lee Excel en español. Esto
 // las lee como una hoja: respeta las comillas (un punto y coma dentro de un

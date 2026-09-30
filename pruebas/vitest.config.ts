@@ -10,5 +10,7 @@ export default defineConfig({
     hookTimeout: 120_000,
     // Comparten una sola base: en paralelo se pisarian los datos.
     fileParallelism: false,
+    // El reloj de la base, fijo a mitad de mes en todas (ADR 0017).
+    setupFiles: ['./src/reloj.ts'],
   },
 });

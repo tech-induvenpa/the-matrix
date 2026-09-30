@@ -26,6 +26,15 @@ export async function lasReaperturas(): Promise<(Reapertura & { id: string })[]>
   }));
 }
 
+// El instante con que la base decide el cierre (0032): su ahora(), que en
+// produccion es now() y en las pruebas es su reloj. Asi la pantalla nunca da
+// por cerrado un mes que la base todavia deja marcar, ni al reves.
+export async function ahoraEnLaBase(): Promise<string> {
+  const supabase = await clienteDelServidor();
+  const { data } = await supabase.rpc('ahora');
+  return new Date((data as string | null) ?? Date.now()).toISOString();
+}
+
 export type MesDelCierre = { valor: string; texto: string; estado: EstadoDelMes; hasta: string | null };
 
 // Un instante como se lee en Caracas: "3 oct, 10:00". Lo formatea el servidor,
@@ -38,9 +47,13 @@ export const enCaracas = (instante: string) =>
 // Los ultimos doce meses, del mas reciente al mas viejo, con su estado.
 export async function losMeses(): Promise<MesDelCierre[]> {
   const supabase = await clienteDelServidor();
-  const [{ data: dias }, reaperturas] = await Promise.all([supabase.from('dia_no_habil').select('desde, hasta'), lasReaperturas()]);
+  const [{ data: dias }, reaperturas, instante] = await Promise.all([
+    supabase.from('dia_no_habil').select('desde, hasta'),
+    lasReaperturas(),
+    ahoraEnLaBase(),
+  ]);
   const calendario = Calendario.con(dias ?? []);
-  const ahora = new Date();
+  const ahora = new Date(instante);
 
   return Array.from({ length: 12 }, (_, i) => {
     const d = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth() - i, 1));
