@@ -137,4 +137,44 @@ describe('INV-33: un feriado nuevo corre solo al imprevisto abierto', () => {
     expect(ahora.get(despues)!.vence).toBe(D3);
     for (const [id, i] of previo) expect(ahora.get(id)!.pedido_en).toBe(i.pedido_en);
   });
+
+  // QA de CEB-196: los dos criterios que la prueba de arriba no cubria.
+  it('uno ya vencido no se mueve, y un tramo de varios dias corre al habil siguiente a su fin', async () => {
+    await vaciar();
+    ana = await sembrarEmpleado('ANA', 'ana@prueba.test');
+    await comoEmpleado('ana@prueba.test');
+    const { data: yo } = await comoServicio().from('empleado').select('auth_user_id').eq('id', ana).single();
+
+    const antes = await calendarioDeLaBase();
+    // Vencido: pedido hace veinte dias, vencia hace una semana habil.
+    const vencio = antes.habilAnterior(new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10));
+    // El tramo: dos habiles seguidos, E y E+1, lejos de hoy.
+    const E = vencimientoPorUrgencia(hoy(), 3, antes);
+    const E1 = antes.sumarHabiles(E, 1);
+
+    const sembrar = async (texto: string, vence: string, pedido_en = new Date().toISOString()) => {
+      const { data, error } = await comoServicio()
+        .from('imprevisto')
+        .insert({ empleado_id: ana, texto, vence, pedido_en, pedido_por_otro: 'Un cliente', registrado_por: yo!.auth_user_id })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return data.id as string;
+    };
+    const vencido = await sembrar('Ya vencido', vencio, new Date(Date.now() - 20 * 864e5).toISOString());
+    const enE = await sembrar('Vence en E', E);
+    const enE1 = await sembrar('Vence en E+1', E1);
+
+    const jefa = await comoAdministrador('jefa@prueba.test');
+    expect((await jefa.from('dia_no_habil').insert({ desde: vencio, hasta: vencio, descripcion: MARCA })).error).toBeNull();
+    expect((await jefa.from('dia_no_habil').insert({ desde: E, hasta: E1, descripcion: MARCA })).error).toBeNull();
+
+    const despues = await calendarioDeLaBase();
+    const { data } = await comoServicio().from('imprevisto').select('id, vence');
+    const vence = new Map((data ?? []).map((i) => [i.id as string, i.vence as string]));
+    expect(vence.get(vencido)).toBe(vencio);
+    expect(vence.get(enE)).toBe(despues.habilSiguiente(E1));
+    expect(vence.get(enE1)).toBe(despues.habilSiguiente(E1));
+    expect(despues.esHabil(vence.get(enE)!)).toBe(true);
+  });
 });
