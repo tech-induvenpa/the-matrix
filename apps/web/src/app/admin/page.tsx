@@ -19,10 +19,10 @@ import { Punto } from '../abrir';
 // los montos, y da de alta a alguien nuevo.
 export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { vista?: string }> }) {
   const { vista: pedida, ...parametros } = await searchParams;
-  // Dos pestanas: el tablero, y el equipo como tal (las personas y dar de alta).
-  // La pestana viaja en la URL: recargar o volver atras no la pierde.
-  const vista = pedida === 'equipo' ? 'equipo' : 'tablero';
-  const enlaceA = (v: string) => `?${new URLSearchParams({ ...parametros, ...(v === 'equipo' ? { vista: v } : {}) } as Record<string, string>)}`;
+  // Dos pestanas: el equipo como tal (las personas y dar de alta), primero, y el
+  // tablero. La pestana viaja en la URL: recargar o volver atras no la pierde.
+  const vista = pedida === 'tablero' ? 'tablero' : 'equipo';
+  const enlaceA = (v: string) => `?${new URLSearchParams({ ...parametros, ...(v === 'tablero' ? { vista: v } : {}) } as Record<string, string>)}`;
   const [todos, calendario, { opciones, deIds }, { sinLeerDe }, datos, bonos, delegaciones] = await Promise.all([
     gente(),
     elCalendario(),
@@ -61,8 +61,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
 
       <nav aria-label="Vistas del equipo" style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(26,23,19,0.10)' }}>
         {[
-          ['tablero', 'Tablero'],
           ['equipo', 'Personas'],
+          ['tablero', 'Tablero'],
         ].map(([v, texto]) => (
           <Ir
             key={v}
@@ -82,7 +82,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         ))}
       </nav>
 
-      <Filtrar opciones={opciones} valores={parametros} conservar={{ vista: vista === 'equipo' ? 'equipo' : undefined }} />
+      <Filtrar opciones={opciones} valores={parametros} conservar={{ vista: vista === 'tablero' ? 'tablero' : undefined }} />
 
       <AvisoDeCobertura cobertura={calendario.cobertura} cargadoHasta={calendario.cargadoHasta} enlazar />
 
