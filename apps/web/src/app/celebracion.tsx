@@ -1,13 +1,57 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+// Cerrar la meta se recuerda por semana, en este navegador: el banner no
+// vuelve a bajar y la racha se va con el. La semana que viene se celebra otra
+// vez. Sin almacenamiento (ventana privada), se recuerda solo mientras dure la
+// pagina.
+const META = 'matriz:meta:';
+const AL_CERRAR = 'matriz:meta-cerrada';
+
+const yaSeCerro = (semana: string) => {
+  try {
+    return localStorage.getItem(META + semana) !== null;
+  } catch {
+    return false;
+  }
+};
+
+function useMetaCerrada(semana: string) {
+  // Hasta montar no se sabe: el servidor no ve el almacenamiento del navegador.
+  const [cerrada, setCerrada] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setCerrada(yaSeCerro(semana));
+    const alCerrar = () => setCerrada(true);
+    window.addEventListener(AL_CERRAR, alCerrar);
+    return () => window.removeEventListener(AL_CERRAR, alCerrar);
+  }, [semana]);
+
+  const cerrar = () => {
+    try {
+      localStorage.setItem(META + semana, '1');
+    } catch {
+      // Sin almacenamiento: se cierra igual en esta pagina.
+    }
+    window.dispatchEvent(new Event(AL_CERRAR));
+  };
+
+  return [cerrada, cerrar] as const;
+}
+
+// Lo que se va con la meta al cerrarla, como la racha.
+export function ConLaMeta({ semana, children }: { semana: string; children: ReactNode }) {
+  const [cerrada] = useMetaCerrada(semana);
+  return cerrada === false ? <>{children}</> : null;
+}
 
 // El cierre de la semana baja desde arriba y se puede cerrar. Al cerrarlo
 // vuelve la cabecera de siempre: la celebracion no deja a nadie sin su pantalla.
-export function CierreDeSemana({ cabecera, nota }: { cabecera: ReactNode; nota: string }) {
-  const [cerrado, setCerrado] = useState(false);
+export function CierreDeSemana({ cabecera, nota, semana }: { cabecera: ReactNode; nota: string; semana: string }) {
+  const [cerrado, cerrar] = useMetaCerrada(semana);
 
-  if (cerrado) return <>{cabecera}</>;
+  if (cerrado !== false) return <>{cabecera}</>;
 
   return (
     <div className="bajando" style={BANNER}>
@@ -17,7 +61,7 @@ export function CierreDeSemana({ cabecera, nota }: { cabecera: ReactNode; nota: 
       </p>
       <p style={{ fontSize: 15, opacity: 0.8, margin: 0, textAlign: 'center' }}>{nota}</p>
 
-      <button title="Cerrar" aria-label="Cerrar" onClick={() => setCerrado(true)} style={CERRAR}>
+      <button title="Cerrar" aria-label="Cerrar" onClick={cerrar} style={CERRAR}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />

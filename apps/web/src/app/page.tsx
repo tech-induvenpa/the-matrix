@@ -28,7 +28,7 @@ import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '
 import { cambiarEstadoFlujo, salir } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
-import { Adelantar, CierreDeSemana } from './celebracion';
+import { Adelantar, CierreDeSemana, ConLaMeta } from './celebracion';
 import { PorQue } from './porque';
 import { CIRCULO, Numero, Tarjeta, YaResueltas } from './tarjeta';
 import { esAdministrador } from '@/lib/administrador';
@@ -390,6 +390,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
       {metaCumplida ? (
         <CierreDeSemana
           cabecera={cabecera}
+          semana={lunes}
           nota={`Todo lo que vencía esta semana, resuelto. Y estamos a ${diaDeHoy}.`}
         />
       ) : (
@@ -431,6 +432,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
               logros={
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {racha > 1 && (
+                    <ConLaMeta semana={lunes}>
                     <div style={LOGRO}>
                       <span style={{ fontSize: 28 }}>🔥</span>
                       <div>
@@ -440,6 +442,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                         </div>
                       </div>
                     </div>
+                    </ConLaMeta>
                   )}
                   <div style={LOGRO}>
                     <span style={{ fontSize: 28 }}>📅</span>
