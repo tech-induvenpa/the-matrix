@@ -58,7 +58,7 @@ describe('INV-32: la urgencia elegida es la que se ve', () => {
       await registrarImprevisto(ana, formulario);
 
       const { data } = await comoServicio().from('imprevisto').select('vence').eq('texto', `Urgencia ${u}`).single();
-      const urgencia = urgenciaDe(calendario.habilesEntre(hoy(), data!.vence));
+      const urgencia = urgenciaDe(calendario.habilesHasta(hoy(), data!.vence));
       expect(urgencia).toBe(u);
       expect(emojiDe(urgencia)).toBe(EMOJI[u]);
     }

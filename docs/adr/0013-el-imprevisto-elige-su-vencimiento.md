@@ -30,3 +30,9 @@ de la holgura ni aparece como abierto y vencido.
 - **Cuenta en la holgura del mes en que vence**, no del mes en que se pidio: se
   juzga cuando ya se le puede exigir.
 - **Una delegacion no cambia**: sigue venciendo con su ocurrencia (ADR 0012).
+- **En un dia no habil, la urgencia se cuenta desde el habil siguiente**
+  (CEB-193). Un sabado, "hoy" es el lunes y "manana" el martes: si no, 9 y 8
+  vencian el mismo lunes y quien elegia 9 veia 8 hasta el lunes. Como la
+  escala es una sola, vale tambien para las ocurrencias: un fin de semana, lo
+  que vence el lunes se ve con 9. El aviso de "hoy / manana vence" sigue
+  contando dias corridos.

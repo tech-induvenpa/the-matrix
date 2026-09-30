@@ -46,6 +46,14 @@ export class Calendario {
     return dias;
   }
 
+  // Cuantos dias habiles le quedan a algo que vence en 'vence', visto desde
+  // 'hoy': lo que mide la urgencia. En un dia no habil se cuenta desde el
+  // habil siguiente: un sabado, el lunes es "hoy" (CEB-193). En un dia habil es
+  // lo mismo que habilesEntre.
+  habilesHasta(hoy: Fecha, vence: Fecha): number {
+    return this.habilesEntre(this.habilSiguiente(hoy), vence);
+  }
+
   // La fecha que esta 'dias' habiles despues de 'desde': la inversa de
   // habilesEntre. Con cero, el habil siguiente o igual. Solo conoce los dias no
   // habiles que se le dieron; mas alla cuenta de lunes a viernes (ADR 0013).

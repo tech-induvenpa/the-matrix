@@ -28,4 +28,12 @@ describe('mirar hacia adelante', () => {
     expect(calendario.habilSiguiente('2027-01-04')).toBe('2027-01-19');
     expect(calendario.habilSiguiente('2026-12-18')).toBe('2026-12-18');
   });
+
+  it('lo que falta se cuenta desde el habil siguiente: un sabado, el lunes es hoy', () => {
+    // Viernes 4, sabado 5, lunes 7 y el martes 8 feriado: el miercoles 9 es el segundo habil.
+    expect(calendario.habilesHasta('2026-09-04', '2026-09-07')).toBe(1);
+    expect(calendario.habilesHasta('2026-09-05', '2026-09-07')).toBe(0);
+    expect(calendario.habilesHasta('2026-09-05', '2026-09-09')).toBe(1);
+    expect(calendario.habilesHasta('2026-09-08', '2026-09-09')).toBe(0);
+  });
 });

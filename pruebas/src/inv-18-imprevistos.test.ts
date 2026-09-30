@@ -46,14 +46,33 @@ describe('INV-18: un imprevisto vence entre hoy y 29 habiles despues', () => {
   });
 
   it('a 29 habiles se acepta; a 30 se rechaza', async () => {
-    expect(await insertar('Informe trimestral', delaBase.sumarHabiles(hoy(), 29))).toBeNull();
-    expect(await insertar('Demasiado lejos', delaBase.sumarHabiles(hoy(), 30))).not.toBeNull();
+    expect(await insertar('Informe trimestral', delaBase.sumarHabiles(delaBase.habilSiguiente(hoy()), 29))).toBeNull();
+    expect(await insertar('Demasiado lejos', delaBase.sumarHabiles(delaBase.habilSiguiente(hoy()), 30))).not.toBeNull();
+  });
+
+  // CEB-193: en un dia no habil el tope se cuenta desde el habil siguiente,
+  // como en el dominio. La fecha de pedido solo la puede poner el servicio.
+  it('pedido un sabado, los 29 habiles se cuentan desde el lunes', async () => {
+    const hasta = new Date(`${hoy()}T00:00:00Z`);
+    hasta.setUTCDate(hasta.getUTCDate() + ((6 - hasta.getUTCDay() + 7) % 7 || 7));
+    const sabado = hasta.toISOString().slice(0, 10);
+    const { data: yo } = await comoServicio().from('empleado').select('auth_user_id').eq('id', ana).single();
+    const insertarElSabado = async (texto: string, n: number) =>
+      (
+        await comoServicio().from('imprevisto').insert({
+          empleado_id: ana, texto, pedido_en: `${sabado}T12:00:00Z`, pedido_por_otro: 'Un cliente', registrado_por: yo!.auth_user_id,
+          vence: delaBase.sumarHabiles(delaBase.habilSiguiente(sabado), n),
+        })
+      ).error;
+
+    expect(await insertarElSabado('Del sabado, a 29', 29)).toBeNull();
+    expect(await insertarElSabado('Del sabado, a 30', 30)).not.toBeNull();
   });
 
   it('a 30 habiles se rechaza tambien para el administrador', async () => {
     const jefa = await comoAdministrador('jefa@prueba.test');
     const { error } = await jefa.from('imprevisto').insert({
-      empleado_id: ana, texto: 'Demasiado lejos', vence: delaBase.sumarHabiles(hoy(), 30), pedido_por_otro: 'Un cliente',
+      empleado_id: ana, texto: 'Demasiado lejos', vence: delaBase.sumarHabiles(delaBase.habilSiguiente(hoy()), 30), pedido_por_otro: 'Un cliente',
     });
     expect(error).not.toBeNull();
   });
