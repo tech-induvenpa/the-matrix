@@ -245,7 +245,7 @@ export async function bonoDe(empleadoId: string) {
 }
 
 // El bono de este mes de cada persona, para poner dolares junto a los
-// porcentajes del reporte (ADR 0010). Quien no tiene bono no aparece.
+// porcentajes del tablero (ADR 0010). Quien no tiene bono no aparece.
 export async function bonosDelMes(): Promise<Map<string, number>> {
   const supabase = await clienteDelServidor();
   const { data } = await supabase.from('bono').select('empleado_id, monto, rige_desde');

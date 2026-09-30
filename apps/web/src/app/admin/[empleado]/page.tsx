@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { VENTANA_DE_DELEGACION } from '@matriz/dominio';
 import { bonoDe, cargoDe, imprevistosDe } from '@/lib/administrador';
 import { enPalabras, pertenencias } from '@/lib/pertenencia';
@@ -46,7 +47,8 @@ export default async function Cargo({
     lasDelegaciones(false),
   ]);
 
-  if (!cargo) return null;
+  // Quien no existe -- o una ruta vieja, como /admin/reporte -- es un 404.
+  if (!cargo) notFound();
   const tareas = await tareasAbiertasDe(empleado, imprevistos.hoy, imprevistos.calendario);
   // Como va cada funcion, dicho en su fila (CEB-219).
   const comoVan = new Map(comoVanSusFunciones(datos, empleado, imprevistos.hoy, imprevistos.calendario).map((f) => [f.id, f]));

@@ -45,7 +45,7 @@ export {
   vencimientoPorUrgencia,
 } from './imprevistos';
 export type { Cifras, EstadoDeImprevisto, OpcionDeUrgencia, Resultado } from './imprevistos';
-export { ponderacionDesplazada, vinculables } from './intromision';
+export { vinculables } from './intromision';
 export type { ImprevistoVinculable, Limite } from './intromision';
 export { bonoDelMes, enDolares, montoNoCumplido } from './bono';
 export type { CambioDeBono, Mes } from './bono';
@@ -53,14 +53,13 @@ export { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura
 export type { HechoDeLaHolgura, Tramo } from './descarga';
 export {
   delegable,
-  delegacionesPorFuncion,
   delegacionRepetida,
   estaAbierta,
   estadoDeLaDelegacion,
   MINIMO_DE_DELEGACIONES,
   VENTANA_DE_DELEGACION,
 } from './delegacion';
-export type { Delegable, Delegacion, DelegacionesDeUnaFuncion, DelegacionRepetida, EstadoDeLaDelegacion } from './delegacion';
+export type { Delegable, Delegacion, DelegacionRepetida, EstadoDeLaDelegacion } from './delegacion';
 export { delFiltro, leerPertenencia, opcionesDePertenencia } from './filtro-del-equipo';
 export type { Filtrable, FiltroDelEquipo, Opcion } from './filtro-del-equipo';
 export { haySinLeer, lineaDeTiempo, listaDeTareas, loLeen, sinLeer } from './perfil';

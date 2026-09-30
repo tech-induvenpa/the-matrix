@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ponderacionDesplazada, vinculables } from '../src/intromision';
+import { vinculables } from '../src/intromision';
 
 const imprevisto = (id: string, pedidoEn: string, borradoEn: string | null = null) => ({ id, pedidoEn, borradoEn });
 
@@ -29,33 +29,5 @@ describe('que imprevistos se pueden vincular a un atraso de flujo', () => {
 
   it('si nunca estuvo al dia, todos', () => {
     expect(vinculables(lista, { alDiaDesde: null }).map((i) => i.id)).toEqual(['viejo', 'nuevo']);
-  });
-});
-
-describe('la ponderacion desplazada', () => {
-  it('suma la ponderacion de cada previsto incumplido por intromision', () => {
-    expect(
-      ponderacionDesplazada([
-        { funcionId: 'cierre', ponderacion: 20 },
-        { funcionId: 'pagos', ponderacion: 10 },
-      ]),
-    ).toBe(30);
-  });
-
-  // Una diaria que no se cumplio cinco dias por imprevistos no pesa cinco
-  // veces: igual que la ponderacion arrastrada, es cuanto del cargo, no cuantas
-  // veces.
-  it('una funcion cuenta una sola vez, aunque tenga varios vinculos', () => {
-    expect(
-      ponderacionDesplazada([
-        { funcionId: 'caja', ponderacion: 15 },
-        { funcionId: 'caja', ponderacion: 15 },
-        { funcionId: 'caja', ponderacion: 15 },
-      ]),
-    ).toBe(15);
-  });
-
-  it('lo de seguimiento sin peso no desplaza nada', () => {
-    expect(ponderacionDesplazada([{ funcionId: 'seguimiento', ponderacion: 0 }])).toBe(0);
   });
 });

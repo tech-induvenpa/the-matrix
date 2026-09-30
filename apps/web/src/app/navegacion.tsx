@@ -126,8 +126,6 @@ export const DEL_SUPERVISOR = [...DEL_EMPLEADO, { href: '/equipo', texto: 'El eq
 
 export const DEL_ADMINISTRADOR = [
   { href: '/admin', texto: 'El equipo' },
-  { href: '/admin/reporte', texto: 'Qué se arrastra' },
-  { href: '/admin/razones', texto: 'Qué dijeron' },
   { href: '/admin/calendario', texto: 'El calendario' },
   { href: '/admin/descarga', texto: 'Descargar ↓', porMes: true },
 ];

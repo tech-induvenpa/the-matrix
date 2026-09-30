@@ -223,5 +223,13 @@ criterio('jefa: la señal en la fila de la funcion de quien delega', html.includ
 html = texto((await pagina(cJefa, `/admin/${sara}?editar=${caja}`)).html);
 criterio('jefa: y junto a "Pasársela a"', /🤝 delegada 2 veces \(1 devuelta\) en 90 días.*Pasársela a/s.test(html));
 
+// CEB-225 · Se borran las pantallas viejas.
+html = texto((await pagina(cJefa, '/admin')).html);
+criterio('jefa: el menu es El equipo · El calendario · Descargar', html.includes('El calendario') && html.includes('Descargar') && !html.includes('Qué se arrastra') && !html.includes('Qué dijeron'));
+criterio('jefa: "Qué se arrastra" ya no existe', (await pagina(cJefa, '/admin/reporte')).status === 404);
+criterio('jefa: "Qué dijeron" ya no existe', (await pagina(cJefa, '/admin/razones')).status === 404);
+html = texto((await pagina(cSara, '/equipo')).html);
+criterio('sara: sin acordeon ni "Lo que dijo"', !html.includes('<details') && !html.includes('Lo que dijo'));
+
 console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');
 process.exit(fallos ? 1 : 0);

@@ -19,11 +19,3 @@ export function vinculables<T extends ImprevistoVinculable>(imprevistos: readonl
 
   return imprevistos.filter((i) => !i.borradoEn && cabe(i));
 }
-
-// Cuanto del cargo de una persona dejo de cumplirse por intromision. Igual que
-// la ponderacion arrastrada, es cuanto del cargo y no cuantas veces: una diaria
-// desplazada cinco dias pesa una vez.
-export function ponderacionDesplazada(vinculos: readonly { funcionId: string; ponderacion: number }[]): number {
-  const porFuncion = new Map(vinculos.map((v) => [v.funcionId, v.ponderacion]));
-  return [...porFuncion.values()].reduce((t, p) => t + p, 0);
-}

@@ -178,5 +178,5 @@ describe('INV-22: la ponderacion desplazada no existe para el empleado', () => {
     }
   });
 
-  it.todo('el HTML de /mes y de / no contiene la ponderación desplazada; el de /admin/reporte sí');
+  it.todo('el HTML de /mes y de / no contiene la ponderación desplazada; el de /admin sí');
 });
