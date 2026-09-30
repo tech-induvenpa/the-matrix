@@ -17,10 +17,10 @@ import {
   registrarImprevisto,
 } from './acciones';
 import { Accion } from './accion';
-import { Enviar } from './boton';
+import { Enviar, Redondo } from './boton';
 import { PorQue } from './porque';
 import { Confirmar } from './confirmar';
-import { CIRCULO, Numero } from './tarjeta';
+import { CIRCULO, Check, Numero } from './tarjeta';
 import { NuevoMensaje, Titulo, type Perfil } from './perfil';
 import { BotonDeHistoria } from './abrir';
 
@@ -88,9 +88,9 @@ export function TarjetaDeImprevisto({
         {puedeMarcar && (
           <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
             <Accion accion={marcarImprevistoHecho.bind(null, i.id)}>
-              <Enviar style={BOTON} enviando="Marcando…">
-                ¡Hecho!
-              </Enviar>
+              <Redondo titulo="¡Hecho!" color="#2E7D32" tamano={40}>
+                <Check />
+              </Redondo>
             </Accion>
             <PorQue
               accion={marcarImprevistoSinHacer.bind(null, i.id, 'no_pude')}

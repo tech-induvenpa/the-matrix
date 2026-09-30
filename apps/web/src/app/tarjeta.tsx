@@ -2,7 +2,7 @@ import { emojiDe, type Cuadrante } from '@matriz/dominio';
 import { comoVence } from '@/lib/datos';
 import { delegar, deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
 import { Accion } from './accion';
-import { Enviar } from './boton';
+import { Enviar, Redondo } from './boton';
 import { PorQue } from './porque';
 import { NuevoMensaje, Titulo, type Perfil } from './perfil';
 import { BotonDeHistoria } from './abrir';
@@ -50,13 +50,11 @@ export function Tarjeta({ o, hoy, perfil, soloLectura = false }: { o: Fila; hoy:
 
       {!soloLectura && (
         <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+          {/* Hecho, solo con el tilde verde: el titulo lo dice al pasar. */}
           <Accion accion={marcarHecho.bind(null, o.funcionId, o.periodo)}>
-            <Enviar style={HECHO} enviando="Marcando…">
-              <span style={{ color: '#2E7D32', display: 'flex' }}>
-                <Check />
-              </span>
-              ¡Hecho!
-            </Enviar>
+            <Redondo titulo="¡Hecho!" color="#2E7D32" tamano={40}>
+              <Check />
+            </Redondo>
           </Accion>
 
           <PorQue
