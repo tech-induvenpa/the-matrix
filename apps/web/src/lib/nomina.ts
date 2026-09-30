@@ -12,6 +12,7 @@ import {
   reaperturasDeLaNomina,
   type EstadoDelMes,
   type FotoDelCierre,
+  type FuncionDeLaNomina,
   type Nomina,
   type ParteDelCargo,
   type Periodicidad,
@@ -70,7 +71,7 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
   return { mes, nomina, estado, reaperturas: reaperturasDeLaNomina(suyas, nomina.total, ahora), tareas };
 }
 
-type Cuenta = { bono: number | null; nomina: Nomina | null; partes: readonly ParteDelCargo[] };
+type Cuenta = { bono: number | null; nomina: Nomina | null; partes: readonly ParteDelCargo[]; funciones?: readonly FuncionDeLaNomina[] };
 
 // La cuenta en vivo, con el reparto y el bono de hoy.
 async function enVivo(empleadoId: string, mes: string, calendario: Calendario): Promise<Cuenta> {
@@ -142,7 +143,7 @@ async function enVivo(empleadoId: string, mes: string, calendario: Calendario): 
     })),
   });
 
-  return { bono, nomina: nominaDe(bono, partes), partes };
+  return { bono, nomina: nominaDe(bono, partes), partes, funciones };
 }
 
 // La foto de un mes cerrado, si la tiene. Si no, y quien mira es el
@@ -193,8 +194,8 @@ export async function tomarLasFotos(): Promise<string | null> {
   for (const mes of meses as string[]) {
     const fotos = [];
     for (const p of personas ?? []) {
-      const { bono, partes } = await enVivo(p.id as string, mes, calendario);
-      const foto = fotoDelCierre({ empresaId: (p.empresa_id as string | null) ?? null, bono, partes });
+      const { bono, partes, funciones } = await enVivo(p.id as string, mes, calendario);
+      const foto = fotoDelCierre({ empresaId: (p.empresa_id as string | null) ?? null, bono, partes, funciones });
       fotos.push({ empleado_id: p.id, empresa_id: foto.empresaId, bono: foto.bono, total: foto.total, partes: foto.partes });
     }
     const { error } = await supabase.rpc('tomar_foto_del_cierre', { el_mes: mes, fotos });
