@@ -1,4 +1,4 @@
-import { bonoDelMes, Calendario, coberturaDe } from '@matriz/dominio';
+import { bonoDelMes, Calendario, coberturaDe, parteAParte, type Movimiento, type ParteDelHistorial, type PesoDeUnaParte } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { comoCambios, hoyISO, type QuienPide } from '@/lib/datos';
 import { notFound } from 'next/navigation';
@@ -259,4 +259,44 @@ export async function bonosDelMes(): Promise<Map<string, number>> {
     if (bono !== null) bonos.set(id, bono);
   }
   return bonos;
+}
+
+// El historial del reparto de una persona (ADR 0017), del cambio mas reciente
+// al mas viejo: quien, cuando, que movimiento y cada parte antes y despues.
+// Solo el administrador lo lee; a cualquier otro la base no le devuelve nada.
+export type VersionDelReparto = {
+  id: string;
+  en: string;
+  quien: string;
+  movimiento: Movimiento;
+  // La funcion que se movio, con su nombre de entonces.
+  funcionId: string | null;
+  funcion: string | null;
+  partes: ParteDelHistorial[];
+};
+
+export async function historialDelReparto(empleadoId: string): Promise<VersionDelReparto[]> {
+  const supabase = await clienteDelServidor();
+  const [{ data }, { data: quienes }] = await Promise.all([
+    supabase
+      .from('historial_del_reparto')
+      .select('id, movimiento, funcion_id, quien, en, antes, despues')
+      .eq('empleado_id', empleadoId)
+      .order('en', { ascending: false }),
+    supabase.rpc('quienes_piden'),
+  ]);
+
+  return (data ?? []).map((v) => {
+    const antes = v.antes as PesoDeUnaParte[];
+    const despues = v.despues as PesoDeUnaParte[];
+    return {
+      id: v.id as string,
+      en: v.en as string,
+      quien: ((quienes ?? []) as QuienPide[]).find((q) => q.id === v.quien)?.nombre ?? 'El administrador',
+      movimiento: v.movimiento as Movimiento,
+      funcionId: (v.funcion_id as string | null) ?? null,
+      funcion: [...despues, ...antes].find((p) => p.funcionId !== null && p.funcionId === v.funcion_id)?.parte ?? null,
+      partes: parteAParte(antes, despues),
+    };
+  });
 }

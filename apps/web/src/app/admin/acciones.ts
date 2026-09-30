@@ -288,7 +288,7 @@ export async function guardarBorrador(empleadoId: string, formulario: FormData) 
 
   // "Publicar" viaja en el mismo formulario: primero se guarda lo que esta en
   // pantalla, y eso es lo que se publica.
-  if (formulario.get('publicar') === 'si') return publicarReparto(empleadoId);
+  if (formulario.get('publicar') === 'si') return publicarReparto(empleadoId, formulario.get('movimiento') === 'cotidianidad' ? 'cotidianidad' : 'cambio');
 
   revalidatePath(`/admin/${empleadoId}`);
   const suma = sumaDe(propuestos);
@@ -303,7 +303,9 @@ export async function guardarBorrador(empleadoId: string, formulario: FormData) 
 // Publicar es lo que hace vigente un reparto. Lo que ve el empleado es siempre
 // el ultimo publicado (INV-13), y uno que no suma cien no se publica (INV-14),
 // cosa que ademas defiende la base por si esto se saltara.
-export async function publicarReparto(empleadoId: string) {
+// Queda en el historial del reparto como un alta si entra una funcion, y si
+// no, como el movimiento que se diga (ADR 0017).
+export async function publicarReparto(empleadoId: string, movimiento: 'cambio' | 'cotidianidad' = 'cambio') {
   if (!(await esAdministrador())) return { mensaje: 'No.', celebra: false };
 
   const sinFoto = await tomarLasFotos();
@@ -331,7 +333,7 @@ export async function publicarReparto(empleadoId: string) {
     return { mensaje, celebra: false };
   }
 
-  const { error } = await supabase.rpc('publicar_reparto', { quien: empleadoId });
+  const { error } = await supabase.rpc('publicar_reparto', { quien: empleadoId, el_movimiento: movimiento });
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath(`/admin/${empleadoId}`);
