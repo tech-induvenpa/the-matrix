@@ -364,6 +364,26 @@ olvida, solo, veinticuatro horas despues de reabrirlo. Cada reapertura queda
 registrada --quien, cuando, por que y que cambio-- y se ve en la nomina.
 _Avoid_: cierre (a secas, se confunde con la funcion "Cierre de caja"), corte.
 
+**Foto del cierre**:
+La nomina de cada persona tal como quedo al **cierre del mes**: sus partes, sus
+pesos, sus descuentos, su total y su empresa. Un mes cerrado se lee de su foto
+y nunca se recalcula: cambiar despues un peso, un bono o una empresa no toca lo
+que ya se pago. La nomina de un mes usa los pesos del dia del cierre, no un
+promedio del mes, igual que el bono nunca parte un mes. Reabrir un mes descarta
+su foto; al volver a cerrarse se toma otra. La descarga de un mes cerrado sale
+de la misma foto, asi que nunca la contradice.
+_Avoid_: snapshot, respaldo.
+
+**Historial del reparto**:
+Cada cambio publicado de las ponderaciones de una persona --dar de alta,
+cambiar, archivar, eliminar o traspasar una funcion, o ajustar su
+cotidianidad-- queda guardado con quien lo hizo, cuando, que movimiento fue y
+los pesos antes y despues, parte por parte. La foto dice que se pago; el
+historial dice por que cambio. Todo lo que mueve un peso o dinero deja rastro:
+el bono ya lo dejaba (cada cambio rige desde un mes y no reescribe los
+anteriores).
+_Avoid_: log, auditoria.
+
 **Arrastre**:
 Periodos seguidos en que una funcion no se cumplio, por "no pude" o por vencer
 sin marcar. Se cuenta en periodos, que es donde vive la ocurrencia, y se muestra

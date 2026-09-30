@@ -4,28 +4,32 @@ import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/
 import { Filtrar } from '../filtro';
 import { esAdministrador } from '@/lib/administrador';
 import { loDeMiGente, type PersonaACargo } from '@/lib/supervisor';
-import { barrasDe, cargasDe, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
+import { barrasDe, cargasDe, imprevistosQueSeBuscan, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
 import { lasDelegaciones } from '@/lib/equipo';
 import { DEL_SUPERVISOR, Navegacion } from '../navegacion';
 import { salir } from '../acciones';
 import { perfiles } from '../perfil';
-import { Punto } from '../abrir';
-import { Ir } from '../ir';
-import { Carga, DesdeCuando, MasDelegadas, Patrones, SinCumplir } from '../tablero';
+import { AcordeonDePersona, enlacesDe, Pestanas, vistaDe } from '../personas';
+import { tareasAbiertasDe } from '@/lib/tareas';
+import { claveDeLaTarea, ListaDeTareas } from '../lista';
+import { Carga, DesdeCuando, MasDelegadas, Resumen, SinCumplir } from '../tablero';
 
-// El equipo (CEB-215): el mismo tablero que ve el administrador, con su gente
-// y sin montos (ADR 0015). Debajo, la lista de personas: cada una lleva a su
-// perfil (equipo/[persona]), donde esta el detalle.
-export default async function TuGente({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
+// El equipo (CEB-215): las mismas dos pestanas que el administrador (personas
+// y tablero), con su gente y sin montos (ADR 0015). Cada persona es un
+// acordeon con sus tareas abiertas y un atajo a su perfil (equipo/[persona]).
+export default async function TuGente({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { vista?: string; tarea?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
-  const parametros = await searchParams;
-  const [{ hoy, calendario, datos, gente: todos }, { opciones, deIds }, { sinLeerDe }, delegaciones] = await Promise.all([
+  const { vista: pedida, tarea, ...parametros } = await searchParams;
+  const vista = vistaDe(pedida);
+  const [{ hoy, calendario, datos, gente: todos, quienesPiden }, { opciones, deIds }, conPerfil, delegaciones] = await Promise.all([
     loDeMiGente(),
     pertenencias(),
-    perfiles(undefined),
+    // El perfil abierto de una tarea (su historia), si hay uno en la URL.
+    perfiles(tarea),
     lasDelegaciones(true),
   ]);
+  const { sinLeerDe } = conPerfil;
   // Quien no supervisa no tiene esta pantalla: un 404, como en /admin.
   if (todos.length === 0) notFound();
 
@@ -34,45 +38,69 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
   const filtro = filtroDe(parametros);
   const gente = todos
     .map((p) => ({ ...p, ...deIds(p.empresaId, p.sedeId) }))
-    .filter((p) => delFiltro(p, p.funciones, (f) => f.texto, filtro) !== null);
+    .filter((p) => delFiltro(p, [...p.funciones.map((f) => f.texto), ...imprevistosQueSeBuscan(datos, p.id, hoy)], (t) => t, filtro) !== null);
   const quienes = new Set(gente.map((p) => p.id));
   const barras = barrasDe(datos, hoy, calendario).filter((b) => quienes.has(b.persona.id));
   const lineas = lineasDelArrastre(datos, hoy, calendario).filter((l) => quienes.has(l.persona.id));
   const cargas = cargasDe(datos, hoy).filter((c) => quienes.has(c.persona.id));
   // Las que el delega: son funciones suyas, y su perfil no es de esta pantalla.
   const repetidas = masDelegadas(delegaciones, hoy, calendario);
+  // Las tareas abiertas de cada quien, solo en la pestana de personas.
+  // ponytail: una lectura por persona; un equipo es de pocas.
+  const tareas = new Map(vista === 'equipo' ? await Promise.all(gente.map(async (p) => [p.id, await tareasAbiertasDe(p.id, hoy, calendario)] as const)) : []);
+  // Buscando por texto, los acordeones se abren: lo buscado puede ser una tarea.
+  const abiertos = Boolean(parametros.q);
 
   return (
     <>
       <Navegacion entradas={DEL_SUPERVISOR} salida={salir} />
-      <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <Patrones />
+      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
 
-        <Filtrar opciones={opciones} valores={parametros} />
+        <Pestanas vista={vista} enlaceA={enlacesDe(parametros)} />
 
-        <SinCumplir barras={barras} perfilDe={(id) => `/equipo/${id}`} />
-        <DesdeCuando lineas={lineas} hoy={hoy} perfilDe={(id) => `/equipo/${id}`} />
-        <Carga cargas={cargas} perfilDe={(id) => `/equipo/${id}`} />
-        <MasDelegadas repetidas={repetidas} />
+        <Filtrar opciones={opciones} valores={parametros} conservar={{ vista: vista === 'tablero' ? 'tablero' : undefined }} />
 
-        <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
-        {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14, margin: 0 }}>Nadie de tu equipo coincide con el filtro.</p>}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {gente.map((p) => (
-            <Ir key={p.id} href={`/equipo/${p.id}`} style={PERSONA}>
-              <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
-                {p.nombre}
-                {/* Comentarios sin leer en alguna de sus tareas abiertas (CEB-198). */}
-                {sinLeerDe(p.id) && <Punto />}
-                <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--gris)', marginLeft: 10 }}>{enPalabras(p)}</span>
-              </span>
-              <span style={{ fontSize: 13, ...(pendientes(p) ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' }) }}>
-                {resumenDe(p)}
-              </span>
-            </Ir>
-          ))}
-        </div>
+        {vista === 'tablero' && (
+          <>
+            <Resumen barras={barras} lineas={lineas} cargas={cargas} />
+            <div className="tablero">
+              <SinCumplir barras={barras} perfilDe={(id) => `/equipo/${id}`} />
+              <DesdeCuando lineas={lineas} hoy={hoy} perfilDe={(id) => `/equipo/${id}`} />
+              <Carga cargas={cargas} perfilDe={(id) => `/equipo/${id}`} />
+              <MasDelegadas repetidas={repetidas} />
+            </div>
+          </>
+        )}
+
+        {vista === 'equipo' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {gente.length === 0 && <p style={{ color: 'var(--gris)', fontSize: 14, margin: 0 }}>Nadie de tu equipo coincide con el filtro.</p>}
+            {gente.map((p) => (
+              <AcordeonDePersona
+                key={p.id}
+                nombre={p.nombre}
+                empresa={enPalabras(p)}
+                sinLeer={sinLeerDe(p.id)}
+                // Un solo nivel: quien esta a cargo de un supervisor no supervisa.
+                aCargo={0}
+                abierto={abiertos || (tareas.get(p.id) ?? []).some((t) => claveDeLaTarea(t) === tarea)}
+                perfil={`/equipo/${p.id}`}
+                tareasAbiertas={tareas.get(p.id)?.length ?? 0}
+                datos={<span style={{ fontSize: 13, ...(pendientes(p) ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' }) }}>{resumenDe(p)}</span>}
+              >
+                <ListaDeTareas
+                  lista={tareas.get(p.id) ?? []}
+                  hoy={hoy}
+                  calendario={calendario}
+                  quienesPiden={quienesPiden}
+                  perfiles={conPerfil}
+                  puedeBorrar={() => false}
+                />
+              </AcordeonDePersona>
+            ))}
+          </div>
+        )}
       </main>
     </>
   );
@@ -90,14 +118,3 @@ function resumenDe(p: Pick<PersonaACargo, 'funciones' | 'imprevistos'>): string 
   return partes.filter(Boolean).join(' · ');
 }
 
-const PERSONA = {
-  display: 'flex',
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  gap: '4px 14px',
-  background: 'var(--suave)',
-  borderRadius: 14,
-  padding: '12px 16px',
-  color: 'var(--tinta)',
-  textDecoration: 'none',
-} as const;

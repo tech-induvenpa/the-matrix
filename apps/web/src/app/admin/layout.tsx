@@ -10,11 +10,12 @@ import { pertenencias } from '@/lib/pertenencia';
 export default async function LayoutDelPanel({ children }: { children: React.ReactNode }) {
   await soloAdministrador();
   // Para elegir de quien es la descarga del mes, y los meses con su cierre.
-  const [personas, meses, { opciones }] = await Promise.all([
-    gente().then((g) => g.map(({ id, nombre }) => ({ id, nombre }))),
+  const [todos, meses, { opciones }] = await Promise.all([
+    gente(),
     losMeses(),
     pertenencias(),
   ]);
+  const personas = todos.map(({ id, nombre }) => ({ id, nombre }));
   // Las empresas, sin sus sedes: la nomina va por empresa (CEB-233).
   const empresas = opciones.filter((o) => !o.valor.includes('/')).map((o) => ({ id: o.valor, nombre: o.etiqueta }));
 
@@ -24,7 +25,7 @@ export default async function LayoutDelPanel({ children }: { children: React.Rea
         entradas={DEL_ADMINISTRADOR}
         salida={salir}
         personas={personas}
-        cierre={{ meses, empresas, reabrir: reabrirMes, cerrar: cerrarMes }}
+        cierre={{ meses, empresas, haySinEmpresa: todos.some((p) => !p.empresaId), reabrir: reabrirMes, cerrar: cerrarMes }}
       />
       {children}
     </>

@@ -74,5 +74,5 @@ export { cargaDeImprevistos } from './carga';
 export type { Carga } from './carga';
 export { cierreDelMes, comoSeCerro, estadoDelMes, mesDe, ultimoHabilDelMes } from './cierre-del-mes';
 export type { EstadoDelMes, Reapertura, Recierre } from './cierre-del-mes';
-export { conceptoDe, nominaDe, partesDelMes, reaperturasDeLaNomina } from './nomina';
+export { conceptoDe, merecenFuegos, nominaDe, partesDelMes, reaperturasDeLaNomina, tareasDelMes, UMBRAL_DE_FUEGOS } from './nomina';
 export type { FuncionDeLaNomina, ImprevistoDeLaNomina, LineaDeNomina, Nomina, ParteDelCargo, ReaperturaDeLaNomina } from './nomina';

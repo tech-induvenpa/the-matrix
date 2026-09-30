@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { confeti } from './fiesta';
 
 // Los avisos viven aqui, en el layout, y no dentro de la tarjeta: al marcar,
 // la tarjeta sale del plan y se lleva consigo cualquier cosa que cuelgue de
@@ -18,6 +19,7 @@ export function Avisos() {
     const alRecibir = (evento: Event) => {
       const aviso = (evento as CustomEvent<Aviso>).detail;
       const id = Date.now() + Math.random();
+      if (aviso.celebra) confeti();
 
       setAvisos((previos) => [...previos, { ...aviso, id }]);
       setTimeout(() => setAvisos((previos) => previos.filter((a) => a.id !== id)), DURACION);

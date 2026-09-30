@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { FuegosDelMes } from './fiesta';
+import { fuegosDe } from '@/lib/nomina';
 import {
   avisoDe,
   coberturaDe,
@@ -26,7 +28,7 @@ import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '
 import { cambiarEstadoFlujo, salir } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
-import { Adelantar, CierreDeSemana } from './celebracion';
+import { Adelantar, CierreDeSemana, ConLaMeta } from './celebracion';
 import { PorQue } from './porque';
 import { CIRCULO, Numero, Tarjeta, YaResueltas } from './tarjeta';
 import { esAdministrador } from '@/lib/administrador';
@@ -56,6 +58,9 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     },
     { perfil, deOcurrencia },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
+
+  // Los fuegos de fin de mes, si el ultimo mes cerrado lo merece.
+  const fuegos = await fuegosDe(empleadoId);
 
   // Una delegacion devuelta vuelve como una nueva: trae la razon de la anterior,
   // para saber que rehacer (ADR 0012).
@@ -381,9 +386,11 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     <>
       <Navegacion entradas={gente.length > 0 ? DEL_SUPERVISOR : DEL_EMPLEADO} salida={salir} />
     <main style={{ display: 'flex', flexDirection: 'column', maxWidth: 1440, margin: '0 auto' }}>
+      <FuegosDelMes mes={fuegos.mes} merece={fuegos.merece} />
       {metaCumplida ? (
         <CierreDeSemana
           cabecera={cabecera}
+          semana={lunes}
           nota={`Todo lo que vencía esta semana, resuelto. Y estamos a ${diaDeHoy}.`}
         />
       ) : (
@@ -425,6 +432,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
               logros={
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {racha > 1 && (
+                    <ConLaMeta semana={lunes}>
                     <div style={LOGRO}>
                       <span style={{ fontSize: 28 }}>🔥</span>
                       <div>
@@ -434,6 +442,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                         </div>
                       </div>
                     </div>
+                    </ConLaMeta>
                   )}
                   <div style={LOGRO}>
                     <span style={{ fontSize: 28 }}>📅</span>
@@ -489,6 +498,8 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
             quienesPiden={quienesPiden.filter((q) => q.id !== yo)}
             hoy={hoy}
             calendario={calendario}
+            rotulo="＋ Nueva tarea"
+            fila
           />
 
           {/* Con imprevistos abiertos, los flujos se pliegan pero nunca se van:

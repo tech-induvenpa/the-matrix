@@ -121,3 +121,29 @@ button { font: inherit; cursor: pointer; border: none; }
 
 /* El fondo detras de un <dialog> abierto (ver confirmar.tsx). */
 dialog::backdrop { background: rgba(26, 23, 19, 0.35); }
+
+/* El tablero del equipo: tres cifras en fila y las graficas de dos en dos. En
+   el telefono, todo en una columna. */
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.tablero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .cifras, .tablero { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* El acordeon de cada persona: sin el triangulo nativo, con un chevron que
+   gira al abrir. */
+.acordeon > summary::-webkit-details-marker { display: none; }
+.acordeon .chevron { transition: transform 0.15s ease; }
+.acordeon[open] .chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .acordeon .chevron { transition: none; }
+}

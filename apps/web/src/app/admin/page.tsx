@@ -1,42 +1,60 @@
 import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
-import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
+import { AcordeonDePersona, enlacesDe, Pestanas, vistaDe } from '../personas';
+import { claveDeLaTarea, ListaDeTareas } from '../lista';
+import { tareasAbiertasDe } from '@/lib/tareas';
+import { bonosDelMes, elCalendario, gente, imprevistosDe } from '@/lib/administrador';
 import { datosDelEquipo, lasDelegaciones } from '@/lib/equipo';
-import { barrasDe, cargasDe, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
-import { Carga, DesdeCuando, MasDelegadas, Patrones, SinCumplir } from '../tablero';
+import { barrasDe, cargasDe, imprevistosQueSeBuscan, lineasDelArrastre, masDelegadas } from '@/lib/tablero';
+import { Carga, DesdeCuando, MasDelegadas, Resumen, SinCumplir } from '../tablero';
 import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../filtro';
 import { darDeAlta } from './acciones';
 import { Accion } from '../accion';
 import { Enviar } from '../boton';
 import { AvisoDeCobertura } from './cobertura';
-import { Ir } from '../ir';
 import { perfiles } from '../perfil';
-import { Punto } from '../abrir';
 
 // El equipo (CEB-215): un tablero que lee como esta la gente ahora mismo, y
 // debajo la lista de personas, que lleva al perfil de cada una. Es la misma
 // pantalla que la del supervisor (equipo/page.tsx); el administrador ve ademas
 // los montos, y da de alta a alguien nuevo.
-export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro> }) {
-  const parametros = await searchParams;
-  const [todos, calendario, { opciones, deIds }, { sinLeerDe }, datos, bonos, delegaciones] = await Promise.all([
+export default async function Panel({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { vista?: string; tarea?: string }> }) {
+  const { vista: pedida, tarea, ...parametros } = await searchParams;
+  // Dos pestanas: el equipo como tal (las personas y dar de alta), primero, y el
+  // tablero. La pestana viaja en la URL: recargar o volver atras no la pierde.
+  const vista = vistaDe(pedida);
+  const [todos, calendario, { opciones, deIds }, conPerfil, datos, bonos, delegaciones, { quienesPiden }] = await Promise.all([
     gente(),
     elCalendario(),
     pertenencias(),
-    perfiles(undefined),
+    // El perfil abierto de una tarea (su historia), si hay uno en la URL.
+    perfiles(tarea),
     datosDelEquipo(),
     bonosDelMes(),
     lasDelegaciones(false),
+    imprevistosDe(),
   ]);
+  const { sinLeerDe } = conPerfil;
 
   // El filtro solo acota lo que ya se leyo con la sesion de quien mira (INV-29).
   const filtro = filtroDe(parametros);
   const equipo = todos
     .map((e) => ({ ...e, ...deIds(e.empresaId, e.sedeId) }))
-    .filter((e) => delFiltro(e, e.funciones, (f) => f, filtro) !== null);
+    .filter((e) => delFiltro(e, [...e.funciones, ...imprevistosQueSeBuscan(datos, e.id, calendario.hoy)], (f) => f, filtro) !== null);
   // El filtro acota tambien las graficas: las mismas personas que la lista.
   const quienes = new Set(equipo.map((e) => e.id));
   const dias = Calendario.con(calendario.dias);
+  // Las tareas abiertas de cada quien, para su acordeon. Solo en la pestana de
+  // personas: el tablero no las necesita.
+  // ponytail: una lectura por persona; un equipo es de pocas.
+  const tareas = new Map(
+    vista === 'equipo' ? await Promise.all(equipo.map(async (e) => [e.id, await tareasAbiertasDe(e.id, calendario.hoy, dias)] as const)) : [],
+  );
+  // Cuantos tiene a cargo cada quien: con alguno, es responsable (CEB-145).
+  const aCargo = (id: string) => todos.filter((p) => p.supervisorId === id).length;
+  const responsableDe = new Map(todos.map((p) => [p.id, p.nombre]));
+  // Buscando por texto, los acordeones se abren: lo buscado puede ser una tarea.
+  const abiertos = Boolean(parametros.q);
   const barras = barrasDe(datos, calendario.hoy, dias).filter((b) => quienes.has(b.persona.id));
   const lineas = lineasDelArrastre(datos, calendario.hoy, dias).filter((l) => quienes.has(l.persona.id));
   const cargas = cargasDe(datos, calendario.hoy).filter((c) => quienes.has(c.persona.id));
@@ -47,8 +65,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   const montoDe = (id: string, peso: number) => (bonos.has(id) ? montoNoCumplido(peso, bonos.get(id)!) : null);
 
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <Patrones />
+    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>El equipo 👥</h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
@@ -56,45 +73,58 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         </p>
       </header>
 
-      <Filtrar opciones={opciones} valores={parametros} />
+      <Pestanas vista={vista} enlaceA={enlacesDe(parametros)} />
+
+      <Filtrar opciones={opciones} valores={parametros} conservar={{ vista: vista === 'tablero' ? 'tablero' : undefined }} />
 
       <AvisoDeCobertura cobertura={calendario.cobertura} cargadoHasta={calendario.cargadoHasta} enlazar />
 
-      <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
-      <DesdeCuando lineas={lineas} hoy={calendario.hoy} perfilDe={(id) => `/admin/${id}`} />
-      <Carga cargas={cargas} perfilDe={(id) => `/admin/${id}`} />
-      <MasDelegadas repetidas={repetidas} perfilDe={(funcionId) => `/admin/${titularDe.get(funcionId)}`} />
+      {vista === 'tablero' && (
+        <>
+      <Resumen barras={barras} lineas={lineas} cargas={cargas} montoDe={montoDe} />
+      <div className="tablero">
+        <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
+        <DesdeCuando lineas={lineas} hoy={calendario.hoy} perfilDe={(id) => `/admin/${id}`} />
+        <Carga cargas={cargas} perfilDe={(id) => `/admin/${id}`} />
+        <MasDelegadas repetidas={repetidas} perfilDe={(funcionId) => `/admin/${titularDe.get(funcionId)}`} />
+      </div>
 
-      <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
+        </>
+      )}
 
+      {vista === 'equipo' && (
+        <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {equipo.map((e) => (
-          <Ir
+          <AcordeonDePersona
             key={e.id}
-            href={`/admin/${e.id}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '4px 14px',
-              background: 'var(--suave)',
-              borderRadius: 14,
-              padding: '12px 16px',
-              color: 'var(--tinta)',
-              textDecoration: 'none',
-            }}
+            nombre={e.nombre}
+            empresa={enPalabras(e)}
+            sinLeer={sinLeerDe(e.id)}
+            aCargo={aCargo(e.id)}
+            responsable={e.supervisorId ? responsableDe.get(e.supervisorId) : undefined}
+            // Abierto si se busca por texto, o si su tarea tiene la historia abierta.
+            abierto={abiertos || (tareas.get(e.id) ?? []).some((t) => claveDeLaTarea(t) === tarea)}
+            perfil={`/admin/${e.id}`}
+            tareasAbiertas={tareas.get(e.id)?.length ?? 0}
+            datos={
+              <>
+                <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                  {e.funciones.length} {e.funciones.length === 1 ? 'función' : 'funciones'}
+                </span>
+              </>
+            }
           >
-            <span style={{ flexGrow: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
-              {e.nombre}
-              {/* Comentarios sin leer en alguna de sus tareas abiertas (CEB-198). */}
-              {sinLeerDe(e.id) && <Punto />}
-              <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--gris)', marginLeft: 10 }}>{enPalabras(e)}</span>
-            </span>
-            <span style={{ fontSize: 13, color: 'var(--gris)' }}>{e.correo}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              {e.funciones.length} {e.funciones.length === 1 ? 'función' : 'funciones'}
-            </span>
-          </Ir>
+            <ListaDeTareas
+              lista={tareas.get(e.id) ?? []}
+              hoy={calendario.hoy}
+              calendario={dias}
+              quienesPiden={quienesPiden}
+              perfiles={conPerfil}
+              puedeBorrar={() => true}
+            />
+          </AcordeonDePersona>
         ))}
 
         {equipo.length === 0 && (
@@ -140,6 +170,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
         </p>
         </div>
       </details>
+        </>
+      )}
 
     </main>
   );
@@ -164,3 +196,6 @@ const BOTON = {
   fontWeight: 600,
   cursor: 'pointer',
 } as const;
+
+
+

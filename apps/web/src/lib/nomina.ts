@@ -5,6 +5,8 @@ import {
   estadoDelMes,
   nominaDe,
   partesDelMes,
+  tareasDelMes,
+  merecenFuegos,
   reaperturasDeLaNomina,
   type EstadoDelMes,
   type Nomina,
@@ -13,11 +15,18 @@ import {
   type Resultado,
 } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { comoCambios, hoyISO } from '@/lib/datos';
+import { comoCambios, hoyISO, sumarDias } from '@/lib/datos';
 import { lasReaperturas } from '@/lib/cierre-del-mes';
 
 // Con sus reaperturas, si las hubo (CEB-232).
-export type NominaDelMes = { mes: string; nomina: Nomina | null; estado: EstadoDelMes; reaperturas: ReaperturaDeLaNomina[] };
+export type NominaDelMes = {
+  mes: string;
+  nomina: Nomina | null;
+  estado: EstadoDelMes;
+  reaperturas: ReaperturaDeLaNomina[];
+  // Cuantas tareas se cumplieron, haya bono o no: de ahi salen los fuegos.
+  tareas: { hechas: number; total: number };
+};
 
 // La nomina de una persona en un mes (ADR 0016). Lee lo mismo que la descarga
 // (admin/descarga/route.ts) --las titularidades vigentes, sus marcas y sus
@@ -54,8 +63,6 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
   const ahora = new Date().toISOString();
   const estado = estadoDelMes(mes, calendario, ahora, reaperturas);
   const bono = bonoDelMes(comoCambios(bonos), mes);
-  if (bono === null) return { mes, nomina: null, estado, reaperturas: [] };
-
   const activas = ((titularidades ?? []) as Record<string, unknown>[])
     .map((t) => ({ ponderacion: t.ponderacion as number, f: t.funcion as Record<string, unknown> }))
     .filter((t) => t.f.activa);
@@ -103,6 +110,8 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
     })),
   });
 
+  const tareas = tareasDelMes(partes);
+  if (bono === null) return { mes, nomina: null, estado, reaperturas: [], tareas };
   const nomina = nominaDe(bono, partes)!;
   const totalAntes = (id: string) => {
     const t = (totales ?? []).find((x) => x.reapertura_id === id);
@@ -110,8 +119,18 @@ export async function nominaDelMes(empleadoId: string, mes: string): Promise<Nom
   };
   const suyas = reaperturas.filter((r) => r.mes === mes).map((r) => ({ ...r, totalAntes: totalAntes(r.id) }));
 
-  return { mes, nomina, estado, reaperturas: reaperturasDeLaNomina(suyas, nomina.total, ahora) };
+  return { mes, nomina, estado, reaperturas: reaperturasDeLaNomina(suyas, nomina.total, ahora), tareas };
 }
 
 export const nombreDelMes = (mes: string) =>
   new Intl.DateTimeFormat('es', { month: 'long', timeZone: 'UTC' }).format(new Date(`${mes}-01T00:00:00Z`));
+
+// Los fuegos de fin de mes: el ultimo mes cerrado de la persona -- el de hoy si
+// ya cerro, que pasa la noche de su ultimo habil; si no, el anterior -- y si
+// cumplio mas del 90% de sus tareas.
+export async function fuegosDe(empleadoId: string): Promise<{ mes: string; merece: boolean }> {
+  const esteMes = hoyISO().slice(0, 7);
+  const actual = await nominaDelMes(empleadoId, esteMes);
+  const cerrado = actual.estado.estado === 'cerrado' ? actual : await nominaDelMes(empleadoId, sumarDias(`${esteMes}-01`, -1).slice(0, 7));
+  return { mes: cerrado.mes, merece: cerrado.estado.estado === 'cerrado' && merecenFuegos(cerrado.tareas) };
+}

@@ -1,6 +1,9 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { SIN_EMPRESA, TODAS } from '@/lib/nomina-por-empresa';
 import { Ir } from './ir';
 import { Accion } from './accion';
 import type { Aviso } from './avisos';
@@ -15,7 +18,7 @@ export function Navegacion({
   personas = [],
   cierre,
 }: {
-  entradas: { href: string; texto: string; externo?: boolean; porMes?: boolean }[];
+  entradas: { href: string; texto: string; externo?: boolean }[];
   salida?: () => Promise<void>;
   // Quienes pueden elegirse en la descarga. Solo el administrador las recibe.
   personas?: readonly { id: string; nombre: string }[];
@@ -24,6 +27,8 @@ export function Navegacion({
     meses: readonly MesDelCierre[];
     // Para la descarga "Nomina del mes", una por empresa (CEB-233).
     empresas: readonly { id: string; nombre: string }[];
+    // Si alguien no tiene empresa: entonces se ofrece "Sin empresa".
+    haySinEmpresa: boolean;
     reabrir: (formulario: FormData) => Promise<Aviso | undefined>;
     cerrar: (mes: string) => Promise<Aviso | undefined>;
   };
@@ -61,50 +66,6 @@ export function Navegacion({
           const aqui = donde === e.href;
           const estilo = { color: aqui ? 'var(--tinta)' : 'var(--gris)', textDecoration: 'none' };
 
-          // La descarga se pide por mes: el menu se despliega al hacer clic y
-          // pide confirmar con el boton. `details` nativo, sin JavaScript de por
-          // medio; el formulario GET baja el archivo.
-          if (e.porMes) {
-            return (
-              <details key={e.href} style={{ position: 'relative' }}>
-                <summary style={{ ...estilo, cursor: 'pointer', listStyle: 'none' }}>{e.texto}</summary>
-                <div style={PANEL}>
-                  <form action={e.href} method="get" style={COLUMNA}>
-                    <label style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
-                      ¿Qué mes?
-                      <select name="mes" defaultValue={meses[0]!.valor} style={SELECTOR}>
-                        {meses.map((m) => (
-                          <option key={m.valor} value={m.valor}>
-                            {m.texto}
-                            {'estado' in m && ` · ${ESTADO[m.estado.estado]}${m.hasta ? ` hasta el ${m.hasta}` : ''}`}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {personas.length > 0 && (
-                      <fieldset style={PERSONAS}>
-                        <legend style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500, padding: 0, marginBottom: 4 }}>
-                          ¿De quién? <span style={{ fontWeight: 400 }}>Sin marcar, de todos.</span>
-                        </legend>
-                        {personas.map((p) => (
-                          <label key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, fontWeight: 500 }}>
-                            <input type="checkbox" name="persona" value={p.id} />
-                            {p.nombre}
-                          </label>
-                        ))}
-                      </fieldset>
-                    )}
-                    <button type="submit" style={BOTON}>
-                      Descargar
-                    </button>
-                  </form>
-                  {cierre && <LaNomina meses={cierre.meses} empresas={cierre.empresas} />}
-                  {cierre && <ElCierre {...cierre} />}
-                </div>
-              </details>
-            );
-          }
-
           // La descarga no es una pantalla: es un archivo, y Link la trataria
           // como navegacion.
           return e.externo ? (
@@ -117,6 +78,27 @@ export function Navegacion({
             </Ir>
           );
         })}
+
+        {/* Solo el administrador: las descargas y el cierre, cada una en su
+            modal. Descargas se despliega en sus dos: tareas y nominas. */}
+        {cierre && (
+          <>
+            <details style={{ position: 'relative' }}>
+              <summary style={{ color: 'var(--gris)', cursor: 'pointer', listStyle: 'none' }}>Descargas ↓</summary>
+              <div style={MENU}>
+                <Modal boton="Tareas del mes" titulo="Tareas del mes" estilo={OPCION}>
+                  <LasTareas meses={meses} personas={personas} empresas={cierre.empresas} haySinEmpresa={cierre.haySinEmpresa} />
+                </Modal>
+                <Modal boton="Nóminas" titulo="Nóminas, para finanzas" estilo={OPCION}>
+                  <LaNomina meses={cierre.meses} empresas={cierre.empresas} haySinEmpresa={cierre.haySinEmpresa} />
+                </Modal>
+              </div>
+            </details>
+            <Modal boton="Reabrir mes" titulo="Reabrir un mes" estilo={{ color: 'var(--gris)' }}>
+              <ElCierre {...cierre} />
+            </Modal>
+          </>
+        )}
 
         {salida && (
           <form action={salida} style={{ marginLeft: 'auto' }}>
@@ -133,16 +115,124 @@ export function Navegacion({
   );
 }
 
+// Las tareas del mes: una fila por cada vez que algo debia hacerse (ADR 0011).
+// El formulario GET baja el archivo.
+function LasTareas({
+  meses,
+  personas,
+  empresas,
+  haySinEmpresa,
+}: {
+  meses: readonly { valor: string; texto: string; estado?: MesDelCierre['estado']; hasta?: string | null }[];
+  personas: readonly { id: string; nombre: string }[];
+  empresas: readonly { id: string; nombre: string }[];
+  haySinEmpresa: boolean;
+}) {
+  return (
+    <form action="/admin/descarga" method="get" style={COLUMNA}>
+      <p style={NOTA}>Una fila por cada vez que algo debía hacerse, con su resultado, su razón y su peso.</p>
+      <label style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
+        ¿Qué mes?
+        <select name="mes" defaultValue={meses[0]!.valor} style={SELECTOR}>
+          {meses.map((m) => (
+            <option key={m.valor} value={m.valor}>
+              {m.texto}
+              {m.estado && ` · ${ESTADO[m.estado.estado]}${m.hasta ? ` hasta el ${m.hasta}` : ''}`}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
+        ¿De qué empresa?
+        <SelectorDeEmpresa empresas={empresas} haySinEmpresa={haySinEmpresa} />
+      </label>
+      {personas.length > 0 && (
+        <fieldset style={PERSONAS}>
+          <legend style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500, padding: 0, marginBottom: 4 }}>
+            ¿De quién? <span style={{ fontWeight: 400 }}>Sin marcar, de todos los de la empresa.</span>
+          </legend>
+          {personas.map((p) => (
+            <label key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5, fontWeight: 500 }}>
+              <input type="checkbox" name="persona" value={p.id} />
+              {p.nombre}
+            </label>
+          ))}
+        </fieldset>
+      )}
+      <button type="submit" style={BOTON}>
+        Descargar
+      </button>
+    </form>
+  );
+}
+
+// Un modal nativo: <dialog> trae el fondo, el foco y Escape. Al abrirlo desde
+// el desplegable de descargas, el desplegable se pliega. El dialogo vive fuera,
+// en el body: dentro de un <details> cerrado se esconderia con el.
+function Modal({ boton, titulo, estilo, children }: { boton: string; titulo: string; estilo: React.CSSProperties; children: ReactNode }) {
+  const dialogo = useRef<HTMLDialogElement>(null);
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
+  const abrir = (evento: MouseEvent<HTMLButtonElement>) => {
+    evento.currentTarget.closest('details')?.removeAttribute('open');
+    dialogo.current?.showModal();
+  };
+
+  return (
+    <>
+      <button type="button" onClick={abrir} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', ...estilo }}>
+        {boton}
+      </button>
+      {montado &&
+        createPortal(
+          <dialog ref={dialogo} onClick={(e) => e.target === dialogo.current && dialogo.current.close()} style={DIALOGO}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{titulo}</h2>
+              <button type="button" aria-label="Cerrar" onClick={() => dialogo.current?.close()} style={CERRAR}>
+                ✕
+              </button>
+            </div>
+            {children}
+          </dialog>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+// La empresa, en las dos descargas: todas, una, o quien no tiene ninguna.
+function SelectorDeEmpresa({ empresas, haySinEmpresa }: { empresas: readonly { id: string; nombre: string }[]; haySinEmpresa: boolean }) {
+  return (
+    <select name="empresa" defaultValue={TODAS} aria-label="Qué empresa" style={SELECTOR}>
+      <option value={TODAS}>Todas las empresas</option>
+      {empresas.map((e) => (
+        <option key={e.id} value={e.id}>
+          {e.nombre}
+        </option>
+      ))}
+      {haySinEmpresa && <option value={SIN_EMPRESA}>Sin empresa</option>}
+    </select>
+  );
+}
+
 // "Nomina del mes", para finanzas (CEB-233): un archivo por empresa, y solo de
 // meses cerrados, porque el mes en curso es provisional. La descarga de
 // siempre, arriba, no cambia.
-function LaNomina({ meses, empresas }: { meses: readonly MesDelCierre[]; empresas: readonly { id: string; nombre: string }[] }) {
+function LaNomina({
+  meses,
+  empresas,
+  haySinEmpresa,
+}: {
+  meses: readonly MesDelCierre[];
+  empresas: readonly { id: string; nombre: string }[];
+  haySinEmpresa: boolean;
+}) {
   const cerrados = meses.filter((m) => m.estado.estado === 'cerrado');
-  if (!cerrados.length || !empresas.length) return null;
+  if (!cerrados.length) return <p style={NOTA}>Todavía no cerró ningún mes: la nómina se descarga cuando el mes cierra.</p>;
 
   return (
-    <form action="/admin/nomina" method="get" style={{ ...CIERRE, gap: 6 }}>
-      <span style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>Nómina del mes, para finanzas</span>
+    <form action="/admin/nomina" method="get" style={COLUMNA}>
+      <p style={NOTA}>Un bloque por persona: su bono, lo que se descuenta y el total a pagar. Solo meses cerrados.</p>
       <select name="mes" defaultValue={cerrados[0]!.valor} aria-label="Qué mes" style={SELECTOR}>
         {cerrados.map((m) => (
           <option key={m.valor} value={m.valor}>
@@ -150,14 +240,8 @@ function LaNomina({ meses, empresas }: { meses: readonly MesDelCierre[]; empresa
           </option>
         ))}
       </select>
-      <select name="empresa" defaultValue={empresas[0]!.id} aria-label="Qué empresa" style={SELECTOR}>
-        {empresas.map((e) => (
-          <option key={e.id} value={e.id}>
-            {e.nombre}
-          </option>
-        ))}
-      </select>
-      <button type="submit" style={SECUNDARIO}>
+      <SelectorDeEmpresa empresas={empresas} haySinEmpresa={haySinEmpresa} />
+      <button type="submit" style={BOTON}>
         Descargar la nómina
       </button>
     </form>
@@ -167,13 +251,13 @@ function LaNomina({ meses, empresas }: { meses: readonly MesDelCierre[]; empresa
 // Reabrir y volver a cerrar, donde se elige el mes para descargar (CEB-229).
 // Son formularios aparte, debajo del de la descarga: un formulario no va
 // dentro de otro.
-function ElCierre({ meses, reabrir, cerrar }: Omit<NonNullable<Parameters<typeof Navegacion>[0]['cierre']>, 'empresas'>) {
+function ElCierre({ meses, reabrir, cerrar }: Omit<NonNullable<Parameters<typeof Navegacion>[0]['cierre']>, 'empresas' | 'haySinEmpresa'>) {
   const cerrados = meses.filter((m) => m.estado.estado === 'cerrado');
   const reabiertos = meses.filter((m) => m.estado.estado === 'reabierto');
-  if (!cerrados.length && !reabiertos.length) return null;
+  if (!cerrados.length && !reabiertos.length) return <p style={NOTA}>El mes se cierra solo a las 23:59 de su último día hábil. Todavía no cerró ninguno.</p>;
 
   return (
-    <div style={CIERRE}>
+    <div style={COLUMNA}>
       <span style={{ fontSize: 12.5, color: 'var(--gris)', fontWeight: 500 }}>
         El mes se cierra solo a las 23:59 de su último día hábil.
       </span>
@@ -221,7 +305,6 @@ export const DEL_SUPERVISOR = [...DEL_EMPLEADO, { href: '/equipo', texto: 'El eq
 export const DEL_ADMINISTRADOR = [
   { href: '/admin', texto: 'El equipo' },
   { href: '/admin/calendario', texto: 'El calendario' },
-  { href: '/admin/descarga', texto: 'Descargar ↓', porMes: true },
 ];
 
 // Los ultimos doce meses, del mas reciente al mas viejo, como "septiembre de
@@ -237,31 +320,47 @@ const MESES = Array.from({ length: 12 }, (_, i) => {
   };
 });
 
-const PANEL = {
+
+const COLUMNA = { display: 'flex', flexDirection: 'column', gap: 10 } as const;
+
+const NOTA = { fontSize: 13, color: 'var(--gris)', margin: 0, fontWeight: 400 } as const;
+
+const MENU = {
   position: 'absolute',
   top: 'calc(100% + 10px)',
   left: 0,
   zIndex: 20,
   display: 'flex',
   flexDirection: 'column',
-  gap: 10,
-  padding: 12,
-  borderRadius: 16,
+  padding: 6,
+  borderRadius: 14,
   background: '#ffffff',
   boxShadow: '0 10px 30px rgba(26,23,19,0.18)',
-  minWidth: 220,
+  minWidth: 180,
 } as const;
 
-const COLUMNA = { display: 'flex', flexDirection: 'column', gap: 10 } as const;
+const OPCION = { textAlign: 'left', padding: '8px 12px', borderRadius: 10, color: 'var(--tinta)', fontSize: 14, fontWeight: 600 } as const;
 
-const CIERRE = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  borderTop: '1px solid rgba(26,23,19,0.10)',
-  paddingTop: 10,
-  maxWidth: 280,
+const DIALOGO = {
+  border: 'none',
+  borderRadius: 20,
+  padding: '20px 22px',
+  width: 'min(420px, calc(100vw - 32px))',
+  color: 'var(--tinta)',
+  boxShadow: '0 20px 50px rgba(26,23,19,0.25)',
 } as const;
+
+const CERRAR = {
+  width: 30,
+  height: 30,
+  borderRadius: 999,
+  border: 0,
+  background: 'rgba(26,23,19,0.06)',
+  color: 'var(--gris)',
+  fontSize: 13,
+  cursor: 'pointer',
+} as const;
+
 
 const RAZON = {
   borderRadius: 12,

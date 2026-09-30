@@ -79,6 +79,17 @@ export function comoVanSusFunciones(datos: DatosDelEquipo, empleadoId: string, h
     });
 }
 
+// Lo que el filtro de texto encuentra de una persona ademas de sus funciones:
+// sus imprevistos abiertos y los que cerro este mes. Los borrados no.
+// ponytail: sale de lo que ya se leyo para el tablero (abiertos y pedidos en
+// los ultimos dos meses); uno pedido hace mas y cerrado este mes no aparece.
+export function imprevistosQueSeBuscan(datos: DatosDelEquipo, empleadoId: string, hoy: string): string[] {
+  const mes = hoy.slice(0, 7);
+  return datos.imprevistos
+    .filter((i) => i.empleado_id === empleadoId && !i.borrado_en && (!i.resultado || (i.marcada_en ?? '').slice(0, 7) === mes))
+    .map((i) => i.texto);
+}
+
 export type PersonaDelTablero = { id: string; nombre: string; empresa: string | null; sede: string | null };
 
 // Cuanto del cargo de cada quien esta sin cumplir (CEB-221). La cotidianidad

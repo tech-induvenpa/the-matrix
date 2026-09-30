@@ -35,14 +35,25 @@ export function AbrirPerfil({ clave, sinLeer, children }: { clave: string; sinLe
   );
 }
 
-// Del color del texto de donde este: rojo sobre una tarjeta roja no se veia.
+// Verde, como el de la esquina de las tarjetas (NuevoMensaje), con un borde
+// blanco para que se lea sobre cualquier color.
 export function Punto() {
   return (
     <span
       role="img"
       aria-label="comentarios sin leer"
       title="Comentarios sin leer"
-      style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 999, background: 'currentColor', marginLeft: 7, verticalAlign: 'middle' }}
+      style={{
+        display: 'inline-block',
+        width: 12,
+        height: 12,
+        borderRadius: 999,
+        background: '#2E9E5B',
+        border: '2px solid #fff',
+        boxShadow: '0 1px 3px rgba(26,23,19,0.2)',
+        marginLeft: 7,
+        verticalAlign: 'middle',
+      }}
     />
   );
 }
@@ -68,4 +79,47 @@ export function AlAbrir({ clave }: { clave: string }) {
   }, [router, donde, parametros]);
 
   return null;
+}
+
+// El mismo abrir y cerrar que el titulo, como boton al final de la tarjeta: un
+// chevron que gira cuando la historia esta abierta.
+export function BotonDeHistoria({ clave, velo }: { clave: string; velo: string }) {
+  const parametros = useSearchParams();
+  const abierto = parametros.get('tarea') === clave;
+
+  return (
+    <Link
+      href={conTarea(parametros, abierto ? null : clave)}
+      scroll={false}
+      aria-expanded={abierto}
+      aria-label={abierto ? 'Cerrar su historia' : 'Ver su historia'}
+      title={abierto ? 'Cerrar su historia' : 'Ver su historia y comentarla'}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 34,
+        height: 34,
+        borderRadius: 999,
+        background: velo,
+        color: 'inherit',
+        flexShrink: 0,
+      }}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        style={{ transform: abierto ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s ease' }}
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </Link>
+  );
 }

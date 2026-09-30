@@ -1,3 +1,4 @@
+import { SIN_EMPRESA, TODAS } from '@/lib/nomina-por-empresa';
 import {
   atrasosDelFlujo,
   bonoDelMes,
@@ -68,6 +69,8 @@ export async function GET(request: NextRequest) {
   const meses = [mes];
   // De quien: las personas marcadas en el menu, o todas si no se marco ninguna.
   const personas = request.nextUrl.searchParams.getAll('persona');
+  // Y de que empresa, o de quien no tiene ninguna. Sin elegir, de todas.
+  const empresa = request.nextUrl.searchParams.get('empresa') ?? TODAS;
   const desde = `${mes}-01`;
 
   const supabase = await clienteDelServidor();
@@ -99,8 +102,13 @@ export async function GET(request: NextRequest) {
         .gte('vence', desde),
       supabase.from('bono').select('empleado_id, monto, rige_desde'),
       supabase.rpc('quienes_piden'),
-      supabase.from('empleado').select('id, nombre_bloque').order('nombre_bloque'),
+      supabase.from('empleado').select('id, nombre_bloque, empresa_id').order('nombre_bloque'),
     ]);
+
+  const empresaDe = new Map(((empleados ?? []) as { id: string; empresa_id: string | null }[]).map((e) => [e.id, e.empresa_id]));
+  const entra = (empleadoId: string) =>
+    (personas.length === 0 || personas.includes(empleadoId)) &&
+    (empresa === TODAS || (empresa === SIN_EMPRESA ? !empresaDe.get(empleadoId) : empresaDe.get(empleadoId) === empresa));
 
   const calendario = Calendario.con(dias ?? []);
   const bonosDe = (empleadoId: string) => comoCambios((bonos ?? []).filter((b) => b.empleado_id === empleadoId));
@@ -184,7 +192,7 @@ export async function GET(request: NextRequest) {
 
     const funcionId = f.id as string;
     const empleadoId = t.empleado_id as string;
-    if (personas.length > 0 && !personas.includes(empleadoId)) continue;
+    if (!entra(empleadoId)) continue;
     const diaTope = (f.dia_tope_corregido ?? f.dia_tope_generado ?? undefined) as number | undefined;
 
     for (const mes of meses) {
@@ -243,7 +251,7 @@ export async function GET(request: NextRequest) {
   // con sus imprevistos (INV-39, ADR 0014). Todos la tienen, tambien quien no
   // tiene ninguna funcion: entonces es todo su cargo.
   for (const e of (empleados ?? []) as { id: string; nombre_bloque: string }[]) {
-    if (personas.length > 0 && !personas.includes(e.id)) continue;
+    if (!entra(e.id)) continue;
     const cotidianidad = cotidianidadDe(
       ((titularidades ?? []) as Record<string, unknown>[])
         .filter((t) => t.empleado_id === e.id && (t.funcion as { activa: boolean }).activa)

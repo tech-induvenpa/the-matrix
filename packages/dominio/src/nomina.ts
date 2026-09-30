@@ -146,3 +146,15 @@ export function reaperturasDeLaNomina(
     despues: enOrden[i + 1]?.totalAntes ?? totalAhora,
   }));
 }
+
+// Cuantas tareas del mes se cumplieron: las entregas y los imprevistos. Un
+// flujo no entra, porque se mide en dias atrasados, no en tareas.
+export function tareasDelMes(partes: readonly ParteDelCargo[]): { hechas: number; total: number } {
+  const tareas = partes.filter((p) => p.tipo !== 'flujo');
+  const total = tareas.reduce((t, p) => t + p.veces, 0);
+  return { hechas: total - tareas.reduce((t, p) => t + p.sinCumplir, 0), total };
+}
+
+// Los fuegos de fin de mes: mas del 90% de las tareas cumplidas.
+export const UMBRAL_DE_FUEGOS = 0.9;
+export const merecenFuegos = ({ hechas, total }: { hechas: number; total: number }) => total > 0 && hechas / total > UMBRAL_DE_FUEGOS;

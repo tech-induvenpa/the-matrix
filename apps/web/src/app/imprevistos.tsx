@@ -17,11 +17,12 @@ import {
   registrarImprevisto,
 } from './acciones';
 import { Accion } from './accion';
-import { Enviar } from './boton';
+import { Enviar, Redondo } from './boton';
 import { PorQue } from './porque';
 import { Confirmar } from './confirmar';
-import { CIRCULO, Numero } from './tarjeta';
-import { Titulo, type Perfil } from './perfil';
+import { CIRCULO, Check, Numero } from './tarjeta';
+import { NuevoMensaje, Titulo, type Perfil } from './perfil';
+import { BotonDeHistoria } from './abrir';
 
 // Un imprevisto: trabajo que llego sin estar en el reparto de nadie (ADR 0009).
 // Su urgencia se calcula como la de cualquier ocurrencia desde el vencimiento
@@ -52,14 +53,17 @@ export function TarjetaDeImprevisto({
   const pedido = cuandoSePidio(i.pedido_en, hoy);
 
   return (
-    <article style={TARJETA}>
+    <article style={{ ...TARJETA, position: 'relative' }}>
+      {perfil?.sinLeer && <NuevoMensaje />}
       {retraso > 0 && <span style={{ width: 5, alignSelf: 'stretch', borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
 
       <span style={{ ...CIRCULO, background: VELO }}>{emojiDe(urgencia)}</span>
 
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
         <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-          <Titulo perfil={perfil}>{i.texto}</Titulo>
+          <Titulo perfil={perfil} punto={false}>
+            {i.texto}
+          </Titulo>
         </span>
         <span style={{ fontSize: 13, opacity: 0.78 }}>
           {/* Una delegacion es trabajo de su supervisor que le toca hacer a el (ADR 0012). */}
@@ -76,46 +80,51 @@ export function TarjetaDeImprevisto({
         {nota && <span style={{ fontSize: 12.5, fontWeight: 600, color: '#9E3322' }}>{nota}</span>}
       </span>
 
-      <Numero etiqueta="URG" valor={urgencia} velo={VELO} />
+      {/* Lo de la derecha va junto: en un telefono la tarjeta baja de linea
+          entera, sin dejar un boton suelto abajo. */}
+      <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', marginLeft: 'auto' }}>
+        <Numero etiqueta="URG" valor={urgencia} velo={VELO} />
 
-      {puedeMarcar && (
-        <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-          <Accion accion={marcarImprevistoHecho.bind(null, i.id)}>
-            <Enviar style={BOTON} enviando="Marcando…">
-              ¡Hecho!
-            </Enviar>
-          </Accion>
-          <PorQue
-            accion={marcarImprevistoSinHacer.bind(null, i.id, 'no_pude')}
-            titulo="No pude"
-            placeholder="¿Qué pasó?"
-            estilo={{ ...REDONDO, color: '#C62828' }}
-          >
-            ✕
-          </PorQue>
-          <PorQue
-            accion={marcarImprevistoSinHacer.bind(null, i.id, 'no_lo_tome')}
-            titulo="No lo tomé"
-            placeholder="¿Por qué no lo tomaste?"
+        {puedeMarcar && (
+          <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+            <Accion accion={marcarImprevistoHecho.bind(null, i.id)}>
+              <Redondo titulo="¡Hecho!" color="#2E7D32" tamano={40}>
+                <Check />
+              </Redondo>
+            </Accion>
+            <PorQue
+              accion={marcarImprevistoSinHacer.bind(null, i.id, 'no_pude')}
+              titulo="No pude"
+              placeholder="¿Qué pasó?"
+              estilo={{ ...REDONDO, color: '#C62828' }}
+            >
+              ✕
+            </PorQue>
+            <PorQue
+              accion={marcarImprevistoSinHacer.bind(null, i.id, 'no_lo_tome')}
+              titulo="No lo tomé"
+              placeholder="¿Por qué no lo tomaste?"
+              estilo={{ ...REDONDO, fontSize: 13 }}
+            >
+              🙅
+            </PorQue>
+          </span>
+        )}
+
+        {puedeBorrar && (
+          <Confirmar
+            accion={borrarImprevisto.bind(null, i.id)}
+            titulo="Borrar: lo registré por error"
+            pregunta={`¿Borrar «${i.texto}»?`}
+            detalle="Al borrar la tarea no impacta en su ponderación y desaparece de su lista."
+            si="Borrar"
             estilo={{ ...REDONDO, fontSize: 13 }}
           >
-            🙅
-          </PorQue>
-        </span>
-      )}
-
-      {puedeBorrar && (
-        <Confirmar
-          accion={borrarImprevisto.bind(null, i.id)}
-          titulo="Borrar: lo registré por error"
-          pregunta={`¿Borrar «${i.texto}»?`}
-          detalle="Al borrar la tarea no impacta en su ponderación y desaparece de su lista."
-          si="Borrar"
-          estilo={{ ...REDONDO, fontSize: 13 }}
-        >
-          🗑
-        </Confirmar>
-      )}
+            🗑
+          </Confirmar>
+        )}
+        {perfil && <BotonDeHistoria clave={perfil.clave} velo={VELO} />}
+      </span>
       {perfil?.contenido}
     </article>
   );
