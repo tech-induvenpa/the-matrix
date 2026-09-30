@@ -16,6 +16,7 @@ import { Ir } from '../../ir';
 import { Confirmar } from '../../confirmar';
 import { comoVanSusFunciones, datosDelEquipo } from '@/lib/equipo';
 import { ComoVa } from '../../como-va';
+import { CerradasDelMes } from '../../cerradas';
 
 // El cargo de una persona. Una sola lista de funciones: antes salian dos, la de
 // repartir y la de editar, con los mismos nombres repetidos uno debajo del otro.
@@ -393,6 +394,14 @@ export default async function Cargo({
             calendario={imprevistos.calendario}
             rotulo="＋ Nueva tarea"
             fila
+          />
+          <CerradasDelMes
+            datos={datos}
+            empleadoId={empleado}
+            hoy={imprevistos.hoy}
+            quienesPiden={imprevistos.quienesPiden}
+            perfiles={conPerfil}
+            abierta={tarea}
           />
         </section>
       </div>

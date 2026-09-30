@@ -41,6 +41,36 @@ await sembrarFuncion(carla, { ...funcion('Lo de Carla', 'entregable'), ponderaci
 await servicio.from('titularidad').update({ desde: '2026-06-01' }).in('funcion_id', [cierre, facturas]);
 await servicio.from('evento_flujo').insert({ funcion_id: facturas, estado: 'atrasado', razon: 'RAZON-DEL-ATRASO', en: haceDias(3) });
 void nueva;
+// Lo cerrado este mes: un "no pude" en el cierre (no corta su arrastre), un
+// imprevisto marcado "no pude" y otro borrado, que no cuenta en nada.
+const mes = hoy.slice(0, 7);
+await servicio.from('marca').insert({ funcion_id: cierre, periodo: mes, resultado: 'no_pude', razon: 'RAZON-DEL-CIERRE', marcada_en: `${mes}-01T15:00:00Z` });
+// Quien los registra y quien borra: la base pide un usuario de verdad.
+const quien = (await (await comoAdministrador('jefa@prueba.test')).auth.getUser()).data.user!.id;
+const imprevisto = (texto: string, extra: Record<string, unknown> = {}) => ({
+  registrado_por: quien,
+  empleado_id: ana,
+  texto,
+  vence: hoy,
+  pedido_por_otro: 'el banco',
+  pedido_en: `${mes}-01T12:00:00Z`,
+  ...extra,
+});
+const { data: marcado, error: sinMarcado } = await servicio
+  .from('imprevisto')
+  .insert(imprevisto('IMPREVISTO-MARCADO', { resultado: 'no_pude', razon: 'RAZON-DEL-IMPREVISTO', marcada_en: `${mes}-01T16:00:00Z` }))
+  .select('id')
+  .single();
+if (sinMarcado) throw sinMarcado;
+await servicio.from('imprevisto').insert(
+  imprevisto('IMPREVISTO-BORRADO', {
+    resultado: 'no_pude',
+    razon: 'no cuenta',
+    marcada_en: `${mes}-01T17:00:00Z`,
+    borrado_en: `${mes}-01T18:00:00Z`,
+    borrado_por: quien,
+  }),
+);
 
 await comoAdministrador('jefa@prueba.test');
 await Promise.all(['ana', 'bruno', 'sara', 'carla'].map((n) => comoEmpleado(`${n}@prueba.test`)));
@@ -92,6 +122,19 @@ for (const [quien, cookie, ruta] of [
   criterio(`${quien}: el entregable arrastrado dice periodos y desde cuando`, /arrastra \d+ periodos, desde el 30 jun/.test(html));
   criterio(`${quien}: el flujo atrasado dice desde cuando y su razon`, html.includes('atrasado desde el') && html.includes('RAZON-DEL-ATRASO'));
   criterio(`${quien}: la funcion al dia no dice nada`, (html.match(/arrastra \d+ periodo/g) ?? []).length === 1);
+}
+
+// CEB-220 · Las cerradas del mes, plegadas en el perfil.
+for (const [quien, cookie, ruta] of [
+  ['jefa', cJefa, `/admin/${ana}`],
+  ['sara', cSara, `/equipo/${ana}`],
+] as const) {
+  html = texto((await pagina(cookie, ruta)).html);
+  criterio(`${quien}: las cerradas del mes, plegadas y contadas`, html.includes('Cerradas del mes (2)') && !/<details[^>]*open[^>]*>\s*<summary>Cerradas/.test(html));
+  criterio(`${quien}: cada una con su resultado y su razon`, html.includes('no pude: RAZON-DEL-CIERRE') && html.includes('no pude: RAZON-DEL-IMPREVISTO'));
+  criterio(`${quien}: el imprevisto borrado no esta`, !html.includes('IMPREVISTO-BORRADO'));
+  html = texto((await pagina(cookie, `${ruta}?tarea=i:${marcado!.id}`)).html);
+  criterio(`${quien}: al abrir una se ve su historia, sin poder comentar`, html.includes('No pude: “RAZON-DEL-IMPREVISTO”') && !html.includes('Escribe un comentario'));
 }
 
 console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');
