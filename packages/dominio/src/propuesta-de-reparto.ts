@@ -7,7 +7,9 @@ import { PISO_DE_COTIDIANIDAD, reescalarA, sumaDe, type Peso } from './reparto-d
 // sale de las funciones. El sistema lo propone y el administrador lo aprueba:
 // por eso devuelve tambien lo necesario para contar la cuenta.
 
-export type CambioDeReparto = { entra: Peso } | { cambia: Peso } | { sale: string };
+// Tambien la cotidianidad se ajusta: lo que sube o baja se compensa entre las
+// funciones, en proporcion.
+export type CambioDeReparto = { entra: Peso } | { cambia: Peso } | { sale: string } | { cotidianidad: number };
 
 export type PropuestaDeReparto = {
   despues: Peso[];
@@ -22,6 +24,16 @@ const COTIDIANIDAD = 'cotidianidad';
 
 export function proponerReparto(funciones: readonly Peso[], cambio: CambioDeReparto): PropuestaDeReparto {
   const antes = 100 - sumaDe(funciones);
+
+  if ('cotidianidad' in cambio) {
+    const pedida = Math.min(100, Math.max(cambio.cotidianidad, PISO_DE_COTIDIANIDAD));
+    return {
+      despues: reescalarA(funciones, 100 - pedida),
+      cotidianidad: { antes, despues: pedida },
+      proporcional: cambio.cotidianidad,
+      enElPiso: cambio.cotidianidad < PISO_DE_COTIDIANIDAD,
+    };
+  }
   const movida = 'sale' in cambio ? null : 'entra' in cambio ? cambio.entra : cambio.cambia;
   const fuera = 'sale' in cambio ? cambio.sale : movida!.funcionId;
 

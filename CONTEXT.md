@@ -131,8 +131,10 @@ _Avoid_: categoria, macro-tarea.
 Lo que queda del cargo despues de sus funciones: cien menos la suma de sus
 ponderaciones. Todo empleado nace con cotidianidad cien, y cada cambio de su
 **reparto** la mueve junto con las demas partes. No es una
-funcion: no se crea, no se edita aparte y no se traspasa (decidido el
-30/09/2026; antes era una funcion mas del reparto). Nunca baja del diez por
+funcion: no se crea y no se traspasa (decidido el 30/09/2026; antes era una
+funcion mas del reparto). Si se puede ajustar: subirla o bajarla reparte la
+diferencia entre las funciones, en proporcion, con la misma regla del
+**reparto**. Nunca baja del diez por
 ciento: un reparto cuyas funciones suman mas de noventa no se publica. Es por
 donde pesan los imprevistos: ninguno trae peso propio, se miden contra la
 cotidianidad de su empleado, y como siempre hay cotidianidad, todo imprevisto
