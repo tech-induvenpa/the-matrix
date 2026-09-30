@@ -46,6 +46,17 @@ describe('el vencimiento de un imprevisto sale de la urgencia elegida', () => {
     expect(vencimientoPorUrgencia('2026-09-26', 8, sinFeriados)).toBe('2026-09-28');
   });
 
+  // QA de CEB-193: el criterio pide la ida y vuelta tambien con pedido en
+  // sabado, y la 9 falla: un sabado, "hoy" y "manana" son el mismo lunes, y
+  // ese dia la 9 se ve como 8. Falla a proposito hasta que se decida (CEB-193);
+  // cuando se arregle, este test se pone en rojo y hay que quitarle el .fails.
+  it.fails('pedido un sabado, la urgencia que se ve ese dia es la elegida', () => {
+    for (let u = 0; u <= 9; u++) {
+      const vence = vencimientoPorUrgencia('2026-09-26', u, sinFeriados);
+      expect(urgenciaDe(sinFeriados.habilesEntre('2026-09-26', vence)), `urgencia ${u}`).toBe(u);
+    }
+  });
+
   it('la urgencia que se elige es la que la pantalla muestra ese dia', () => {
     const conFeriado = Calendario.con([{ desde: '2026-10-12', hasta: '2026-10-16' }]);
     for (const pedido of ['2026-09-24', '2026-09-25', '2026-10-09']) {
