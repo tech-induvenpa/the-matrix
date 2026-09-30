@@ -69,6 +69,12 @@ const { data: marcado, error: sinMarcado } = await servicio
   .select('id')
   .single();
 if (sinMarcado) throw sinMarcado;
+// Dos abiertos de bruno, uno en plazo y otro vencido.
+const { error: sinAbiertos } = await servicio.from('imprevisto').insert([
+  imprevisto('ABIERTO-EN-PLAZO', { empleado_id: bruno }),
+  imprevisto('ABIERTO-VENCIDO', { empleado_id: bruno, vence: `${mes}-10` }),
+]);
+if (sinAbiertos) throw sinAbiertos;
 // El "no pude" del cierre se lo llevo ese imprevisto: intromision.
 await servicio.from('intromision').insert({ imprevisto_id: marcado!.id, marca_id: noPude!.id });
 await servicio.from('imprevisto').insert(
@@ -172,6 +178,19 @@ for (const [quien, cookie, ruta, perfil] of [
   criterio(`${quien}: lo mas viejo primero`, linea.indexOf('ANA') < linea.indexOf('BRUNO'));
   criterio(`${quien}: quien no arrastra no ocupa espacio`, !linea.includes('SARA</strong>'));
   criterio(`${quien}: el tramo lleva al perfil`, linea.includes(`href="${perfil}"`));
+}
+
+// CEB-223 · La carga de imprevistos. Bruno: dos abiertos con cotidianidad 85.
+for (const [quien, cookie, ruta] of [
+  ['jefa', cJefa, '/admin'],
+  ['sara', cSara, '/equipo'],
+] as const) {
+  html = texto((await pagina(cookie, ruta)).html);
+  const carga = html.slice(html.indexOf('Cuánto le cae para su tamaño'), html.indexOf('Las personas'));
+  criterio(`${quien}: la carga de bruno por cada 10% de su cotidianidad`, carga.includes('0,2 por cada 10%') && carga.includes('2 abiertos, cotidianidad 85%'));
+  criterio(`${quien}: partida en en plazo y vencidos`, carga.includes('0,1 vencidos por cada 10%'));
+  criterio(`${quien}: lo marcado no carga a nadie`, !carga.includes('ANA'));
+  criterio(`${quien}: la barra lleva al perfil`, carga.includes(`href="${ruta === '/admin' ? '/admin' : '/equipo'}/${bruno}"`));
 }
 
 console.log(fallos ? `\n${fallos} criterios fallaron` : '\nTodo en orden');

@@ -160,6 +160,72 @@ export function DesdeCuando({
   );
 }
 
+// Cuanto le cae para su tamano (CEB-223): los imprevistos abiertos de cada
+// persona por cada 10% de su cotidianidad, partidos en en plazo y vencidos. La
+// escala es la persona mas cargada del equipo.
+export function Carga({
+  cargas,
+  perfilDe,
+}: {
+  cargas: readonly { persona: { id: string; nombre: string }; cotidianidad: number; carga: { enPlazo: number; vencidos: number; total: number } }[];
+  perfilDe: (id: string) => string;
+}) {
+  const mayor = Math.max(1, ...cargas.map((c) => c.carga.total));
+  const uno = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
+
+  return (
+    <section style={GRAFICA}>
+      <header>
+        <h2 style={TITULO}>Cuánto le cae para su tamaño</h2>
+        <p style={NOTA}>
+          Imprevistos abiertos por cada 10% de su cotidianidad, que es por donde pesan: veinte con cotidianidad 90% son 2,2; con 10%,
+          son 20.
+        </p>
+      </header>
+
+      <Leyenda
+        items={[
+          { muestra: <rect width="14" height="10" rx="2" fill={COTIDIANIDAD} />, texto: 'en plazo' },
+          { muestra: <rect width="14" height="10" rx="2" fill={VENCIDO} />, texto: 'vencidos' },
+        ]}
+      />
+
+      {cargas.length === 0 && <p style={NADA}>Nadie tiene imprevistos abiertos.</p>}
+
+      <ol style={LISTA}>
+        {cargas.map((c) => (
+          <li key={c.persona.id}>
+            <a href={perfilDe(c.persona.id)} style={ENLACE}>
+              <span style={ETIQUETA}>
+                <strong style={{ fontSize: 14 }}>{c.persona.nombre}</strong>
+                <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{uno(c.carga.total)} por cada 10%</span>
+                <span style={{ fontSize: 12.5, color: 'var(--gris)' }}>
+                  {Math.round((c.carga.total * Math.max(c.cotidianidad, 1)) / 10)} abiertos, cotidianidad {c.cotidianidad}%
+                  {c.carga.vencidos > 0 && ` · ${uno(c.carga.vencidos)} vencidos por cada 10%`}
+                </span>
+              </span>
+              <svg width="100%" height="14" aria-hidden style={{ display: 'block' }}>
+                <title>{`${c.persona.nombre}: ${uno(c.carga.enPlazo)} en plazo y ${uno(c.carga.vencidos)} vencidos por cada 10%`}</title>
+                <rect x="0" y="0" width="100%" height="14" rx="4" fill={PISTA} />
+                <rect x="0" y="0" width={`${(c.carga.enPlazo / mayor) * 100}%`} height="14" fill={COTIDIANIDAD} stroke="#fff" strokeWidth="2" />
+                <rect
+                  x={`${(c.carga.enPlazo / mayor) * 100}%`}
+                  y="0"
+                  width={`${(c.carga.vencidos / mayor) * 100}%`}
+                  height="14"
+                  fill={VENCIDO}
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+              </svg>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 // El patron del rayado, una vez por pagina. Va en su propio svg para que
 // cualquier grafica lo use por su id.
 export function Patrones() {
@@ -194,6 +260,7 @@ export function Leyenda({ items }: { items: readonly { muestra: React.ReactNode;
 export const FUNCION = '#d9503a';
 export const COTIDIANIDAD = '#1b6e8c';
 export const PISTA = 'rgba(26,23,19,0.06)';
+export const VENCIDO = '#9e3322';
 
 export const GRAFICA = {
   display: 'flex',
