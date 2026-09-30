@@ -12,11 +12,12 @@ import { tareasAbiertasDe } from '@/lib/tareas';
 import { perfiles } from '../perfil';
 import { claveDeLaTarea, ListaDeTareas } from '../lista';
 import { Punto } from '../abrir';
+import { Ir } from '../ir';
 
 // El equipo (CEB-145): lo que un supervisor necesita para actuar el mismo dia.
 // Que arrastra y desde cuando, que se atraso, que razones dieron y que les
-// esta cayendo. Sin pesos, tasas ni bonos: eso es conversacion de sueldo, y es
-// del administrador (INV-3).
+// esta cayendo. Cada persona tiene ademas su pagina, con sus pesos
+// (equipo/[persona], ADR 0015). Sin bonos ni montos: eso es del administrador.
 export default async function TuGente({ searchParams }: { searchParams: Promise<ParametrosDelFiltro & { tarea?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
@@ -64,12 +65,14 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
                   {conPerfil.sinLeerDe(p.id) && <Punto />}
                 </span>
                 {p.empresa && <span style={{ fontSize: 13, color: 'var(--gris)', marginRight: 12 }}>{enPalabras(p)}</span>}
+                <Ir href={`/equipo/${p.id}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta)', marginRight: 12 }}>
+                  Su perfil →
+                </Ir>
                 <span style={{ fontSize: 13, ...(pendientes(p) ? { color: '#9E3322', fontWeight: 600 } : { color: 'var(--gris)' }) }}>
                   {resumenDe(p, abiertos.length)}
                 </span>
               </summary>
-              {/* El mismo perfil que ve el administrador (admin/[empleado]), sin
-                  pesos ni bono (INV-3): sus funciones a un lado, lo del dia al otro. */}
+              {/* Sus funciones a un lado, lo del dia al otro. */}
               <div className="perfil" style={{ paddingTop: 14 }}>
                 <aside style={FIJO}>
                   <h3 style={SUBTITULO}>Sus funciones</h3>
