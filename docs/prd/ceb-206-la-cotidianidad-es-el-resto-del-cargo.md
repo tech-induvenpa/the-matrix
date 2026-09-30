@@ -57,7 +57,7 @@ Además, cada cambio de peso reacomoda el reparto a su manera: al dar de alta, a
 **Supervisor**
 
 23. Como supervisor, quiero pedirle trabajo a mi gente sabiendo que pesa en su cargo, para asignar sin crear funciones.
-24. Como supervisor, quiero seguir sin ver pesos de nadie, cotidianidad incluida (INV-3), para no saber lo que no me corresponde.
+24. ~~Como supervisor, quiero seguir sin ver pesos de nadie, cotidianidad incluida (INV-3), para no saber lo que no me corresponde.~~ **Cambió el 30/09/2026 (ADR 0015):** el supervisor ve las ponderaciones de su gente, cotidianidad incluida, y su ponderación arrastrada; sigue sin ver bonos ni montos.
 
 ## End-to-End Invariants
 
@@ -96,7 +96,7 @@ Prueba: una persona dada de alta sin funciones y otra con funciones que suman 90
 - **Una sola confirmación para los cinco momentos.** Antes y después por parte, la cuenta en palabras, ajuste posible y aprobar. Archivar, eliminar y traspasar dejan de aplicar pesos sin mostrarlos.
 - **El formulario de alta** (rama `feature/perfil-y-agregar-funcion`): sin la opción "Holgura", peso de 0 a 90, y el texto dice que el resto y la cotidianidad se reacomodan en proporción. Crear lleva a la confirmación.
 - **El mes del empleado** muestra la cotidianidad como una porción más, con su monto.
-- **El supervisor** sigue sin ver pesos (INV-3): la cotidianidad no aparece en lo que ve de su gente.
+- **El supervisor** ~~sigue sin ver pesos (INV-3): la cotidianidad no aparece en lo que ve de su gente.~~ Cambió el 30/09/2026 (ADR 0015): ve la cotidianidad de su gente como una parte más de su cargo, sin monto.
 
 ## Testing Decisions
 
@@ -113,7 +113,7 @@ Prueba: una persona dada de alta sin funciones y otra con funciones que suman 90
 - **Un piso distinto por persona o por empresa.** Es uno para todos.
 - **Bloquear imprevistos por falta de cotidianidad.** Nunca falta: el piso lo impide.
 - **Renombrar "holgura" en el código y la base** más allá de lo que esta feature toca.
-- **Que el supervisor vea la cotidianidad de su gente.** Es peso (INV-3).
+- ~~**Que el supervisor vea la cotidianidad de su gente.** Es peso (INV-3).~~ Entra con el ADR 0015 (30/09/2026), fuera de este PRD: lo construye el tablero del equipo.
 
 ## Further Notes
 
