@@ -1,8 +1,8 @@
 import { Calendario, delFiltro, montoNoCumplido } from '@matriz/dominio';
 import { bonosDelMes, elCalendario, gente } from '@/lib/administrador';
 import { datosDelEquipo } from '@/lib/equipo';
-import { barrasDe, lineasDelArrastre } from '@/lib/tablero';
-import { DesdeCuando, Patrones, SinCumplir } from '../tablero';
+import { barrasDe, cargasDe, lineasDelArrastre } from '@/lib/tablero';
+import { Carga, DesdeCuando, Patrones, SinCumplir } from '../tablero';
 import { enPalabras, filtroDe, pertenencias, type ParametrosDelFiltro } from '@/lib/pertenencia';
 import { Filtrar } from '../filtro';
 import { darDeAlta } from './acciones';
@@ -38,6 +38,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
   const dias = Calendario.con(calendario.dias);
   const barras = barrasDe(datos, calendario.hoy, dias).filter((b) => quienes.has(b.persona.id));
   const lineas = lineasDelArrastre(datos, calendario.hoy, dias).filter((l) => quienes.has(l.persona.id));
+  const cargas = cargasDe(datos, calendario.hoy).filter((c) => quienes.has(c.persona.id));
   // Un porcentaje del cargo, en dolares del bono de este mes. Sin bono, nada.
   const montoDe = (id: string, peso: number) => (bonos.has(id) ? montoNoCumplido(peso, bonos.get(id)!) : null);
 
@@ -57,6 +58,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<Pa
 
       <SinCumplir barras={barras} perfilDe={(id) => `/admin/${id}`} montoDe={montoDe} />
       <DesdeCuando lineas={lineas} hoy={calendario.hoy} perfilDe={(id) => `/admin/${id}`} />
+      <Carga cargas={cargas} perfilDe={(id) => `/admin/${id}`} />
 
       <h2 style={{ fontSize: 17, fontWeight: 700, margin: '6px 0 0' }}>Las personas</h2>
 

@@ -63,3 +63,5 @@ export { cerradasDelMes } from './cerradas';
 export type { Cerrada } from './cerradas';
 export { barrasDelEquipo, periodosDesplazados } from './barras';
 export type { Barra, FuncionDeLaBarra, Segmento } from './barras';
+export { cargaDeImprevistos } from './carga';
+export type { Carga } from './carga';

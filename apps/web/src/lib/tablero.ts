@@ -1,6 +1,7 @@
 import {
   arrastreDe,
   barrasDelEquipo,
+  cargaDeImprevistos,
   cumplimientoDeLaHolgura,
   estadosVigentes,
   ocurrenciasEntre,
@@ -98,6 +99,26 @@ export function barrasDe(datos: DatosDelEquipo, hoy: string, calendario: Calenda
       ),
     })),
   );
+}
+
+// La carga de imprevistos (CEB-223): los abiertos de cada persona por cada 10%
+// de su cotidianidad, de la mas cargada a la menos. Quien no tiene nada
+// abierto no ocupa espacio.
+export function cargasDe(datos: DatosDelEquipo, hoy: string) {
+  return datos.gente
+    .map((p) => ({
+      persona: { id: p.id, nombre: p.nombre },
+      cotidianidad: p.cotidianidad,
+      carga: cargaDeImprevistos(
+        datos.imprevistos
+          .filter((i) => i.empleado_id === p.id)
+          .map((i) => ({ vence: i.vence, resultado: i.resultado, borradoEn: i.borrado_en ?? null })),
+        p.cotidianidad,
+        hoy,
+      ),
+    }))
+    .filter((c) => c.carga.total > 0)
+    .sort((a, b) => b.carga.total - a.carga.total || a.persona.nombre.localeCompare(b.persona.nombre));
 }
 
 // La linea del arrastre (CEB-222): cada funcion con arrastre es un tramo desde
