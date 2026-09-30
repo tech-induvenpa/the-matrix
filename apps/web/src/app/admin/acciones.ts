@@ -150,7 +150,7 @@ export async function editarFuncion(funcionId: string, empleadoId: string, formu
     .is('hasta', null)
     .maybeSingle();
 
-  if (Number.isInteger(pedida) && pedida >= 0 && pedida <= 100 && actual && actual.ponderacion !== pedida) {
+  if (Number.isInteger(pedida) && pedida >= 0 && pedida <= TOPE && actual && actual.ponderacion !== pedida) {
     revalidatePath(`/admin/${empleadoId}`);
     redirect(`/admin/${empleadoId}?editar=${funcionId}&peso=${pedida}`);
   }
