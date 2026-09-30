@@ -25,10 +25,10 @@ export default async function Cargo({
   searchParams,
 }: {
   params: Promise<{ empleado: string }>;
-  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string; quitar?: string }>;
+  searchParams: Promise<{ editar?: string; peso?: string; tarea?: string; entra?: string; quitar?: string; aQuien?: string; pesoNuevo?: string }>;
 }) {
   const { empleado } = await params;
-  const { editar, peso, tarea, entra, quitar } = await searchParams;
+  const { editar, peso, tarea, entra, quitar, aQuien, pesoNuevo } = await searchParams;
   const [cargo, imprevistos, bono, { opciones, dePersona }, conPerfil] = await Promise.all([
     cargoDe(empleado),
     imprevistosDe(),
@@ -42,6 +42,8 @@ export default async function Cargo({
 
   const suma = cargo.funciones.reduce((t, f) => t + f.ponderacion, 0);
   const repartiendo = editar === 'reparto';
+  // Un traspaso por aprobar: el reparto de quien recibe, para mostrar su cuenta (CEB-212).
+  const traspasando = editar && aQuien && Number.isInteger(Number(pesoNuevo)) ? await cargoDe(aQuien) : null;
   const nueva = repartiendo && entra ? cargo.funciones.find((f) => f.id === entra && f.sinPublicar) : undefined;
   const pesoPropuesto = (id: string) => cargo.borrador.find((b) => b.funcionId === id)?.ponderacion ?? 0;
 
@@ -52,17 +54,19 @@ export default async function Cargo({
   return (
     <main style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 24 }}>
       <header>
-        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>{cargo.nombre}</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          {cargo.nombre}
+          <Ir
+            href={editar === 'persona' ? '?' : '?editar=persona'}
+            title={editar === 'persona' ? 'Cerrar' : 'Editar su nombre, su correo y su empresa'}
+            aria-label={editar === 'persona' ? 'Cerrar' : 'Editar su nombre, su correo y su empresa'}
+            style={{ fontSize: 16, textDecoration: 'none' }}
+          >
+            {editar === 'persona' ? '✕' : '✏️'}
+          </Ir>
+        </h1>
         <p style={{ fontSize: 14, color: 'var(--gris)', margin: '5px 0 0' }}>
           {enPalabras(dePersona(empleado)) || 'sin empresa'} · {cargo.funciones.length} funciones · cotidianidad {100 - suma}%
-          {editar !== 'persona' && (
-            <>
-              {' · '}
-              <Ir href="?editar=persona" style={{ color: 'var(--gris)' }}>
-                ✏️ su nombre, su correo y su empresa
-              </Ir>
-            </>
-          )}
         </p>
 
         {editar === 'persona' && (
@@ -176,8 +180,13 @@ export default async function Cargo({
           <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
               <h2 style={H_FIJO}>Su reparto 🥧</h2>
-              <Ir href={repartiendo ? '?' : '?editar=reparto'} style={{ fontSize: 13, color: 'var(--gris)' }}>
-                {repartiendo ? 'dejar de modificar' : '✏️ modificar ponderación'}
+              <Ir
+                href={repartiendo ? '?' : '?editar=reparto'}
+                title={repartiendo ? 'Dejar de modificar' : 'Modificar la ponderación'}
+                aria-label={repartiendo ? 'Dejar de modificar' : 'Modificar la ponderación'}
+                style={{ fontSize: 14, textDecoration: 'none' }}
+              >
+                {repartiendo ? '✕' : '✏️'}
               </Ir>
             </div>
 
@@ -262,15 +271,50 @@ export default async function Cargo({
                       </div>
                     )}
 
-                    {editar === f.id && !proponiendo && !quitar && (
+                    {/* El traspaso muestra antes como quedan los dos (CEB-212). */}
+                    {editar === f.id && traspasando && (
+                      <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <Cuenta
+                          titulo={`Así quedaría ${cargo.nombre}, que la entrega`}
+                          funciones={cargo.funciones.filter((g) => !g.sinPublicar)}
+                          cambio={{ sale: f.id }}
+                        />
+                        <Cuenta
+                          titulo={`Así quedaría ${traspasando.nombre}, que la recibe`}
+                          funciones={traspasando.funciones.filter((g) => !g.sinPublicar)}
+                          cambio={{ entra: { funcionId: f.id, ponderacion: Number(pesoNuevo) } }}
+                          nombreDeLaNueva={f.texto}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                            <Accion accion={traspasar.bind(null, f.id, empleado)}>
+                              <input type="hidden" name="aQuien" value={traspasando.id} />
+                              <input type="hidden" name="pesoNuevo" value={Number(pesoNuevo)} />
+                              <Enviar style={BOTON} enviando="Traspasando…">
+                                Sí, traspasarla
+                              </Enviar>
+                            </Accion>
+                            <Ir href={`?editar=${f.id}`} style={{ fontSize: 13, color: 'var(--gris)' }}>
+                              dejarla como está
+                            </Ir>
+                            <span style={{ fontSize: 12, color: 'var(--gris)', flexBasis: '100%' }}>
+                              Su historial se va con ella; el arrastre de {cargo.nombre} se queda.
+                            </span>
+                          </div>
+                        </Cuenta>
+                      </div>
+                    )}
+
+                    {editar === f.id && !proponiendo && !quitar && !traspasando && (
                       <div style={{ background: 'var(--suave)', borderRadius: 14, padding: '16px 18px', marginTop: 5 }}>
                         <Formulario funcionId={f.id} empleadoId={empleado} funcion={f} />
 
-                        <Accion accion={traspasar.bind(null, f.id, empleado)}>
+                        {/* Un GET: lleva a la cuenta del traspaso, no traspasa todavia. */}
+                        <form>
+                          <input type="hidden" name="editar" value={f.id} />
                           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,23,19,0.10)' }}>
                             <label style={ETIQUETA}>
                               Pasársela a
-                              <select name="aQuien" style={CAMPO}>
+                              <select name="aQuien" required style={CAMPO}>
                                 <option value="">—</option>
                                 {cargo.companeros.map((c) => (
                                   <option key={c.id} value={c.id}>
@@ -282,18 +326,18 @@ export default async function Cargo({
 
                             <label style={ETIQUETA}>
                               Cuánto pesa en su cargo
-                              <input name="pesoNuevo" type="number" min={0} max={100} defaultValue={f.ponderacion} style={{ ...CAMPO, width: 80, textAlign: 'right' }} />
+                              <input name="pesoNuevo" type="number" min={0} max={90} required defaultValue={f.ponderacion} style={{ ...CAMPO, width: 80, textAlign: 'right' }} />
                             </label>
 
-                            <Enviar style={{ ...BOTON, background: 'rgba(26,23,19,0.06)', color: 'var(--tinta)' }} enviando="Traspasando…">
+                            <button type="submit" style={{ ...BOTON, background: 'rgba(26,23,19,0.06)', color: 'var(--tinta)' }}>
                               Traspasar
-                            </Enviar>
+                            </button>
 
                             <span style={{ fontSize: 12, color: 'var(--gris)', flexBasis: '100%' }}>
-                              Aquí pesa {f.ponderacion}%. Su historial se va con ella; el arrastre de {cargo.nombre} se queda.
+                              Aquí pesa {f.ponderacion}%. Antes de traspasar ves cómo quedan los dos repartos.
                             </span>
                           </div>
-                        </Accion>
+                        </form>
 
                         <Ir
                           href={`?editar=${f.id}&quitar=archivar`}

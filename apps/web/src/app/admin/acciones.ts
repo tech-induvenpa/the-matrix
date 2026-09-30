@@ -385,7 +385,7 @@ export async function traspasar(funcionId: string, deQuien: string, formulario: 
   revalidatePath(`/admin/${deQuien}`);
   revalidatePath(`/admin/${aQuien}`);
   revalidatePath('/admin');
-  return { mensaje: '¡Traspasada! Su historial se fue con ella.', celebra: true };
+  redirect(`/admin/${deQuien}`);
 }
 
 // --- La gente y el calendario (CEB-134, CEB-135) ----------------------------
@@ -499,7 +499,8 @@ export async function editarEmpleado(empleadoId: string, formulario: FormData) {
 
   revalidatePath(`/admin/${empleadoId}`);
   revalidatePath('/admin');
-  return { mensaje: 'Guardado. Entrará con ese correo.', celebra: false };
+  // Guardado, el formulario se cierra: el nombre nuevo ya se ve arriba.
+  redirect(`/admin/${empleadoId}`);
 }
 
 // El bono (ADR 0010): rige siempre desde el mes siguiente. Lo decide la base,
