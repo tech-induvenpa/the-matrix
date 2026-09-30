@@ -4,7 +4,7 @@ import { delegar, deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
-import { Titulo, type Perfil } from './perfil';
+import { NuevoMensaje, Titulo, type Perfil } from './perfil';
 import { BotonDeHistoria } from './abrir';
 
 export type Fila = {
@@ -28,14 +28,17 @@ export type Fila = {
 // solo lectura en la lista de otra persona: marca el titular (CEB-198).
 export function Tarjeta({ o, hoy, perfil, soloLectura = false }: { o: Fila; hoy: string; perfil?: Perfil; soloLectura?: boolean }) {
   return (
-    <article style={{ ...TARJETA, ...COLOR[o.cuadrante], flexWrap: perfil?.contenido ? 'wrap' : undefined }}>
+    <article style={{ ...TARJETA, ...COLOR[o.cuadrante], position: 'relative', flexWrap: perfil?.contenido ? 'wrap' : undefined }}>
+      {perfil?.sinLeer && <NuevoMensaje />}
       <span title={`Vence en ${o.faltan} días hábiles`} style={{ ...CIRCULO, background: COLOR[o.cuadrante].velo }}>
         {emojiDe(o.urgencia)}
       </span>
 
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
         <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-          <Titulo perfil={perfil}>{o.texto}</Titulo>
+          <Titulo perfil={perfil} punto={false}>
+            {o.texto}
+          </Titulo>
         </span>
         <span style={{ fontSize: 13, opacity: 0.78 }}>{comoVence(o.vence, hoy)}</span>
       </span>

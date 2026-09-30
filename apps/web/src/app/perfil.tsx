@@ -47,13 +47,39 @@ export async function perfiles(abierta: string | undefined) {
   return { perfil, deOcurrencia, sinLeerDe };
 }
 
+// Comentarios sin leer: un punto verde que flota sobre la esquina de la
+// tarjeta, al principio, con un borde blanco para que se lea sobre cualquier
+// color. La tarjeta tiene que ser position: relative.
+export function NuevoMensaje() {
+  return (
+    <span
+      role="img"
+      aria-label="comentarios sin leer"
+      title="Comentarios sin leer"
+      style={{
+        position: 'absolute',
+        top: -4,
+        left: -4,
+        width: 16,
+        height: 16,
+        borderRadius: 999,
+        background: '#2E9E5B',
+        border: '2.5px solid #fff',
+        boxShadow: '0 1px 4px rgba(26,23,19,0.25)',
+        zIndex: 1,
+      }}
+    />
+  );
+}
+
 const comoComentario = (c: FilaComentario) => ({ autor: c.autor, autorNombre: c.autor_nombre, escritoEn: c.escrito_en, texto: c.texto });
 
-// El texto de una tarjeta que abre su perfil. Sin perfil, solo el texto.
-export function Titulo({ perfil, children }: { perfil?: Perfil; children: ReactNode }) {
+// El texto de una tarjeta que abre su perfil. Sin perfil, solo el texto. Las
+// tarjetas grandes llevan lo sin leer en su esquina (NuevoMensaje), no aqui.
+export function Titulo({ perfil, punto = true, children }: { perfil?: Perfil; punto?: boolean; children: ReactNode }) {
   if (!perfil) return <>{children}</>;
   return (
-    <AbrirPerfil clave={perfil.clave} sinLeer={perfil.sinLeer}>
+    <AbrirPerfil clave={perfil.clave} sinLeer={punto && perfil.sinLeer}>
       {children}
     </AbrirPerfil>
   );
