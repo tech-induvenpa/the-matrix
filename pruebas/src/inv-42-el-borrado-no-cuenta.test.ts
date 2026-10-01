@@ -22,7 +22,9 @@ const { GET: descargar } = await import('../../apps/web/src/app/admin/descarga/r
 const { NextRequest } = (await import(next.servidor)) as typeof import('next/server');
 const { Calendario, cerradasDelMes, ocurrenciasEntre } = await import('@matriz/dominio');
 
-const hoy = new Date().toISOString().slice(0, 10);
+// Hoy en Caracas, como el reloj de las pruebas: en UTC, de 20:00 a 24:00 del
+// ultimo dia ya es el mes siguiente y la descarga pediria un mes sin cerrar.
+const hoy = new Date(Date.now() - 4 * 3600_000).toISOString().slice(0, 10);
 const mes = hoy.slice(0, 7);
 const haceTresMeses = new Date(Date.UTC(+hoy.slice(0, 4), +hoy.slice(5, 7) - 4, 1)).toISOString().slice(0, 10);
 
