@@ -83,6 +83,7 @@ export function TarjetaDeImprevisto({
       {/* Lo de la derecha va junto: en un telefono la tarjeta baja de linea
           entera, sin dejar un boton suelto abajo. */}
       <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', marginLeft: 'auto' }}>
+        <Numero etiqueta="IMP" valor={i.importancia} velo={VELO} />
         <Numero etiqueta="URG" valor={urgencia} velo={VELO} />
 
         {puedeMarcar && (
@@ -132,7 +133,8 @@ export function TarjetaDeImprevisto({
 
 // Registrar es de un solo paso y va plegado: la pantalla es para trabajar, no
 // para llenar formularios. Se elige para cuando con la misma escala de urgencia
-// que ya se ve en las tareas (ADR 0013); por defecto 8, manana, como siempre.
+// que ya se ve en las tareas (ADR 0013); por defecto 8, manana, como siempre. Y
+// cuan importante es, de 0 a 9; por defecto 5 (CEB-241).
 export function NuevoImprevisto({
   empleadoId,
   quienesPiden,
@@ -162,6 +164,15 @@ export function NuevoImprevisto({
           {opcionesDeUrgencia(hoy, calendario).map((o) => (
             <option key={o.urgencia} value={o.urgencia}>
               {o.emoji} {o.urgencia} · {cuando(o.vence)}
+            </option>
+          ))}
+        </select>
+        {/* Cuan importante es, como la importancia de una funcion. No se edita
+            despues: si esta mal, se borra y se anota otro. */}
+        <select name="importancia" defaultValue="5" style={CAMPO} aria-label="Importancia">
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+            <option key={n} value={n}>
+              IMP {n}
             </option>
           ))}
         </select>
