@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar, RELOJ_DE_LAS_PRUEBAS } from './entorno';
 
 // INV-42 · Un imprevisto borrado no aparece en ninguna grafica, en ninguna
 // lista de cerradas ni en ninguna fila de la descarga (CEB-215). Se borran un
