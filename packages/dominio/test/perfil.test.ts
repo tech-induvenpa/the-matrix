@@ -125,9 +125,16 @@ describe('la lista por persona', () => {
     marcada,
     ponderacion,
   });
-  const imprevisto = (texto: string, vence: string, resultado: 'hecho' | null = null, borradoEn: string | null = null) => ({
+  const imprevisto = (
+    texto: string,
+    vence: string,
+    resultado: 'hecho' | null = null,
+    borradoEn: string | null = null,
+    importancia = 0,
+  ) => ({
     texto,
     vence,
+    importancia,
     resultado,
     borradoEn,
   });
@@ -143,7 +150,7 @@ describe('la lista por persona', () => {
     expect(textos(lista)).toEqual(['Vencida', 'Llamar al banco', 'Cierre']);
   });
 
-  it('por urgencia y luego importancia; el imprevisto va al final de su empate', () => {
+  it('por urgencia y luego importancia; en un empate, el imprevisto va despues', () => {
     const lista = listaDeTareas(
       [ocurrencia('Poca', '2026-09-17', 2), ocurrencia('Mucha', '2026-09-17', 8)],
       [imprevisto('Imprevisto', '2026-09-17')],
@@ -151,6 +158,17 @@ describe('la lista por persona', () => {
       calendario,
     );
     expect(textos(lista)).toEqual(['Mucha', 'Poca', 'Imprevisto']);
+  });
+
+  it('el imprevisto cuenta con su importancia real, no con 0', () => {
+    const lista = listaDeTareas(
+      [ocurrencia('Poca', '2026-09-17', 2), ocurrencia('Mucha', '2026-09-17', 8)],
+      [imprevisto('Informe al directorio', '2026-09-17', null, null, 9), imprevisto('Tramite', '2026-09-17', null, null, 5)],
+      hoy,
+      calendario,
+    );
+    expect(textos(lista)).toEqual(['Informe al directorio', 'Mucha', 'Tramite', 'Poca']);
+    expect(lista.map((t) => t.importancia)).toEqual([9, 8, 5, 2]);
   });
 
   it('la ponderacion no altera el orden', () => {

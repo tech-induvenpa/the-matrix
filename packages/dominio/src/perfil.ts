@@ -87,15 +87,16 @@ export const haySinLeer = (
 
 export type EnLaLista<O, I> =
   | { tipo: 'ocurrencia'; urgencia: number; importancia: number; tarea: O }
-  | { tipo: 'imprevisto'; urgencia: number; importancia: 0; tarea: I };
+  | { tipo: 'imprevisto'; urgencia: number; importancia: number; tarea: I };
 
 // Las tareas abiertas de una persona, ocurrencias e imprevistos juntos, por
-// urgencia y luego importancia. Un imprevisto cuenta con importancia 0. Sin
+// urgencia y luego importancia. Un imprevisto cuenta con la que le dio quien
+// lo anoto (CEB-242); en un empate, la ocurrencia va primero. Sin
 // ponderacion a proposito: ordenar por peso le delataria al supervisor lo que
 // pesa en el cargo de su gente.
 export function listaDeTareas<
   O extends { vence: Fecha; importancia: number; marcada: boolean },
-  I extends { vence: Fecha; resultado: Resultado | null; borradoEn: string | null },
+  I extends { vence: Fecha; importancia: number; resultado: Resultado | null; borradoEn: string | null },
 >(ocurrencias: readonly O[], imprevistos: readonly I[], hoy: Fecha, calendario: Calendario): EnLaLista<O, I>[] {
   const urgencia = (vence: Fecha) => urgenciaDe(calendario.habilesEntre(hoy, vence));
 
@@ -105,7 +106,7 @@ export function listaDeTareas<
       .map((o): EnLaLista<O, I> => ({ tipo: 'ocurrencia', urgencia: urgencia(o.vence), importancia: o.importancia, tarea: o })),
     ...imprevistos
       .filter((i) => !i.resultado && !i.borradoEn)
-      .map((i): EnLaLista<O, I> => ({ tipo: 'imprevisto', urgencia: urgencia(i.vence), importancia: 0, tarea: i })),
+      .map((i): EnLaLista<O, I> => ({ tipo: 'imprevisto', urgencia: urgencia(i.vence), importancia: i.importancia, tarea: i })),
   ].sort((a, b) => b.urgencia - a.urgencia || b.importancia - a.importancia);
 }
 

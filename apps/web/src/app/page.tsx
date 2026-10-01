@@ -13,6 +13,7 @@ import {
   importanciaEfectiva,
   mostrarResueltas,
   ocurrenciasEntre,
+  ordenarImprevistos,
   ordenarPlan,
   pendientes,
   seleccionarPlan,
@@ -96,7 +97,12 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     );
 
   // Imprevistos: arriba de los flujos, fuera del plan y de la meta (ADR 0009).
-  const imprevistosAbiertos = imprevistos.filter((i) => !i.resultado).sort((a, b) => a.vence.localeCompare(b.vence));
+  // Por cuadrante, importancia y vencimiento, con el orden del dominio (CEB-242).
+  const imprevistosAbiertos = ordenarImprevistos(
+    imprevistos.filter((i) => !i.resultado),
+    hoy,
+    calendario,
+  );
   const paraVincular = imprevistos.map((i) => ({ id: i.id, texto: i.texto, pedidoEn: i.pedido_en, borradoEn: i.borrado_en }));
   const opcionesHasta = (vence: string) => vinculables(paraVincular, { vence }).map(({ id, texto }) => ({ id, texto }));
   const ultimoAlDia = (funcionId: string) =>

@@ -37,14 +37,16 @@ export { diasSeguidosCerrando } from './racha';
 export type { DiaDeTrabajo } from './racha';
 export {
   cifrasPor,
+  cuadranteDelImprevisto,
   cuandoSePidio,
   cumplimientoDeLaHolgura,
   estadoDe,
   opcionesDeUrgencia,
+  ordenarImprevistos,
   retrasoDe,
   vencimientoPorUrgencia,
 } from './imprevistos';
-export type { Cifras, EstadoDeImprevisto, OpcionDeUrgencia, Resultado } from './imprevistos';
+export type { Cifras, CuadranteDelImprevisto, EstadoDeImprevisto, OpcionDeUrgencia, Resultado } from './imprevistos';
 export { vinculables } from './intromision';
 export type { ImprevistoVinculable, Limite } from './intromision';
 export { bonoDelMes, enDolares, montoNoCumplido } from './bono';

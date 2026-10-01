@@ -1,10 +1,10 @@
 import {
   cifrasPor,
+  cuadranteDelImprevisto,
   cuandoSePidio,
   emojiDe,
   opcionesDeUrgencia,
   retrasoDe,
-  urgenciaDe,
   type Calendario,
   type Cifras,
 } from '@matriz/dominio';
@@ -20,14 +20,16 @@ import { Accion } from './accion';
 import { Enviar, Redondo } from './boton';
 import { PorQue } from './porque';
 import { Confirmar } from './confirmar';
-import { CIRCULO, Check, Numero } from './tarjeta';
+import { CIRCULO, COLOR, Check, Numero } from './tarjeta';
 import { NuevoMensaje, Titulo, type Perfil } from './perfil';
 import { BotonDeHistoria } from './abrir';
 
 // Un imprevisto: trabajo que llego sin estar en el reparto de nadie (ADR 0009).
 // Su urgencia se calcula como la de cualquier ocurrencia desde el vencimiento
 // que se eligio al anotarlo (ADR 0013). Vencido sin marca sigue aqui, con su
-// retraso, y con el dia en que se pidio: puede llevar semanas abierto.
+// retraso, y con el dia en que se pidio: puede llevar semanas abierto. Con su
+// importancia cae en un cuadrante y toma su color, como una ocurrencia
+// (CEB-242), aunque siga en su propio bloque.
 export function TarjetaDeImprevisto({
   i,
   hoy,
@@ -48,16 +50,18 @@ export function TarjetaDeImprevisto({
   nota?: string;
   perfil?: Perfil;
 }) {
-  const urgencia = urgenciaDe(calendario.habilesHasta(hoy, i.vence));
+  const { urgencia, cuadrante } = cuadranteDelImprevisto(i.importancia, i.vence, hoy, calendario);
+  const { velo } = COLOR[cuadrante];
   const retraso = retrasoDe(i.vence, hoy, calendario);
   const pedido = cuandoSePidio(i.pedido_en, hoy);
 
   return (
-    <article style={{ ...TARJETA, position: 'relative' }}>
+    <article style={{ ...TARJETA, ...COLOR[cuadrante], position: 'relative' }}>
       {perfil?.sinLeer && <NuevoMensaje />}
-      {retraso > 0 && <span style={{ width: 5, alignSelf: 'stretch', borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
+      {/* Del color del texto: un vencido cae en hacer ya, que ya es rojo. */}
+      {retraso > 0 && <span style={{ width: 5, alignSelf: 'stretch', borderRadius: 999, background: 'currentColor', flexShrink: 0 }} />}
 
-      <span style={{ ...CIRCULO, background: VELO }}>{emojiDe(urgencia)}</span>
+      <span style={{ ...CIRCULO, background: velo }}>{emojiDe(urgencia)}</span>
 
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
         <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
@@ -70,21 +74,21 @@ export function TarjetaDeImprevisto({
           {i.delega_funcion ? 'delegado por' : 'pedido por'} {quienPidio(i, quienesPiden)}{' '}
           {pedido === 'hoy' ? 'hoy' : `el ${fechaCorta(pedido)}`} ·{' '}
           {retraso > 0 ? (
-            <strong style={{ color: '#9E3322' }}>
+            <strong>
               {retraso} {retraso === 1 ? 'día hábil' : 'días hábiles'} de retraso
             </strong>
           ) : (
             comoVence(i.vence, hoy)
           )}
         </span>
-        {nota && <span style={{ fontSize: 12.5, fontWeight: 600, color: '#9E3322' }}>{nota}</span>}
+        {nota && <span style={{ fontSize: 12.5, fontWeight: 600 }}>{nota}</span>}
       </span>
 
       {/* Lo de la derecha va junto: en un telefono la tarjeta baja de linea
           entera, sin dejar un boton suelto abajo. */}
       <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', marginLeft: 'auto' }}>
-        <Numero etiqueta="IMP" valor={i.importancia} velo={VELO} />
-        <Numero etiqueta="URG" valor={urgencia} velo={VELO} />
+        <Numero etiqueta="IMP" valor={i.importancia} velo={velo} />
+        <Numero etiqueta="URG" valor={urgencia} velo={velo} />
 
         {puedeMarcar && (
           <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
@@ -124,7 +128,7 @@ export function TarjetaDeImprevisto({
             🗑
           </Confirmar>
         )}
-        {perfil && <BotonDeHistoria clave={perfil.clave} velo={VELO} />}
+        {perfil && <BotonDeHistoria clave={perfil.clave} velo={velo} />}
       </span>
       {perfil?.contenido}
     </article>
@@ -304,14 +308,10 @@ const FILA = {
   fontSize: 13.5,
 } as const;
 
-const VELO = 'rgba(42,35,19,0.12)';
-
 const TARJETA = {
   display: 'flex',
   alignItems: 'center',
   gap: 12,
-  background: '#F2C4A8',
-  color: '#2A2313',
   borderRadius: 20,
   padding: '10px 12px',
   flexWrap: 'wrap',
