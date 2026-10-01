@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar, RELOJ_DE_LAS_PRUEBAS } from './entorno';
 
 // INV-42 · Un imprevisto borrado no aparece en ninguna grafica, en ninguna
 // lista de cerradas ni en ninguna fila de la descarga (CEB-215). Se borran un
@@ -23,7 +23,9 @@ const { NextRequest } = (await import(next.servidor)) as typeof import('next/ser
 const { Calendario, cerradasDelMes, ocurrenciasEntre } = await import('@matriz/dominio');
 
 const hoy = new Date().toISOString().slice(0, 10);
-const mes = hoy.slice(0, 7);
+// El mes del reloj de las pruebas, que se cuenta en Caracas: de 20:00 a 24:00
+// del ultimo dia, en UTC ya es el mes siguiente.
+const mes = RELOJ_DE_LAS_PRUEBAS.slice(0, 7);
 const haceTresMeses = new Date(Date.UTC(+hoy.slice(0, 4), +hoy.slice(5, 7) - 4, 1)).toISOString().slice(0, 10);
 
 const funcion = (texto: string, extra: Record<string, unknown> = {}) => ({
