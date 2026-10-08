@@ -195,7 +195,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                     // Lo demas, plegado y con su propio scroll: todo cabe en una pantalla.
                     <details className="nuevo-item" open={suyas.slice(VISIBLES).some((o) => perfilDeOcurrencia(o).clave === tarea)}>
                       <summary>Ver {suyas.length - VISIBLES} más</summary>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, maxHeight: 340, overflowY: 'auto' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, marginLeft: 22, paddingLeft: 12, borderLeft: '2px solid rgba(26,23,19,0.12)', maxHeight: 340, overflowY: 'auto' }}>
                         {suyas.slice(VISIBLES).map((o) => (
                           <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
                         ))}
@@ -346,17 +346,19 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
             </p>
           </div>
           )}
+          {/* A la derecha, bajo lo que llevas al dia: la columna estaba vacia y asi todo cabe en una pantalla. */}
+          <div style={{ maxHeight: 420, overflowY: 'auto', minWidth: 0 }}>
+        <ImprevistosDelMes
+          imprevistos={imprevistos.filter((i) => i.pedido_en.slice(0, 7) === hoy.slice(0, 7) || !i.resultado)}
+          explico={explico}
+          quienesPiden={quienesPiden}
+          hoy={hoy}
+          calendario={calendario}
+          perfilDe={(i) => perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden))}
+        />
+          </div>
         </section>
       </div>
-
-      <ImprevistosDelMes
-        imprevistos={imprevistos.filter((i) => i.pedido_en.slice(0, 7) === hoy.slice(0, 7) || !i.resultado)}
-        explico={explico}
-        quienesPiden={quienesPiden}
-        hoy={hoy}
-        calendario={calendario}
-        perfilDe={(i) => perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden))}
-      />
     </main>
     </>
   );
