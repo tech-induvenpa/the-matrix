@@ -61,7 +61,7 @@ export async function losComentarios(abierta: string | undefined) {
 // Un imprevisto como lo cuenta su perfil. `anterior`: la delegacion devuelta
 // de la que nace, si el que la recibe la puede ver.
 export function tareaDeImprevisto(
-  i: Pick<FilaImprevisto, 'vence' | 'pedido_por' | 'pedido_por_otro' | 'pedido_en' | 'delega_funcion' | 'resultado' | 'razon' | 'marcada_en'>,
+  i: Pick<FilaImprevisto, 'vence' | 'pedido_por' | 'pedido_por_otro' | 'pedido_en' | 'delega_funcion' | 'delega_imprevisto' | 'resultado' | 'razon' | 'marcada_en'>,
   quienesPiden: readonly QuienPide[],
   anterior?: Pick<FilaImprevisto, 'pedido_por' | 'pedido_por_otro' | 'devuelto_razon' | 'devuelto_en'>,
 ): TareaDelPerfil {
@@ -70,7 +70,7 @@ export function tareaDeImprevisto(
     vence: i.vence,
     pedidoPor: quienPidio(i, quienesPiden),
     pedidoEn: i.pedido_en,
-    delegacion: i.delega_funcion !== null,
+    delegacion: i.delega_funcion !== null || i.delega_imprevisto !== null,
     devolucion:
       anterior?.devuelto_razon && anterior.devuelto_en
         ? { por: quienPidio(anterior, quienesPiden), razon: anterior.devuelto_razon, en: anterior.devuelto_en }

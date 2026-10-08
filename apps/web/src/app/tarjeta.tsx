@@ -97,7 +97,7 @@ export function Tarjeta({ o, hoy, perfil, soloLectura = false }: { o: Fila; hoy:
   );
 }
 
-const DELEGAR = {
+export const DELEGAR = {
   position: 'absolute',
   right: 0,
   top: 'calc(100% + 8px)',
@@ -111,7 +111,7 @@ const DELEGAR = {
   boxShadow: '0 10px 30px rgba(26,23,19,0.18)',
 } as const;
 
-const SELECTOR = {
+export const SELECTOR = {
   height: 34,
   borderRadius: 999,
   border: '1px solid rgba(26,23,19,0.12)',

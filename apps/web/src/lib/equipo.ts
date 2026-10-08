@@ -157,7 +157,8 @@ export async function lasDelegaciones(comoSupervisor: boolean): Promise<{ funcio
         titular: ((t.empleado as { nombre_bloque?: string } | null)?.nombre_bloque ?? '') as string,
       };
     }),
-    delegaciones: ((delegaciones ?? []) as Record<string, unknown>[]).map((d) => ({
+    // Las de ocurrencias: las de imprevistos no tienen funcion que repetir.
+    delegaciones: ((delegaciones ?? []) as Record<string, unknown>[]).filter((d) => d.delega_funcion != null).map((d) => ({
       funcion_id: d.delega_funcion as string,
       periodo: d.delega_periodo as string,
       pedido_en: d.pedido_en as string,

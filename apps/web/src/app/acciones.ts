@@ -264,6 +264,20 @@ export async function delegar(
   return { mensaje: 'Delegada. Sigue siendo tuya: la revisas cuando vuelva.', celebra: false };
 }
 
+// Delegar un imprevisto propio a alguien a cargo (ADR 0018). El imprevisto sigue
+// siendo de quien delega; la base comprueba lo demas (INV-49 a INV-51).
+export async function delegarImprevisto(imprevistoId: string, formulario: FormData): Promise<Aviso | undefined> {
+  const aQuien = String(formulario.get('aQuien') ?? '');
+  if (!aQuien) return;
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('delegar_imprevisto', { el_imprevisto: imprevistoId, a_quien: aQuien });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/', 'layout');
+  return { mensaje: 'Delegado. Sigue siendo tuyo: lo revisas cuando vuelva.', celebra: false };
+}
+
 // Devolver un "hecho" que no convence: con razon, y cuenta en contra para quien
 // lo recibio (INV-27). Despues se puede delegar otra vez.
 export async function devolver(delegacionId: string, formulario: FormData): Promise<Aviso | undefined> {

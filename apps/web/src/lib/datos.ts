@@ -37,6 +37,8 @@ export type FilaImprevisto = {
   // Si es una delegacion (ADR 0012): la ocurrencia del supervisor que cumple.
   delega_funcion: string | null;
   delega_periodo: string | null;
+  // Si es la delegacion de un imprevisto del supervisor (ADR 0018): ese imprevisto.
+  delega_imprevisto: string | null;
   devuelto_en: string | null;
   devuelto_razon: string | null;
 };
@@ -64,7 +66,7 @@ export const escapar = (v: string | number) => {
 };
 
 export const COLUMNAS_DE_IMPREVISTO =
-  'id, empleado_id, texto, pedido_en, vence, importancia, pedido_por, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en, delega_funcion, delega_periodo, devuelto_en, devuelto_razon';
+  'id, empleado_id, texto, pedido_en, vence, importancia, pedido_por, pedido_por_otro, registrado_por, resultado, razon, marcada_en, borrado_en, delega_funcion, delega_periodo, delega_imprevisto, devuelto_en, devuelto_razon';
 
 // Quien lo pidio, en palabras: un administrador o un supervisor por su nombre,
 // o lo que se escribio en "otro".
@@ -78,6 +80,7 @@ export type FilaDelegacion = {
   nombre: string;
   delega_funcion: string;
   delega_periodo: string;
+  delega_imprevisto: null;
   vence: string;
   resultado: Resultado | null;
   razon: string | null;
@@ -86,6 +89,26 @@ export type FilaDelegacion = {
   pedido_en: string;
   marcada_en: string | null;
 };
+
+// Lo que un supervisor delego de sus propios imprevistos (ADR 0018).
+export type FilaDelegacionDeImprevisto = Omit<FilaDelegacion, 'delega_funcion' | 'delega_periodo' | 'delega_imprevisto'> & {
+  delega_funcion: null;
+  delega_periodo: null;
+  delega_imprevisto: string;
+};
+
+// El pedido original de cada delegacion de imprevisto que recibio quien mira
+// (ADR 0018): lo que la base le deja leer del imprevisto del supervisor.
+export async function origenesDe(delegaciones: readonly string[]) {
+  const supabase = await clienteDelServidor();
+  const filas = await Promise.all(
+    delegaciones.map(async (id) => {
+      const { data } = await supabase.rpc('origen_de_mi_delegacion', { la_delegacion: id });
+      return [id, (data as { texto: string; pedido_por: string | null; pedido_por_otro: string | null }[] | null)?.[0]] as const;
+    }),
+  );
+  return new Map(filas.filter((f): f is readonly [string, NonNullable<(typeof f)[1]>] => f[1] !== undefined));
+}
 
 // Lo que un supervisor le pidio a alguien de otro equipo (CEB-198).
 export type FilaPedido = Pick<FilaImprevisto, 'id' | 'empleado_id' | 'texto' | 'pedido_en' | 'vence' | 'pedido_por'> & { nombre: string };
@@ -188,7 +211,8 @@ export async function panorama() {
     quienesPiden: (quienesPiden ?? []) as QuienPide[],
     bonos: comoCambios(bonos),
     gente: (gente ?? []) as { id: string; nombre: string }[],
-    delegaciones: (delegaciones ?? []) as FilaDelegacion[],
+    delegaciones: ((delegaciones ?? []) as Record<string, unknown>[]).filter((d) => d.delega_funcion !== null) as FilaDelegacion[],
+    delegacionesDeImprevisto: ((delegaciones ?? []) as Record<string, unknown>[]).filter((d) => d.delega_imprevisto !== null) as FilaDelegacionDeImprevisto[],
     pedidos: (pedidos ?? []) as FilaPedido[],
   };
 }

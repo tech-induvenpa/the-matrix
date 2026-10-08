@@ -1,6 +1,6 @@
 import type { EstadoDeLaDelegacion } from '@matriz/dominio';
 import { comoVence, type FilaPedido } from '@/lib/datos';
-import { devolver, marcarHecho } from './acciones';
+import { devolver, marcarHecho, marcarImprevistoHecho } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
 import { PorQue } from './porque';
@@ -8,8 +8,10 @@ import { Titulo, type Perfil } from './perfil';
 
 export type Delegada = {
   id: string;
-  funcionId: string;
-  periodo: string;
+  // De una ocurrencia (ADR 0012) o de un imprevisto del supervisor (ADR 0018): una u otra.
+  funcionId?: string;
+  periodo?: string;
+  imprevistoId?: string;
   texto: string;
   empleadoId: string;
   nombre: string;
@@ -64,7 +66,7 @@ export function Delegadas({
                 que la cierra (INV-25). */}
             {d.estado === 'para_revisar' && (
               <>
-                <Accion accion={marcarHecho.bind(null, d.funcionId, d.periodo)}>
+                <Accion accion={d.imprevistoId ? marcarImprevistoHecho.bind(null, d.imprevistoId) : marcarHecho.bind(null, d.funcionId!, d.periodo!)}>
                   <Enviar style={BOTON} enviando="…">
                     Aprobar
                   </Enviar>
