@@ -288,7 +288,7 @@ export function YaResueltas({
                   {g.length} veces · {hechas} listas{hechas < g.length && ` · ${g.length - hechas} no pude`}
                 </span>
               </summary>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 5 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 5, marginLeft: 22, paddingLeft: 12, borderLeft: '2px solid rgba(26,23,19,0.12)' }}>
                 {g.map((o) => (
                   <Fila key={clave(o)} o={o} conFecha />
                 ))}
