@@ -30,6 +30,9 @@ import { EstadoDeCuenta, ultimosMeses } from '../nomina';
 // basta poner esto en true (la base nunca se lo quito).
 const EMPLEADO_VE_SU_PESO = false;
 
+// Tarjetas que se ven de cada cuadrante antes del "Ver más".
+const VISIBLES = 3;
+
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la cotidianidad, que no entran a la pantalla de trabajo.
 export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string; mes?: string }> }) {
@@ -38,7 +41,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
   const [
     { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos: todosLosBonos, gente, empleadoId },
     { perfil, deOcurrencia },
-    { mes: pedido = '' },
+    { mes: pedido = '', tarea },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea)), searchParams]);
 
   const verPeso = EMPLEADO_VE_SU_PESO || gente.length > 0;
@@ -185,9 +188,20 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {suyas.map((o) => (
+                  {suyas.slice(0, VISIBLES).map((o) => (
                     <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
                   ))}
+                  {suyas.length > VISIBLES && (
+                    // Lo demas, plegado y con su propio scroll: todo cabe en una pantalla.
+                    <details className="nuevo-item" open={suyas.slice(VISIBLES).some((o) => perfilDeOcurrencia(o).clave === tarea)}>
+                      <summary>Ver {suyas.length - VISIBLES} más</summary>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, maxHeight: 340, overflowY: 'auto' }}>
+                        {suyas.slice(VISIBLES).map((o) => (
+                          <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               </div>
             );
