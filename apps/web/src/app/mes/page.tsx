@@ -25,21 +25,33 @@ import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 import { fuegosDe, nombreDelMes, nominaDelMes } from '@/lib/nomina';
 import { EstadoDeCuenta, ultimosMeses } from '../nomina';
 
+// Desde el 08/10/2026 el empleado no ve su peso ni su dinero; el supervisor ve
+// el peso, nunca el dinero. Se oculta solo aqui: para devolverselo al empleado,
+// basta poner esto en true (la base nunca se lo quito).
+const EMPLEADO_VE_SU_PESO = false;
+
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la cotidianidad, que no entran a la pantalla de trabajo.
 export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string; mes?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
   const [
-    { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos, gente, empleadoId },
+    { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos: todosLosBonos, gente, empleadoId },
     { perfil, deOcurrencia },
     { mes: pedido = '' },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea)), searchParams]);
 
+  const verPeso = EMPLEADO_VE_SU_PESO || gente.length > 0;
+  const verDinero = EMPLEADO_VE_SU_PESO;
+  const bonos = verDinero ? todosLosBonos : [];
+
   // Su nomina (ADR 0016): la del mes en curso, provisional, o la de un mes
   // anterior, fija. Un mes futuro todavia no tiene nada.
   const mesDeLaNomina = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedido) && pedido <= hoy.slice(0, 7) ? pedido : hoy.slice(0, 7);
-  const [suNomina, fuegos] = await Promise.all([nominaDelMes(empleadoId, mesDeLaNomina), fuegosDe(empleadoId)]);
+  const [suNomina, fuegos] = await Promise.all([
+    verDinero ? nominaDelMes(empleadoId, mesDeLaNomina) : null,
+    fuegosDe(empleadoId),
+  ]);
 
   // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
   // cuyo "no pude" o atraso se le vinculo.
@@ -224,6 +236,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
             </div>
           </div>
 
+          {verPeso && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--suave)', borderRadius: 20, padding: '22px 24px' }}>
             {/* Con bono, su nomina reemplaza a "Donde mas cuentas" (CEB-230), y
                 lo que vale cada funcion sigue abajo: de ahi sale cada descuento. */}
@@ -246,7 +259,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                     </button>
                   </form>
                 </div>
-                {suNomina.nomina ? (
+                {suNomina?.nomina ? (
                   <EstadoDeCuenta datos={{ ...suNomina, nomina: suNomina.nomina }} />
                 ) : (
                   <p style={{ fontSize: 13, color: 'var(--gris)', margin: 0 }}>
@@ -318,6 +331,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
               Aquí también vive lo que no entra a tu semana: las áreas del cargo y tu cotidianidad, lo que te piden fuera de tus funciones.
             </p>
           </div>
+          )}
         </section>
       </div>
 
