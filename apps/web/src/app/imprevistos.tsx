@@ -243,14 +243,15 @@ export function ImprevistosDelMes({
   const porQuien = cifrasPor(imprevistos.map(marcadaEn), (i) => quienPidio(i, quienesPiden), hoy, calendario);
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 28 }}>
+    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Lo que te cayó este mes</h2>
       {total && <p style={{ fontSize: 14, margin: 0 }}>{enPalabras(total)}</p>}
       <p style={{ fontSize: 13, color: 'var(--gris)', margin: 0 }}>
         {[...porQuien].map(([quien, c]) => `${quien}: ${c.llegados}`).join(' · ')}
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Tres filas a la vista; el resto, con scroll propio. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
         {imprevistos.map((i) => {
           const perfil = perfilDe?.(i);
           return (

@@ -30,9 +30,6 @@ import { EstadoDeCuenta, ultimosMeses } from '../nomina';
 // basta poner esto en true (la base nunca se lo quito).
 const EMPLEADO_VE_SU_PESO = false;
 
-// Tarjetas que se ven de cada cuadrante antes del "Ver más".
-const VISIBLES = 3;
-
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la cotidianidad, que no entran a la pantalla de trabajo.
 export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string; mes?: string }> }) {
@@ -41,7 +38,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
   const [
     { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos: todosLosBonos, gente, empleadoId },
     { perfil, deOcurrencia },
-    { mes: pedido = '', tarea },
+    { mes: pedido = '' },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea)), searchParams]);
 
   const verPeso = EMPLEADO_VE_SU_PESO || gente.length > 0;
@@ -187,24 +184,11 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {suyas.slice(0, VISIBLES).map((o) => (
+                {/* Tres tarjetas a la vista; el resto, con scroll propio. */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 235, overflowY: 'auto' }}>
+                  {suyas.map((o) => (
                     <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
                   ))}
-                  {suyas.length > VISIBLES && (
-                    // Lo demas, plegado y con su propio scroll: todo cabe en una pantalla.
-                    <details className="nuevo-item" open={suyas.slice(VISIBLES).some((o) => perfilDeOcurrencia(o).clave === tarea)}>
-                      <summary>
-                        <span className="solo-cerrado">Ver {suyas.length - VISIBLES} más</span>
-                        <span className="solo-abierto">Ver menos</span>
-                      </summary>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, marginLeft: 22, paddingLeft: 12, borderLeft: '2px solid rgba(26,23,19,0.12)', maxHeight: 340, overflowY: 'auto' }}>
-                        {suyas.slice(VISIBLES).map((o) => (
-                          <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
-                        ))}
-                      </div>
-                    </details>
-                  )}
                 </div>
               </div>
             );
@@ -350,7 +334,6 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
           </div>
           )}
           {/* A la derecha, bajo lo que llevas al dia: la columna estaba vacia y asi todo cabe en una pantalla. */}
-          <div style={{ maxHeight: 420, overflowY: 'auto', minWidth: 0 }}>
         <ImprevistosDelMes
           imprevistos={imprevistos.filter((i) => i.pedido_en.slice(0, 7) === hoy.slice(0, 7) || !i.resultado)}
           explico={explico}
@@ -359,7 +342,6 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
           calendario={calendario}
           perfilDe={(i) => perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden))}
         />
-          </div>
         </section>
       </div>
     </main>

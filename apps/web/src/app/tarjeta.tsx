@@ -276,7 +276,8 @@ export function YaResueltas({
         <span style={{ flexGrow: 1, height: 1, background: 'rgba(26,23,19,0.10)' }} />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {/* Tres filas a la vista; el resto, con scroll propio. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 145, overflowY: 'auto' }}>
         {grupos.map((g) => {
           if (g.length === 1) return <Fila key={clave(g[0])} o={g[0]} />;
           const hechas = g.filter((o) => marcaDe.get(clave(o))?.resultado === 'hecho').length;
