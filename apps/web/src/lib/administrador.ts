@@ -18,6 +18,23 @@ export async function soloAdministrador(): Promise<void> {
   if (!(await esAdministrador())) notFound();
 }
 
+// Que clase de administrador es (ADR 0019). El general lo ve todo; el de empresa,
+// solo la suya. Tambien lo pregunta la base: aqui solo se decide que mostrar.
+export async function elPapel(): Promise<{ general: boolean; empresaId: string | null }> {
+  const supabase = await clienteDelServidor();
+  const [{ data: general }, { data: empresaId }] = await Promise.all([
+    supabase.rpc('es_administrador_general'),
+    supabase.rpc('empresa_del_administrador'),
+  ]);
+  return { general: general === true, empresaId: (empresaId as string | null) ?? null };
+}
+
+// Lo del grupo (el calendario, los administradores): un administrador de
+// empresa recibe un 404, igual que un empleado.
+export async function soloGeneral(): Promise<void> {
+  if (!(await elPapel()).general) notFound();
+}
+
 export type EmpleadoDelPanel = {
   id: string;
   nombre: string;

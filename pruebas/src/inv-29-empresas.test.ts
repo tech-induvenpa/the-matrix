@@ -14,7 +14,7 @@ let kiaCentro: string;
 let ana: string; // KIA · 212, supervisora
 let benito: string; // KIA · Centro, a cargo de ana
 let carla: string; // KIA sin sede, a cargo de ana
-let dario: string; // Toyota, a cargo de ana
+let dario: string; // Toyota: ana no lo supervisa, porque el supervisor es de la misma empresa (ADR 0019)
 let elena: string; // KIA · 212, vecina: nadie la supervisa
 let jefa: SupabaseClient;
 let sesionAna: SupabaseClient;
@@ -50,7 +50,7 @@ beforeAll(async () => {
   sesionElena = await comoEmpleado('elena@prueba.test');
   await comoEmpleado('benito@prueba.test');
 
-  for (const p of [benito, carla, dario]) {
+  for (const p of [benito, carla]) {
     const { error } = await jefa.rpc('asignar_supervisor', { el_empleado: p, el_supervisor: ana });
     if (error) throw error;
   }
@@ -124,8 +124,9 @@ describe('INV-29: filtrar y buscar solo acotan lo que ya se ve', () => {
 
   it('la supervisora filtra a su gente y nunca aparece la vecina', async () => {
     const gente = await loQueVeAna();
-    expect(gente.map((p) => p.id).sort()).toEqual([benito, carla, dario].sort());
+    expect(gente.map((p) => p.id).sort()).toEqual([benito, carla].sort());
     expect(quienes(gente, { empresa: kia })).toEqual([benito, carla].sort());
+    expect(quienes(gente, { empresa: toyota })).toEqual([]);
     expect(quienes(gente, { empresa: kia, sede: kia212 })).toEqual([carla]);
     expect(quienes(gente, { texto: 'elena' })).toEqual([]);
     expect(quienes(gente, { texto: 'cierre de caja' })).toEqual([]);
@@ -150,11 +151,11 @@ describe('INV-30: la sede de una persona siempre es de su empresa', () => {
 
   it('editar a una sede de otra empresa, o cambiar de empresa conservando la sede, se rechaza', async () => {
     const editar = (la_empresa: string, la_sede: string | null) =>
-      jefa.rpc('editar_empleado', { el_empleado: benito, el_nombre: 'BENITO', el_correo: 'benito@prueba.test', la_empresa, la_sede });
+      jefa.rpc('editar_empleado', { el_empleado: elena, el_nombre: 'ELENA', el_correo: 'elena@prueba.test', la_empresa, la_sede });
     expect((await editar(toyota, kiaCentro)).error).not.toBeNull();
     // Cambiar de empresa sin sede la deja limpia.
     expect((await editar(toyota, null)).error).toBeNull();
-    expect((await editar(kia, kiaCentro)).error).toBeNull();
+    expect((await editar(kia, kia212)).error).toBeNull();
   });
 
   it('ni la llave de servicio deja una sede cruzada', async () => {
