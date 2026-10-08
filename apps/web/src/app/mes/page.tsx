@@ -194,7 +194,10 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                   {suyas.length > VISIBLES && (
                     // Lo demas, plegado y con su propio scroll: todo cabe en una pantalla.
                     <details className="nuevo-item" open={suyas.slice(VISIBLES).some((o) => perfilDeOcurrencia(o).clave === tarea)}>
-                      <summary>Ver {suyas.length - VISIBLES} más</summary>
+                      <summary>
+                        <span className="solo-cerrado">Ver {suyas.length - VISIBLES} más</span>
+                        <span className="solo-abierto">Ver menos</span>
+                      </summary>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, marginLeft: 22, paddingLeft: 12, borderLeft: '2px solid rgba(26,23,19,0.12)', maxHeight: 340, overflowY: 'auto' }}>
                         {suyas.slice(VISIBLES).map((o) => (
                           <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
