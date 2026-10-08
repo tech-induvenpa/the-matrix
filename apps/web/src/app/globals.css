@@ -147,3 +147,17 @@ dialog::backdrop { background: rgba(26, 23, 19, 0.35); }
 @media (prefers-reduced-motion: reduce) {
   .acordeon .chevron { transition: none; }
 }
+
+/* "El mes" en una pantalla: en pantallas anchas y altas cada bloque se reparte el
+   alto disponible y scrollea por dentro. En un telefono, un tope fijo. */
+.mes-scroll { max-height: var(--tope, 235px); overflow-y: auto; }
+@media (min-width: 900px) and (min-height: 600px) {
+  .mes-main { height: calc(100dvh - 64px); box-sizing: border-box; overflow: hidden; }
+  .mes-grid { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .mes-col { min-height: 0; overflow: hidden; }
+  .mes-col-der { overflow-y: auto; }
+  .mes-bloque { flex: 1 1 0; min-height: 96px; }
+  .mes-bloque > .mes-scroll { flex: 1 1 0; min-height: 0; max-height: none; }
+  .mes-resueltas { flex-grow: 0.6; }
+  .mes-resueltas > :first-child { flex-shrink: 0; }
+}

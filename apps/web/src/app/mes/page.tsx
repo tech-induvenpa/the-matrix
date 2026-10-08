@@ -25,21 +25,33 @@ import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 import { fuegosDe, nombreDelMes, nominaDelMes } from '@/lib/nomina';
 import { EstadoDeCuenta, ultimosMeses } from '../nomina';
 
+// Desde el 08/10/2026 el empleado no ve su peso ni su dinero; el supervisor ve
+// el peso, nunca el dinero. Se oculta solo aqui: para devolverselo al empleado,
+// basta poner esto en true (la base nunca se lo quito).
+const EMPLEADO_VE_SU_PESO = false;
+
 // Todo el mes, en el mismo orden que la semana. Aqui si se ve la ponderacion,
 // y aqui viven las areas y la cotidianidad, que no entran a la pantalla de trabajo.
 export default async function Mes({ searchParams }: { searchParams: Promise<{ tarea?: string; mes?: string }> }) {
   if (await esAdministrador()) redirect('/admin');
 
   const [
-    { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos, gente, empleadoId },
+    { hoy, calendario, funciones, marcas, eventos, imprevistos, intromisiones, quienesPiden, bonos: todosLosBonos, gente, empleadoId },
     { perfil, deOcurrencia },
     { mes: pedido = '' },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea)), searchParams]);
 
+  const verPeso = EMPLEADO_VE_SU_PESO || gente.length > 0;
+  const verDinero = EMPLEADO_VE_SU_PESO;
+  const bonos = verDinero ? todosLosBonos : [];
+
   // Su nomina (ADR 0016): la del mes en curso, provisional, o la de un mes
   // anterior, fija. Un mes futuro todavia no tiene nada.
   const mesDeLaNomina = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedido) && pedido <= hoy.slice(0, 7) ? pedido : hoy.slice(0, 7);
-  const [suNomina, fuegos] = await Promise.all([nominaDelMes(empleadoId, mesDeLaNomina), fuegosDe(empleadoId)]);
+  const [suNomina, fuegos] = await Promise.all([
+    verDinero ? nominaDelMes(empleadoId, mesDeLaNomina) : null,
+    fuegosDe(empleadoId),
+  ]);
 
   // Que previsto desplazo cada imprevisto, en palabras: el texto de la funcion
   // cuyo "no pude" o atraso se le vinculo.
@@ -138,7 +150,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
   return (
     <>
       <Navegacion entradas={gente.length > 0 ? DEL_SUPERVISOR : DEL_EMPLEADO} salida={salir} />
-    <main style={{ maxWidth: 1440, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <main className="mes-main" style={{ maxWidth: 1440, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <FuegosDelMes mes={fuegos.mes} merece={fuegos.merece} />
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
         <div>
@@ -157,14 +169,14 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 18, minWidth: 0 }}>
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+      <div className="mes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 18, minWidth: 0 }}>
+        <section className="mes-col" style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           {ORDEN.map((cuadrante) => {
             const suyas = todo.filter((o) => o.cuadrante === cuadrante);
             if (!suyas.length) return null;
 
             return (
-              <div key={cuadrante} style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div key={cuadrante} className="mes-bloque" style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                   <span style={{ fontSize: 15, lineHeight: 1 }}>{ROTULO[cuadrante].emoji}</span>
                   <span style={{ fontSize: 13, fontWeight: 600, color: ROTULO[cuadrante].color }}>
@@ -172,7 +184,8 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Cada bloque se reparte el alto de la pantalla y scrollea por dentro (globals.css). */}
+                <div className="mes-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {suyas.map((o) => (
                     <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
                   ))}
@@ -181,14 +194,18 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
             );
           })}
 
-          {yaResueltas.length > 0 && <YaResueltas cerradas={yaResueltas} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />}
+          {yaResueltas.length > 0 && (
+            <div className="mes-bloque mes-resueltas" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <YaResueltas cerradas={yaResueltas} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />
+            </div>
+          )}
 
           {todo.length === 0 && yaResueltas.length === 0 && (
             <p style={{ color: 'var(--gris)', fontSize: 14 }}>Este mes no tienes nada asignado.</p>
           )}
         </section>
 
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+        <section className="mes-col mes-col-der" style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <span style={{ fontSize: 15, lineHeight: 1 }}>🔁</span>
@@ -224,6 +241,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
             </div>
           </div>
 
+          {verPeso && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--suave)', borderRadius: 20, padding: '22px 24px' }}>
             {/* Con bono, su nomina reemplaza a "Donde mas cuentas" (CEB-230), y
                 lo que vale cada funcion sigue abajo: de ahi sale cada descuento. */}
@@ -246,7 +264,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                     </button>
                   </form>
                 </div>
-                {suNomina.nomina ? (
+                {suNomina?.nomina ? (
                   <EstadoDeCuenta datos={{ ...suNomina, nomina: suNomina.nomina }} />
                 ) : (
                   <p style={{ fontSize: 13, color: 'var(--gris)', margin: 0 }}>
@@ -318,17 +336,18 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
               Aquí también vive lo que no entra a tu semana: las áreas del cargo y tu cotidianidad, lo que te piden fuera de tus funciones.
             </p>
           </div>
+          )}
+          {/* A la derecha, bajo lo que llevas al dia: la columna estaba vacia y asi todo cabe en una pantalla. */}
+        <ImprevistosDelMes
+          imprevistos={imprevistos.filter((i) => i.pedido_en.slice(0, 7) === hoy.slice(0, 7) || !i.resultado)}
+          explico={explico}
+          quienesPiden={quienesPiden}
+          hoy={hoy}
+          calendario={calendario}
+          perfilDe={(i) => perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden))}
+        />
         </section>
       </div>
-
-      <ImprevistosDelMes
-        imprevistos={imprevistos.filter((i) => i.pedido_en.slice(0, 7) === hoy.slice(0, 7) || !i.resultado)}
-        explico={explico}
-        quienesPiden={quienesPiden}
-        hoy={hoy}
-        calendario={calendario}
-        perfilDe={(i) => perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden))}
-      />
     </main>
     </>
   );

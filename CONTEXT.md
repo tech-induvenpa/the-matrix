@@ -10,6 +10,9 @@ el marco de clasificacion detras del orden, nunca una pantalla.
 
 **Empleado**:
 Una persona de JFS con funciones asignadas y acceso propio a la aplicacion.
+Desde el 08/10/2026 no ve ningun peso ni monto, ni los propios: ni ponderaciones,
+ni bono, ni nomina. Eso solo lo ven el supervisor (ponderaciones) y el
+administrador (todo). El supervisor, como empleado, tampoco ve su bono.
 _Avoid_: usuario (es la cuenta, no la persona), colaborador.
 
 **Empresa**:
@@ -237,8 +240,8 @@ el bono, nunca por el sueldo entero. Es un monto por mes: un cambio rige siempre
 desde el mes siguiente a cuando se hace y se mantiene hasta el siguiente
 cambio. Nunca parte un mes ni reescribe los anteriores. El primero es la
 excepcion: rige desde el mes en que se fija, porque no hay nada que partir. Es el unico monto que el sistema conoce; el sueldo base no existe
-en el. Lo ve la persona a quien pertenece y el administrador, nadie mas; solo
-el administrador lo escribe.
+en el. Lo ve solo el administrador (decidido el 08/10/2026: la persona dejo de verlo en
+pantalla, y la base aun se lo permite); solo el administrador lo escribe.
 _Avoid_: sueldo (incluye la base, que no se mueve), asignacion, incentivo.
 
 **Importancia**:
@@ -337,8 +340,9 @@ empleado sabe quien lo lee.
 **Cumplimiento ponderado**:
 Ocurrencias cumplidas (marcadas "hecho") sobre asignadas, pesadas por
 ponderacion. Un "no pude" libera el lugar en el plan, pero no cumple. Es peso salarial
-expresado en porcentaje. El empleado lo ve de si mismo, en dolares, en su
-**nomina** (decidido el 30/09/2026, ADR 0016; antes no lo veia).
+expresado en porcentaje. Desde el 08/10/2026 el empleado ya no lo ve de si mismo: ni en dolares ni en
+**nomina** (lo veia desde el 30/09/2026, ADR 0016). Se oculta solo en pantalla,
+para poder devolverlo.
 
 **Nomina**:
 Cuanto del bono le corresponde a una persona en un mes, con su fundamento: el
