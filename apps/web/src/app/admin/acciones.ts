@@ -2,7 +2,7 @@
 
 import { ADMITE_DIA_TOPE, leerPertenencia, PISO_DE_COTIDIANIDAD, proponerReparto, SE_AGENDA, sePuedePublicar, sumaDe, tipoSegun } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
-import { esAdministrador } from '@/lib/administrador';
+import { elPapel, esAdministrador } from '@/lib/administrador';
 import { tomarLasFotos } from '@/lib/nomina';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -438,6 +438,25 @@ export async function darDeAlta(formulario: FormData) {
   if (error) return { mensaje: error.message, celebra: false };
 
   revalidatePath('/admin');
+  return { mensaje: `${nombre} ya puede entrar con su correo.`, celebra: true };
+}
+
+// Solo el general (INV-58): la base lo exige tambien. Sin empresa es general.
+export async function darDeAltaAdministrador(formulario: FormData) {
+  if (!(await elPapel()).general) return { mensaje: 'No.', celebra: false };
+
+  const nombre = String(formulario.get('nombre') ?? '').trim();
+  const correo = String(formulario.get('correo') ?? '').trim().toLowerCase();
+  const empresa = String(formulario.get('empresa') ?? '') || null;
+
+  if (!nombre) return { mensaje: 'Sin nombre no puedo darlo de alta.', celebra: false };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) return { mensaje: 'Ese correo no parece un correo.', celebra: false };
+
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('alta_de_administrador', { el_nombre: nombre, el_correo: correo, la_empresa: empresa });
+  if (error) return { mensaje: error.message, celebra: false };
+
+  revalidatePath('/admin/administradores');
   return { mensaje: `${nombre} ya puede entrar con su correo.`, celebra: true };
 }
 

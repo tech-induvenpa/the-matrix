@@ -6,6 +6,7 @@ import {
   coberturaDe,
   cuadranteDe,
   delegable,
+  delegableImprevisto,
   diasSeguidosCerrando,
   estadoDeLaDelegacion,
   estadosVigentes,
@@ -39,6 +40,7 @@ import { NuevoImprevisto, TarjetaDeImprevisto } from './imprevistos';
 import { Delegadas, LoQuePedi, type Delegada } from './delegadas';
 import { perfiles } from './perfil';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
+import { origenesDe, quienPidio } from '@/lib/datos';
 
 // La ventana de cinco dias habiles es la meta de la semana; la lista siempre
 // trae lo mas proximo, aunque venza despues.
@@ -55,7 +57,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   const [
     {
       hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
-      gente, delegaciones, pedidos,
+      gente, delegaciones, delegacionesDeImprevisto, pedidos,
     },
     { perfil, deOcurrencia },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
@@ -65,7 +67,9 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
 
   // Una delegacion devuelta vuelve como una nueva: trae la razon de la anterior,
   // para saber que rehacer (ADR 0012).
-  const devueltaAntes = <T extends { id: string; delega_funcion: string | null; delega_periodo: string | null; devuelto_razon: string | null }>(
+  const devueltaAntes = <
+    T extends { id: string; delega_funcion: string | null; delega_periodo: string | null; delega_imprevisto: string | null; devuelto_razon: string | null },
+  >(
     i: T,
     todas: readonly T[],
   ) =>
@@ -73,7 +77,9 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
       ? todas
           .filter((j) => j.id !== i.id && j.devuelto_razon && j.delega_funcion === i.delega_funcion && j.delega_periodo === i.delega_periodo)
           .at(-1)
-      : undefined;
+      : i.delega_imprevisto
+        ? todas.filter((j) => j.id !== i.id && j.devuelto_razon && j.delega_imprevisto === i.delega_imprevisto).at(-1)
+        : undefined;
   const devolucionDe = (i: (typeof imprevistos)[number]) => {
     const anterior = devueltaAntes(i, imprevistos);
     return anterior && `te la devolvió: “${anterior.devuelto_razon}”`;
@@ -85,21 +91,59 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   const perfilDeImprevisto = (i: (typeof imprevistos)[number]) =>
     perfil(claveDeImprevisto(i.id), tareaDeImprevisto(i, quienesPiden, devueltaAntes(i, imprevistos)));
   const perfilDeDelegada = (d: Delegada) => {
-    const fila = delegaciones.find((x) => x.id === d.id)!;
+    const todas = [...delegaciones, ...delegacionesDeImprevisto];
+    const fila = todas.find((x) => x.id === d.id)!;
     const comoImprevisto = { ...fila, pedido_por: yo, pedido_por_otro: null };
-    const anterior = devueltaAntes(comoImprevisto, delegaciones.map((x) => ({ ...x, pedido_por: yo, pedido_por_otro: null })));
+    const anterior = devueltaAntes(comoImprevisto, todas.map((x) => ({ ...x, pedido_por: yo, pedido_por_otro: null })));
     return perfil(claveDeImprevisto(d.id), tareaDeImprevisto(comoImprevisto, quienesPiden, anterior));
   };
   const perfilDePedido = (p: (typeof pedidos)[number]) =>
     perfil(
       claveDeImprevisto(p.id),
-      tareaDeImprevisto({ ...p, pedido_por_otro: null, delega_funcion: null, resultado: null, razon: null, marcada_en: null }, quienesPiden),
+      tareaDeImprevisto({ ...p, pedido_por_otro: null, delega_funcion: null, delega_imprevisto: null, resultado: null, razon: null, marcada_en: null }, quienesPiden),
     );
 
   // Imprevistos: arriba de los flujos, fuera del plan y de la meta (ADR 0009).
   // Por cuadrante, importancia y vencimiento, con el orden del dominio (CEB-242).
+  // Lo que el supervisor delego de sus imprevistos (ADR 0018): como una
+  // ocurrencia, mientras espera a su gente o su revision sale de la lista y va a
+  // "Delegadas"; si no la tomaron, no pudieron o se devolvio, vuelve a la lista.
+  const ultimaDelegacionDeImprevisto = new Map<string, (typeof delegacionesDeImprevisto)[number]>();
+  for (const d of [...delegacionesDeImprevisto].sort((a, b) => a.pedido_en.localeCompare(b.pedido_en))) {
+    ultimaDelegacionDeImprevisto.set(d.delega_imprevisto, d);
+  }
+  const propios = new Map(imprevistos.map((i) => [i.id, i]));
+  const delegadasDeImprevisto: Delegada[] = [...ultimaDelegacionDeImprevisto]
+    .filter(([id]) => propios.get(id) && !propios.get(id)!.resultado)
+    .map(([id, d]) => ({
+      id: d.id,
+      imprevistoId: id,
+      texto: propios.get(id)!.texto,
+      empleadoId: d.empleado_id,
+      nombre: d.nombre,
+      vence: d.vence,
+      estado: estadoDeLaDelegacion({ resultado: d.resultado, devueltoEn: d.devuelto_en, borradoEn: null }, false),
+      razon: d.razon,
+    }))
+    .filter((d) => ['esperando', 'para_revisar', 'no_pudo', 'no_tomada'].includes(d.estado));
+  const enManosDeOtroImprevisto = new Set(
+    delegadasDeImprevisto.filter((d) => d.estado === 'esperando' || d.estado === 'para_revisar').map((d) => d.imprevistoId),
+  );
+  const aQuienDelegarImprevisto = (i: (typeof imprevistos)[number]) => {
+    const d = ultimaDelegacionDeImprevisto.get(i.id);
+    const lista = d ? [{ resultado: d.resultado, devueltoEn: d.devuelto_en, borradoEn: null }] : [];
+    const esDelegacion = i.delega_funcion !== null || i.delega_imprevisto !== null;
+    return delegableImprevisto({ vence: i.vence, resultado: i.resultado, borradoEn: i.borrado_en, esDelegacion }, hoy, lista).si ? gente : [];
+  };
+  // El pedido original de lo que le delegaron, para quien lo recibe.
+  const origenes = await origenesDe(imprevistos.filter((i) => i.delega_imprevisto && !i.resultado).map((i) => i.id));
+  const origenDe = (i: (typeof imprevistos)[number]) => {
+    const o = origenes.get(i.id);
+    return o && `pedido original: “${o.texto}” · lo pidió ${quienPidio(o, quienesPiden)}`;
+  };
+
   const imprevistosAbiertos = ordenarImprevistos(
-    imprevistos.filter((i) => !i.resultado),
+    imprevistos.filter((i) => !i.resultado && !enManosDeOtroImprevisto.has(i.id)),
     hoy,
     calendario,
   );
@@ -471,7 +515,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
             />
           )}
 
-          <Delegadas delegadas={delegadas} hoy={hoy} gente={gente} perfilDe={perfilDeDelegada} />
+          <Delegadas delegadas={[...delegadas, ...delegadasDeImprevisto]} hoy={hoy} gente={gente} perfilDe={perfilDeDelegada} />
           <LoQuePedi pedidos={pedidos} hoy={hoy} perfilDe={perfilDePedido} />
 
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
@@ -493,8 +537,9 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                 calendario={calendario}
                 quienesPiden={quienesPiden}
                 puedeBorrar={i.registrado_por === yo}
-                nota={devolucionDe(i)}
+                nota={[devolucionDe(i), origenDe(i)].filter(Boolean).join(' · ') || undefined}
                 perfil={perfilDeImprevisto(i)}
+                delegarA={aQuienDelegarImprevisto(i)}
               />
             ))}
           </div>

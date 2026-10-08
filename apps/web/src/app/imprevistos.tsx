@@ -11,6 +11,7 @@ import {
 import { comoVence, fechaConDia, fechaCorta, quienPidio, sumarDias, type FilaImprevisto, type QuienPide } from '@/lib/datos';
 import {
   borrarImprevisto,
+  delegarImprevisto,
   desmarcarImprevisto,
   marcarImprevistoHecho,
   marcarImprevistoSinHacer,
@@ -20,7 +21,7 @@ import { Accion } from './accion';
 import { Enviar, Redondo } from './boton';
 import { PorQue } from './porque';
 import { Confirmar } from './confirmar';
-import { CIRCULO, COLOR, Check, Numero } from './tarjeta';
+import { CIRCULO, COLOR, Check, DELEGAR, HECHO, Numero, SELECTOR } from './tarjeta';
 import { NuevoMensaje, Titulo, type Perfil } from './perfil';
 import { BotonDeHistoria } from './abrir';
 
@@ -39,6 +40,7 @@ export function TarjetaDeImprevisto({
   puedeMarcar = true,
   nota,
   perfil,
+  delegarA,
 }: {
   i: FilaImprevisto;
   hoy: string;
@@ -49,6 +51,8 @@ export function TarjetaDeImprevisto({
   // Una linea de mas bajo el texto, como la razon de una devolucion.
   nota?: string;
   perfil?: Perfil;
+  // A quien se le puede delegar este imprevisto (ADR 0018). Vacio si no se puede.
+  delegarA?: readonly { id: string; nombre: string }[];
 }) {
   const { urgencia, cuadrante } = cuadranteDelImprevisto(i.importancia, i.vence, hoy, calendario);
   const { velo } = COLOR[cuadrante];
@@ -71,7 +75,7 @@ export function TarjetaDeImprevisto({
         </span>
         <span style={{ fontSize: 13, opacity: 0.78 }}>
           {/* Una delegacion es trabajo de su supervisor que le toca hacer a el (ADR 0012). */}
-          {i.delega_funcion ? 'delegado por' : 'pedido por'} {quienPidio(i, quienesPiden)}{' '}
+          {i.delega_funcion || i.delega_imprevisto ? 'delegado por' : 'pedido por'} {quienPidio(i, quienesPiden)}{' '}
           {pedido === 'hoy' ? 'hoy' : `el ${fechaCorta(pedido)}`} ·{' '}
           {retraso > 0 ? (
             <strong>
@@ -113,6 +117,28 @@ export function TarjetaDeImprevisto({
             >
               🙅
             </PorQue>
+            {delegarA && delegarA.length > 0 && (
+              <details style={{ position: 'relative' }}>
+                <summary title="Delegar" aria-label="Delegar" style={{ ...REDONDO, listStyle: 'none', color: 'var(--tinta)', fontSize: 17 }}>
+                  🤝
+                </summary>
+                <Accion accion={delegarImprevisto.bind(null, i.id)} style={DELEGAR}>
+                  <select name="aQuien" required defaultValue="" style={SELECTOR} aria-label="A quién">
+                    <option value="" disabled>
+                      ¿A quién?
+                    </option>
+                    {delegarA.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <Enviar style={{ ...HECHO, height: 34, background: 'var(--tinta)', color: '#fff' }} enviando="…">
+                    Delegar
+                  </Enviar>
+                </Accion>
+              </details>
+            )}
           </span>
         )}
 

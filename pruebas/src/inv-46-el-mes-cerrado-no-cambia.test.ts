@@ -172,6 +172,8 @@ describe('INV-46: un mes cerrado no cambia', () => {
     expect((await jefa.rpc('fijar_bono', { el_empleado: ana, el_monto: 2000 })).error).toBeNull();
     // Una correccion del bono que regia en agosto, por fuera de la pantalla.
     expect((await servicio.from('bono').update({ monto: 5000 }).eq('empleado_id', ana).eq('rige_desde', '2026-01-01')).error).toBeNull();
+    // Cambiar de empresa a quien tiene supervisor de la anterior se rechaza (INV-57): primero se lo quitan.
+    await servicio.from('empleado').update({ supervisor_id: null }).eq('id', ana);
     const { error: sinEmpresa } = await jefa.rpc('editar_empleado', {
       el_empleado: ana,
       el_nombre: 'ANA',

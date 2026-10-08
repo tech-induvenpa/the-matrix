@@ -55,13 +55,14 @@ export { atrasosDelFlujo, diasHabilesDelMes, hechosDeEntregable, hechosDeHolgura
 export type { HechoDeLaHolgura, Tramo } from './descarga';
 export {
   delegable,
+  delegableImprevisto,
   delegacionRepetida,
   estaAbierta,
   estadoDeLaDelegacion,
   MINIMO_DE_DELEGACIONES,
   VENTANA_DE_DELEGACION,
 } from './delegacion';
-export type { Delegable, Delegacion, DelegacionRepetida, EstadoDeLaDelegacion } from './delegacion';
+export type { Delegable, DelegableImprevisto, Delegacion, DelegacionRepetida, EstadoDeLaDelegacion } from './delegacion';
 export { delFiltro, leerPertenencia, opcionesDePertenencia } from './filtro-del-equipo';
 export type { Filtrable, FiltroDelEquipo, Opcion } from './filtro-del-equipo';
 export { haySinLeer, lineaDeTiempo, listaDeTareas, loLeen, sinLeer } from './perfil';

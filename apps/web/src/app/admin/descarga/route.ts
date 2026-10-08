@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       supabase.from('evento_flujo').select('funcion_id, estado, razon, en').order('en'),
       supabase
         .from('imprevisto')
-        .select('empleado_id, texto, vence, resultado, razon, borrado_en, devuelto_en, devuelto_razon, delega_funcion, pedido_por, pedido_por_otro')
+        .select('empleado_id, texto, vence, resultado, razon, borrado_en, devuelto_en, devuelto_razon, delega_funcion, delega_imprevisto, pedido_por, pedido_por_otro')
         .gte('vence', desde),
       supabase.from('bono').select('empleado_id, monto, rige_desde'),
       supabase.rpc('quienes_piden'),
@@ -198,10 +198,12 @@ export async function GET(request: NextRequest) {
     (imprevistos ?? [])
       .filter((i) => i.empleado_id === empleadoId)
       .map((i) => ({
-        // Una delegacion lo dice en su texto: sin columnas nuevas (CEB-182).
-        texto: i.delega_funcion
-          ? `${i.texto} (delegado por ${quienPidio(i as { pedido_por: string | null; pedido_por_otro: string | null }, (quienes ?? []) as QuienPide[])})`
-          : (i.texto as string),
+        // Una delegacion lo dice en su texto: sin columnas nuevas (CEB-182). La de un
+        // imprevisto lo aclara (ADR 0018).
+        texto:
+          i.delega_funcion || i.delega_imprevisto
+            ? `${i.texto} (delegado por ${quienPidio(i as { pedido_por: string | null; pedido_por_otro: string | null }, (quienes ?? []) as QuienPide[])}${i.delega_imprevisto ? ', de un imprevisto' : ''})`
+            : (i.texto as string),
         devueltoEn: i.devuelto_en as string | null,
         devueltoRazon: i.devuelto_razon as string | null,
         razon: i.razon as string | null,

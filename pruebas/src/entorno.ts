@@ -75,7 +75,8 @@ export async function comoEmpleado(correo: string): Promise<SupabaseClient> {
 
 // El administrador no es un empleado: es una fila en su propia tabla, atada al
 // usuario de autenticacion. Entra por el mismo sitio que todo el mundo.
-export async function comoAdministrador(correo: string): Promise<SupabaseClient> {
+// Sin empresa es el general; con empresa, el de esa empresa (ADR 0019).
+export async function comoAdministrador(correo: string, empresaId: string | null = null): Promise<SupabaseClient> {
   const servicio = comoServicio();
   const clave = `prueba-${correo}`;
 
@@ -95,7 +96,7 @@ export async function comoAdministrador(correo: string): Promise<SupabaseClient>
 
   const { error: sinAlta } = await servicio
     .from('administrador')
-    .upsert({ auth_user_id: usuario.id }, { onConflict: 'auth_user_id' });
+    .upsert({ auth_user_id: usuario.id, nombre: correo.split('@')[0], correo, empresa_id: empresaId }, { onConflict: 'auth_user_id' });
   if (sinAlta) throw sinAlta;
 
   const cliente = createClient(URL_LOCAL, ANON, { auth: { persistSession: false } });

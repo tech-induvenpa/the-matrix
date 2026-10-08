@@ -1,4 +1,4 @@
-import { elCalendario } from '@/lib/administrador';
+import { elCalendario, elPapel } from '@/lib/administrador';
 import { borrarDiaNoHabil, cargarDiasNoHabiles, declararCobertura } from '../acciones';
 import { Accion } from '../../accion';
 import { Enviar } from '../../boton';
@@ -6,7 +6,7 @@ import { AvisoDeCobertura } from '../cobertura';
 
 // Los dias en que esta empresa no trabaja, y hasta donde alguien lo reviso.
 export default async function CalendarioDeJFS() {
-  const { dias, cargadoHasta, cobertura } = await elCalendario();
+  const [{ dias, cargadoHasta, cobertura }, { general }] = await Promise.all([elCalendario(), elPapel()]);
 
   return (
     <main style={{ maxWidth: 780, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -20,6 +20,8 @@ export default async function CalendarioDeJFS() {
 
       <AvisoDeCobertura cobertura={cobertura} cargadoHasta={cargadoHasta} />
 
+      {/* El calendario es del grupo: el administrador de empresa lo lee (ADR 0019). */}
+      {general && (
       <section style={{ background: 'var(--suave)', borderRadius: 16, padding: '18px 20px' }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px' }}>Hasta dónde lo revisaste</h2>
         <p style={{ fontSize: 13, color: 'var(--gris)', margin: '0 0 12px', maxWidth: 520 }}>
@@ -36,6 +38,9 @@ export default async function CalendarioDeJFS() {
         </Accion>
       </section>
 
+      )}
+
+      {general && (
       <section>
         <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Un día o un bloque nuevo</h2>
         <Accion accion={cargarDiasNoHabiles}>
@@ -58,6 +63,7 @@ export default async function CalendarioDeJFS() {
           </div>
         </Accion>
       </section>
+      )}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {dias.map((d) => (
@@ -76,11 +82,13 @@ export default async function CalendarioDeJFS() {
               {d.desde === d.hasta ? d.desde : `${d.desde} → ${d.hasta}`}
             </span>
             <span style={{ flexGrow: 1, minWidth: 0, fontSize: 13.5, color: 'var(--gris)' }}>{d.descripcion}</span>
+            {general && (
             <Accion accion={borrarDiaNoHabil.bind(null, d.id)}>
               <Enviar style={{ fontSize: 12.5, color: 'var(--gris)', background: 'none', cursor: 'pointer' }} enviando="…">
                 Quitar
               </Enviar>
             </Accion>
+            )}
           </div>
         ))}
 

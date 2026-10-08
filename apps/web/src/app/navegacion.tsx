@@ -307,6 +307,9 @@ export const DEL_ADMINISTRADOR = [
   { href: '/admin/calendario', texto: 'El calendario' },
 ];
 
+// Solo el general los ve (ADR 0019).
+export const DEL_GENERAL = [...DEL_ADMINISTRADOR, { href: '/admin/administradores', texto: 'Los administradores' }];
+
 // Los ultimos doce meses, del mas reciente al mas viejo, como "septiembre de
 // 2026". El valor viaja como AAAA-MM.
 // ponytail: calculado al cargar el modulo; si la pestaña queda abierta de un mes

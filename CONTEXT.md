@@ -16,8 +16,11 @@ _Avoid_: usuario (es la cuenta, no la persona), colaborador.
 Una de las empresas que forman JFS: hoy KIA, Changan, Toyota, Induvenpa y
 Holding. Holding es la del grupo: la de quien no trabaja para una sola. JFS es
 el grupo, no una empresa mas.
-Sirve para saber de donde es cada quien y agrupar por ella. No limita nada: se
-supervisa y se traspasa entre empresas, y el calendario es del grupo.
+Sirve para saber de donde es cada quien, agrupar por ella y, desde el
+08/10/2026 (ADR 0019), acotar: el **administrador de empresa** y el
+**supervisor** solo gestionan dentro de la suya. Solo el **administrador** del
+grupo cruza empresas: traspasa entre ellas y cambia a alguien de empresa. El
+calendario es del grupo.
 Es un dato de la persona hoy: si cambia de empresa, todo su pasado se agrupa
 con la nueva.
 _Avoid_: razon social, filial, cliente (es a quien se le hace el trabajo).
@@ -26,17 +29,30 @@ _Avoid_: razon social, filial, cliente (es a quien se le hace el trabajo).
 Uno de los concesionarios de una empresa que tiene varios; hoy solo KIA y
 Changan, con dos cada una. Una persona sin sede cubre todas las de su empresa,
 asi que aparece al buscar cualquiera de ellas: no tener sede no es un dato que
-falta. Como la empresa, agrupa y no limita nada.
+falta. Agrupa y no limita nada, a diferencia de la empresa.
 _Avoid_: sucursal, concesionario (Holding tambien podria tener sedes y no vende
 carros).
 
 **Administrador**:
 Quien asigna: reparte las funciones, las pondera, las puntua y mantiene el
-calendario. Hoy es una sola persona y lo ve todo. Es el unico que ve el
-cumplimiento ponderado y las razones de todos.
+calendario. Es el del grupo: ve todo, y puede haber varios (antes era una sola
+persona). Es el unico que da de alta a otros administradores, generales o de
+empresa (decidido el 08/10/2026, ADR 0019). Con el de empresa, es
+quien ve el cumplimiento ponderado y las razones de todos (el de empresa, solo
+de los suyos).
+Un administrador no es un empleado: no tiene funciones ni pantalla de empleado,
+y quien haga las dos cosas entra con dos correos (08/10/2026).
 _Avoid_: JFS (es el grupo, no un rol), responsable tecnico (existia para
 revisar la traduccion del documento y desaparece con ella), supervisor (es
 otro rol: responde por su gente, no asigna).
+
+**Administrador de empresa**:
+Quien asigna como el **administrador**, pero solo a la gente de una empresa:
+la suya. Fuera de ella no ve ni toca nada: no traspasa hacia otra empresa y no cambia a nadie de empresa. Puede haber varios, y cada uno es de
+una sola empresa. Ve el cumplimiento ponderado y las razones de su gente. No da de alta administradores. No mantiene el calendario: es del grupo y sigue siendo del
+administrador (decidido el 08/10/2026). El **administrador**, sin mas, es el del
+grupo: unico, y no esta acotado a ninguna empresa.
+_Avoid_: administrador local, subadministrador.
 
 **Supervisor**:
 Un empleado que responde por otros: tiene su propio reparto y ademas gente a
@@ -49,7 +65,8 @@ veia ningun peso). No ve bonos ni montos de nadie: el dinero es una
 conversacion de sueldo y esa es del administrador. No reparte, no pondera, no
 traspasa y no toca el bono de nadie.
 Cada empleado tiene a lo sumo un supervisor, y quien supervisa no tiene
-supervisor: hay un solo nivel. Lo decide el administrador. Ve a quien tiene a
+supervisor: hay un solo nivel. Lo decide el administrador, y el supervisor es
+siempre de la misma empresa que su gente (ADR 0019). Ve a quien tiene a
 cargo hoy, con todo su pasado; cuando se lo cambian, deja de verlo.
 En pantalla se le dice **responsable**, y a su gente, **equipo** (decidido el
 29/09/2026): son terminos intercambiables, y el modelo sigue diciendo
@@ -71,6 +88,8 @@ responsable es el **supervisor**), asignado.
 **Traspaso**:
 Cambiar de titular una funcion sin partirle el historial. Lo que se traspasa es
 el trabajo; el arrastre de quien la tuvo antes se queda con quien la tuvo antes.
+Entre empresas solo lo hace el **administrador**; el de empresa traspasa dentro
+de la suya.
 _Avoid_: reasignacion, mover.
 
 **Ocurrencia**:
@@ -174,7 +193,8 @@ una funcion).
 
 **Delegacion**:
 Un imprevisto que un supervisor le pide a alguien a su cargo para cumplir una
-ocurrencia de su propio reparto. La ocurrencia sigue siendo del supervisor: no
+ocurrencia de su propio reparto, o un imprevisto que le cayo a el (decidido el
+08/10/2026; antes solo ocurrencias). La ocurrencia sigue siendo del supervisor: no
 es un traspaso, no mueve ponderacion y el supervisor responde por ella. Vence
 cuando vence la ocurrencia, no al dia habil siguiente, y hereda la
 **importancia** que la funcion tenia el dia en que se delego, porque lo
@@ -191,6 +211,14 @@ repite es un traspaso que nadie ha hecho. Cuanto se repite se mide como la
 proporcion de las ocurrencias de esa funcion que se delegaron en los ultimos
 noventa dias, nunca en veces: contar veces pondria siempre las diarias arriba,
 igual que en el arrastre. Una sola delegacion no es repetirse.
+Delegar un imprevisto sigue la misma regla: el original **sigue siendo del
+supervisor**, que lo revisa y lo marca o lo devuelve, y a quien lo recibe le nace
+uno nuevo, vinculado, que vence cuando vence el original y hereda su
+importancia. Solo se delega mientras no haya vencido, cada imprevisto tiene a lo
+sumo una delegacion abierta, y no hay cadena: quien recibe no tiene gente a
+cargo. La delegacion cuenta como pedida por el supervisor; quien la recibe ve en
+su historia el pedido original, que se cuenta una sola vez, en el imprevisto del
+supervisor.
 _Avoid_: traspaso (ese mueve la funcion), reasignacion, encargo.
 
 ### Los tres ejes
@@ -447,8 +475,10 @@ _Avoid_: problema, falla (senalan a la persona).
   para la que trabaja (eso lo dicen sus **Funciones**)
 - Un **Empleado** tiene a lo sumo una **Sede**, y es de su misma **Empresa**;
   sin sede, cuenta en todas las de su empresa
-- Un **Empleado** tiene a lo sumo un **Supervisor**; un **Supervisor** no tiene
-  supervisor
+- Un **Empleado** tiene a lo sumo un **Supervisor**, de su misma **Empresa**;
+  un **Supervisor** no tiene supervisor
+- Un **Administrador de empresa** es de una sola **Empresa**; el
+  **Administrador** del grupo no es de ninguna
 - Una **Ocurrencia** o un **Imprevisto** tiene muchos **Comentarios**; un
   **Flujo**, ninguno. El **Administrador** no es titular de nada: comenta en
   tareas ajenas

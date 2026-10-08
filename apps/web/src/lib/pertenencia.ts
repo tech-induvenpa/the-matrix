@@ -10,11 +10,16 @@ export type Pertenencia = Pick<Filtrable, 'empresa' | 'sede'>;
 // desde lo que ya le devuelve lo_de_mi_gente.
 export async function pertenencias() {
   const supabase = await clienteDelServidor();
-  const [{ data: empresas }, { data: sedes }, { data: gente }] = await Promise.all([
+  const [{ data: todasLasEmpresas }, { data: todasLasSedes }, { data: gente }, { data: suya }] = await Promise.all([
     supabase.from('empresa').select('id, nombre').order('nombre'),
     supabase.from('sede').select('id, nombre, empresa_id'),
     supabase.from('empleado').select('id, empresa_id, sede_id'),
+    supabase.rpc('empresa_del_administrador'),
   ]);
+  // Las empresas las lee cualquiera: al administrador de empresa se le ofrece
+  // solo la suya (ADR 0019). La base rechaza el resto aunque se las pida.
+  const empresas = suya ? (todasLasEmpresas ?? []).filter((e) => e.id === suya) : todasLasEmpresas;
+  const sedes = suya ? (todasLasSedes ?? []).filter((s) => s.empresa_id === suya) : todasLasSedes;
 
   const empresa = new Map(((empresas ?? []) as Nombrado[]).map((e) => [e.id, e]));
   const sede = new Map(((sedes ?? []) as Nombrado[]).map((s) => [s.id, { id: s.id, nombre: s.nombre }]));

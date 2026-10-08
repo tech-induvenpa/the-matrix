@@ -49,6 +49,23 @@ export function delegable(
   return { si: true };
 }
 
+// Un imprevisto propio se delega con la misma regla (ADR 0018): abierto, sin
+// marca, no vencido y sin otra delegacion abierta. Una delegacion no se delega
+// otra vez: no hay cadena.
+export type DelegableImprevisto = { si: true } | { si: false; porque: 'cerrado' | 'vencido' | 'ya_delegado' | 'es_delegacion' };
+
+export function delegableImprevisto(
+  imprevisto: { vence: Fecha; resultado: Resultado | null; borradoEn: string | null; esDelegacion: boolean },
+  hoy: Fecha,
+  delegaciones: readonly Delegacion[],
+): DelegableImprevisto {
+  if (imprevisto.esDelegacion) return { si: false, porque: 'es_delegacion' };
+  if (imprevisto.resultado || imprevisto.borradoEn) return { si: false, porque: 'cerrado' };
+  if (imprevisto.vence < hoy) return { si: false, porque: 'vencido' };
+  if (delegaciones.some((d) => estaAbierta(d, false))) return { si: false, porque: 'ya_delegado' };
+  return { si: true };
+}
+
 // Una delegacion que se repite es un traspaso que nadie hizo (CEB-224). Se
 // mira en una ventana movil, nunca en un mes cerrado, y una sola delegacion no
 // es repetirse. Las dos son decisiones de negocio.
