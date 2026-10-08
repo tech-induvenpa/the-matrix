@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { delegable, estaAbierta, estadoDeLaDelegacion } from '../src/delegacion';
+import { delegable, delegableImprevisto, estaAbierta, estadoDeLaDelegacion } from '../src/delegacion';
 
 // Una delegacion es un imprevisto de quien la recibe, vinculado a una
 // ocurrencia de su supervisor, que sigue siendo suya (ADR 0012).
@@ -72,5 +72,31 @@ describe('que ocurrencia se puede delegar', () => {
       porque: 'ya_delegada',
     });
     expect(delegable({ vence: '2026-10-09' }, HOY, [delegacion({ resultado: 'no_lo_tome' })], false)).toEqual({ si: true });
+  });
+});
+
+describe('delegableImprevisto: un imprevisto propio, abierto y no vencido (ADR 0018)', () => {
+  const HOY = '2026-09-29';
+  const abierto = { vence: '2026-10-09', resultado: null, borradoEn: null, esDelegacion: false } as const;
+
+  it('se delega mientras este abierto y no haya vencido', () => {
+    expect(delegableImprevisto(abierto, HOY, [])).toEqual({ si: true });
+    expect(delegableImprevisto({ ...abierto, vence: HOY }, HOY, [])).toEqual({ si: true });
+  });
+
+  it('no si ya vencio, esta marcado o borrado', () => {
+    expect(delegableImprevisto({ ...abierto, vence: '2026-09-28' }, HOY, [])).toEqual({ si: false, porque: 'vencido' });
+    expect(delegableImprevisto({ ...abierto, resultado: 'hecho' }, HOY, [])).toEqual({ si: false, porque: 'cerrado' });
+    expect(delegableImprevisto({ ...abierto, borradoEn: '2026-10-01T00:00:00Z' }, HOY, [])).toEqual({ si: false, porque: 'cerrado' });
+  });
+
+  it('no si ya hay una delegacion abierta; si la anterior fue "no pude", otra vez', () => {
+    const abierta = { resultado: null, devueltoEn: null, borradoEn: null };
+    expect(delegableImprevisto(abierto, HOY, [abierta])).toEqual({ si: false, porque: 'ya_delegado' });
+    expect(delegableImprevisto(abierto, HOY, [{ ...abierta, resultado: 'no_pude' }])).toEqual({ si: true });
+  });
+
+  it('una delegacion no se delega otra vez: no hay cadena', () => {
+    expect(delegableImprevisto({ ...abierto, esDelegacion: true }, HOY, [])).toEqual({ si: false, porque: 'es_delegacion' });
   });
 });
