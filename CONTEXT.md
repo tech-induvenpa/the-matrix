@@ -174,7 +174,8 @@ una funcion).
 
 **Delegacion**:
 Un imprevisto que un supervisor le pide a alguien a su cargo para cumplir una
-ocurrencia de su propio reparto. La ocurrencia sigue siendo del supervisor: no
+ocurrencia de su propio reparto, o un imprevisto que le cayo a el (decidido el
+08/10/2026; antes solo ocurrencias). La ocurrencia sigue siendo del supervisor: no
 es un traspaso, no mueve ponderacion y el supervisor responde por ella. Vence
 cuando vence la ocurrencia, no al dia habil siguiente, y hereda la
 **importancia** que la funcion tenia el dia en que se delego, porque lo
@@ -191,6 +192,14 @@ repite es un traspaso que nadie ha hecho. Cuanto se repite se mide como la
 proporcion de las ocurrencias de esa funcion que se delegaron en los ultimos
 noventa dias, nunca en veces: contar veces pondria siempre las diarias arriba,
 igual que en el arrastre. Una sola delegacion no es repetirse.
+Delegar un imprevisto sigue la misma regla: el original **sigue siendo del
+supervisor**, que lo revisa y lo marca o lo devuelve, y a quien lo recibe le nace
+uno nuevo, vinculado, que vence cuando vence el original y hereda su
+importancia. Solo se delega mientras no haya vencido, cada imprevisto tiene a lo
+sumo una delegacion abierta, y no hay cadena: quien recibe no tiene gente a
+cargo. La delegacion cuenta como pedida por el supervisor; quien la recibe ve en
+su historia el pedido original, que se cuenta una sola vez, en el imprevisto del
+supervisor.
 _Avoid_: traspaso (ese mueve la funcion), reasignacion, encargo.
 
 ### Los tres ejes
