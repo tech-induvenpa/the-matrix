@@ -1,5 +1,5 @@
 import { emojiDe, type Cuadrante } from '@matriz/dominio';
-import { comoVence } from '@/lib/datos';
+import { comoVence, fechaConDia } from '@/lib/datos';
 import { delegar, deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
 import { Accion } from './accion';
 import { Enviar, Redondo } from './boton';
@@ -229,6 +229,44 @@ export function YaResueltas({
   marcaDe: Map<string, Marca>;
   perfilDe?: (o: Resuelta) => Perfil;
 }) {
+  const clave = (o: Resuelta) => `${o.funcionId}|${o.periodo}`;
+  // Las de una misma funcion se pliegan en una fila; al abrirla se distinguen por fecha.
+  const porFuncion = new Map<string, Resuelta[]>();
+  for (const o of cerradas) porFuncion.set(o.funcionId, [...(porFuncion.get(o.funcionId) ?? []), o]);
+  const grupos = [...porFuncion.values()] as [Resuelta, ...Resuelta[]][];
+
+  const Fila = ({ o, conFecha }: { o: Resuelta; conFecha?: boolean }) => {
+    const marca = marcaDe.get(clave(o));
+    const pudo = marca?.resultado === 'hecho';
+    const perfil = perfilDe?.(o);
+
+    return (
+      <div style={{ ...RESUELTA, flexWrap: perfil?.contenido ? 'wrap' : undefined }}>
+        <span style={{ color: pudo ? '#5E9E62' : '#C97B72', flexShrink: 0, display: 'flex' }}>{pudo ? <Check /> : <Equis />}</span>
+        <span
+          style={{
+            flexGrow: 1,
+            minWidth: 0,
+            fontSize: 14,
+            textDecoration: pudo ? 'line-through' : 'none',
+            textDecorationColor: 'rgba(110,101,90,0.55)',
+          }}
+        >
+          <Titulo perfil={perfil}>{conFecha ? fechaConDia(o.vence) : o.texto}</Titulo>
+        </span>
+        <span style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>
+          {pudo ? 'lista' : `no pude: ${marca?.razon ?? ''}`}
+        </span>
+        <Accion accion={deshacerMarca.bind(null, o.funcionId, o.periodo)}>
+          <Enviar style={DESHACER} enviando="…">
+            Deshacer
+          </Enviar>
+        </Accion>
+        {perfil?.contenido}
+      </div>
+    );
+  };
+
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
@@ -239,37 +277,23 @@ export function YaResueltas({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {cerradas.map((o) => {
-          const marca = marcaDe.get(`${o.funcionId}|${o.periodo}`);
-          const pudo = marca?.resultado === 'hecho';
-          const perfil = perfilDe?.(o);
-
+        {grupos.map((g) => {
+          if (g.length === 1) return <Fila key={clave(g[0])} o={g[0]} />;
+          const hechas = g.filter((o) => marcaDe.get(clave(o))?.resultado === 'hecho').length;
           return (
-            <div key={`${o.funcionId}|${o.periodo}`} style={{ ...RESUELTA, flexWrap: perfil?.contenido ? 'wrap' : undefined }}>
-              <span style={{ color: pudo ? '#5E9E62' : '#C97B72', flexShrink: 0, display: 'flex' }}>
-                {pudo ? <Check /> : <Equis />}
-              </span>
-              <span
-                style={{
-                  flexGrow: 1,
-                  minWidth: 0,
-                  fontSize: 14,
-                  textDecoration: pudo ? 'line-through' : 'none',
-                  textDecorationColor: 'rgba(110,101,90,0.55)',
-                }}
-              >
-                <Titulo perfil={perfil}>{o.texto}</Titulo>
-              </span>
-              <span style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>
-                {pudo ? 'lista' : `no pude: ${marca?.razon ?? ''}`}
-              </span>
-              <Accion accion={deshacerMarca.bind(null, o.funcionId, o.periodo)}>
-                <Enviar style={DESHACER} enviando="…">
-                  Deshacer
-                </Enviar>
-              </Accion>
-              {perfil?.contenido}
-            </div>
+            <details key={g[0].funcionId} className="nuevo-item">
+              <summary style={{ ...RESUELTA, cursor: 'pointer', listStyle: 'none' }}>
+                <span style={{ flexGrow: 1, minWidth: 0, fontSize: 14 }}>{g[0].texto}</span>
+                <span style={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                  {g.length} veces · {hechas} listas{hechas < g.length && ` · ${g.length - hechas} no pude`}
+                </span>
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 5 }}>
+                {g.map((o) => (
+                  <Fila key={clave(o)} o={o} conFecha />
+                ))}
+              </div>
+            </details>
           );
         })}
       </div>
