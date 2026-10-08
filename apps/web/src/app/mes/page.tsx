@@ -150,7 +150,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
   return (
     <>
       <Navegacion entradas={gente.length > 0 ? DEL_SUPERVISOR : DEL_EMPLEADO} salida={salir} />
-    <main style={{ maxWidth: 1440, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <main className="mes-main" style={{ maxWidth: 1440, margin: '0 auto', padding: '26px 34px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <FuegosDelMes mes={fuegos.mes} merece={fuegos.merece} />
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
         <div>
@@ -169,14 +169,14 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 18, minWidth: 0 }}>
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+      <div className="mes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 18, minWidth: 0 }}>
+        <section className="mes-col" style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           {ORDEN.map((cuadrante) => {
             const suyas = todo.filter((o) => o.cuadrante === cuadrante);
             if (!suyas.length) return null;
 
             return (
-              <div key={cuadrante} style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div key={cuadrante} className="mes-bloque" style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                   <span style={{ fontSize: 15, lineHeight: 1 }}>{ROTULO[cuadrante].emoji}</span>
                   <span style={{ fontSize: 13, fontWeight: 600, color: ROTULO[cuadrante].color }}>
@@ -184,8 +184,8 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
                   </span>
                 </div>
 
-                {/* Tres tarjetas a la vista; el resto, con scroll propio. */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 235, overflowY: 'auto' }}>
+                {/* Cada bloque se reparte el alto de la pantalla y scrollea por dentro (globals.css). */}
+                <div className="mes-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {suyas.map((o) => (
                     <Tarjeta key={`${o.funcionId}|${o.periodo}`} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
                   ))}
@@ -194,14 +194,18 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
             );
           })}
 
-          {yaResueltas.length > 0 && <YaResueltas cerradas={yaResueltas} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />}
+          {yaResueltas.length > 0 && (
+            <div className="mes-bloque mes-resueltas" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <YaResueltas cerradas={yaResueltas} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />
+            </div>
+          )}
 
           {todo.length === 0 && yaResueltas.length === 0 && (
             <p style={{ color: 'var(--gris)', fontSize: 14 }}>Este mes no tienes nada asignado.</p>
           )}
         </section>
 
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+        <section className="mes-col mes-col-der" style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <span style={{ fontSize: 15, lineHeight: 1 }}>🔁</span>
