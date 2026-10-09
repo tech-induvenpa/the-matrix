@@ -386,7 +386,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
               const dias = atrasado ? calendario.habilesEntre(f.vigente!.en.slice(0, 10), hoy) : 0;
 
               return (
-                <article key={f.id} style={{ display: 'flex', gap: 10, background: '#E8CE7A', color: '#2A2313', borderRadius: 20, padding: '10px 12px', boxSizing: 'border-box' }}>
+                <article key={f.id} style={{ position: 'relative', display: 'flex', gap: 10, background: '#E8CE7A', color: '#2A2313', borderRadius: 20, padding: '10px 12px', boxSizing: 'border-box' }}>
                   {atrasado && <span style={{ width: 5, borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexGrow: 1, minWidth: 0 }}>
@@ -452,7 +452,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
           flexGrow: 1,
           padding: '14px 34px 16px',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
           gap: 24,
         }}
       >

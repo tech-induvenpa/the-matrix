@@ -75,7 +75,7 @@ export function AcordeonDePersona({
 }) {
   return (
     <details className="acordeon" open={abierto} style={{ background: 'var(--suave)', borderRadius: 14 }}>
-      <summary style={FILA}>
+      <summary className="fila-persona" style={FILA}>
         <span
           title={aCargo ? `Responsable de ${aCargo} ${aCargo === 1 ? 'persona' : 'personas'}` : `Empleado${responsable ? `, a cargo de ${responsable}` : ''}`}
           style={{ ...ICONO, background: aCargo ? 'var(--tinta)' : '#fff', color: aCargo ? '#fff' : 'var(--gris)' }}

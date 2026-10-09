@@ -30,7 +30,7 @@ export function PorQue({
   const [abierto, setAbierto] = useState(false);
 
   return (
-    <div style={{ position: 'relative', flexShrink: 0 }}>
+    <div className="ancla" style={{ position: 'relative', flexShrink: 0 }}>
       <button
         type="button"
         title={titulo}
@@ -51,6 +51,7 @@ export function PorQue({
           onKeyDown={(evento) => {
             if (evento.key === 'Escape') setAbierto(false);
           }}
+          className="flotante"
           style={{ ...PANEL, flexDirection: 'column' }}
         >
           {opciones.length > 0 && (
