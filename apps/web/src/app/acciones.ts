@@ -7,7 +7,7 @@ import { Calendario, vencimientoPorUrgencia, vinculables, type Limite } from '@m
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { proyectarRazones } from '@/lib/razones';
 import { hoyISO } from '@/lib/datos';
-import { deClave } from '@/lib/comentarios';
+import { claveDeImprevisto, claveDeOcurrencia, deClave } from '@/lib/comentarios';
 
 // La razon vuelve al documento DESPUES de guardar y DESPUES de responder
 // (INV-4). Si Google esta caido, el empleado ya vio su marca guardada y no
@@ -318,6 +318,25 @@ export async function verTarea(clave: string): Promise<void> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('ver_tarea', { la_funcion: funcion_id, el_periodo: periodo, el_imprevisto: imprevisto_id });
   if (!error) revalidatePath('/', 'layout');
+}
+
+// Lo que cuenta la campanita (CEB-267): los avisos sin ver, cada uno con el
+// enlace al perfil de su tarea. Si la tarea es mia se abre en mi pantalla; si es
+// de mi equipo, en la de esa persona.
+export type Notificacion = { id: string; texto: string; cantidad: number; href: string };
+
+export async function misNotificaciones(): Promise<Notificacion[]> {
+  const supabase = await clienteDelServidor();
+  const [{ data: avisos }, { data: yo }] = await Promise.all([
+    supabase.rpc('mis_notificaciones'),
+    supabase.from('empleado').select('id').maybeSingle(),
+  ]);
+
+  return (avisos ?? []).map((a: { id: string; texto: string; cantidad: number; funcion_id: string | null; periodo: string | null; imprevisto_id: string | null; empleado_id: string | null }) => {
+    const clave = a.imprevisto_id ? claveDeImprevisto(a.imprevisto_id) : claveDeOcurrencia(a.funcion_id!, a.periodo!);
+    const donde = a.empleado_id && a.empleado_id !== yo?.id ? `/equipo/${a.empleado_id}` : '/';
+    return { id: a.id, texto: a.texto, cantidad: a.cantidad, href: `${donde}?tarea=${encodeURIComponent(clave)}` };
+  });
 }
 
 export async function salir() {

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { SIN_EMPRESA, TODAS } from '@/lib/nomina-por-empresa';
 import { Ir } from './ir';
 import { Accion } from './accion';
+import { Campanita } from './campanita';
 import type { Aviso } from './avisos';
 import type { MesDelCierre } from '@/lib/cierre-del-mes';
 
@@ -100,8 +101,10 @@ export function Navegacion({
           </>
         )}
 
+        <Campanita />
+
         {salida && (
-          <form action={salida} style={{ marginLeft: 'auto' }}>
+          <form action={salida}>
             <button
               type="submit"
               style={{ background: 'none', border: 0, padding: 0, color: 'var(--gris)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}

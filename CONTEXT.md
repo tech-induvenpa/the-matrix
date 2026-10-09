@@ -221,6 +221,23 @@ su historia el pedido original, que se cuenta una sola vez, en el imprevisto del
 supervisor.
 _Avoid_: traspaso (ese mueve la funcion), reasignacion, encargo.
 
+**Notificacion**:
+Un aviso que se guarda para una persona cuando pasa algo que le toca saber, y
+que se ve en la campanita hasta que lo abre. Es un registro propio: no se
+deduce del "sin leer" de los comentarios, porque tambien avisa de cosas que no
+dejan nada sin leer en una tarea (que te delegaron algo, que te traspasaron una
+funcion). Abrirla la marca como vista.
+Avisa de: un comentario nuevo (al titular, a su supervisor y, en un imprevisto,
+a quien lo pidio; nunca al autor), un imprevisto o delegacion que te llega, una
+delegacion que diste y fue marcada, una devuelta que habias recibido, y que a
+una tarea sin marcar le faltan 2 o 1 dias habiles (solo al titular, y solo a lo
+que dura mas de un dia: una diaria no avisa). Los administradores no reciben
+avisos de comentarios (decidido el 09/10/2026). Los avisos de una misma cosa se
+juntan en uno solo --"3 comentarios nuevos", "3 tareas vencen en 2 dias"-- y
+solo viven dentro de la aplicacion: no hay correo ni push.
+_Avoid_: alerta, mensaje, ticket (no existe: la tarea es la ocurrencia o el
+imprevisto).
+
 ### Los tres ejes
 
 **Ponderacion**:
