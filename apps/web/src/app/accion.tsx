@@ -10,13 +10,16 @@ export function Accion({
   accion,
   children,
   style,
+  className,
 }: {
   accion: (formulario: FormData) => Promise<Aviso | undefined>;
   children: ReactNode;
   style?: React.CSSProperties;
+  className?: string;
 }) {
   return (
     <form
+      className={className}
       style={style}
       action={async (formulario) => {
         avisar(await accion(formulario));

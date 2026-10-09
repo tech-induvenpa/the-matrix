@@ -157,7 +157,7 @@ export default async function Mes({ searchParams }: { searchParams: Promise<{ ta
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 18, minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 18, minWidth: 0 }}>
         <section style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           {ORDEN.map((cuadrante) => {
             const suyas = todo.filter((o) => o.cuadrante === cuadrante);
