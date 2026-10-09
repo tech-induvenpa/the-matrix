@@ -7,7 +7,6 @@ import {
   cuadranteDe,
   delegable,
   delegableImprevisto,
-  diasSeguidosCerrando,
   estadoDeLaDelegacion,
   estadosVigentes,
   etapaDe,
@@ -30,7 +29,7 @@ import { diaTopeDe, esFinDeSemana, lunesDe, panorama, sumarDias, tipoDe } from '
 import { cambiarEstadoFlujo, salir } from './acciones';
 import { Accion } from './accion';
 import { Enviar } from './boton';
-import { Adelantar, CierreDeSemana, ConLaMeta } from './celebracion';
+import { CierreDeSemana } from './celebracion';
 import { PorQue } from './porque';
 import { CIRCULO, Numero, Tarjeta, YaResueltas } from './tarjeta';
 import { esAdministrador } from '@/lib/administrador';
@@ -272,19 +271,6 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   // La meta de la semana: todo lo que vencia entre lunes y domingo, cerrado.
   const metaCumplida = deLaSemana.length > 0 && abiertasDeLaSemana.size === 0;
 
-  // Dias habiles seguidos, hacia atras, con todo lo que vencia cerrado.
-  const cerradaLaOcurrencia = (o: { funcionId: string; periodo: string }) =>
-    !abiertasDelMes.has(`${o.funcionId}|${o.periodo}`);
-
-  const racha = diasSeguidosCerrando(
-    diasDelRango(sumarDias(hoy, -40), hoy)
-      .filter((d) => calendario.esHabil(d))
-      .map((fecha) => {
-        const delDia = ocurrencias.filter((o) => o.vence === fecha);
-        return { fecha, total: delDia.length, cerradas: delDia.filter(cerradaLaOcurrencia).length };
-      }),
-  );
-
   const noHabilesDeLaSemana = diasDelRango(hoy, domingo).filter(
     (d) => !esFinDeSemana(d) && !calendario.esHabil(d),
   ).length;
@@ -459,7 +445,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
-              {metaCumplida ? 'Si te provoca seguir, esto es lo que viene' : 'Lo que tenemos esta semana'}
+              {metaCumplida ? 'Lo que viene' : 'Lo que tenemos esta semana'}
             </h2>
             <Link href="/mes" style={{ color: 'var(--gris)', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
               Ver todo tu mes →
@@ -477,42 +463,11 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
           </div>
 
           {metaCumplida && (
-            <Adelantar
-              cuantas={siguientes.length}
-              logros={
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  {racha > 1 && (
-                    <ConLaMeta semana={lunes}>
-                    <div style={LOGRO}>
-                      <span style={{ fontSize: 28 }}>🔥</span>
-                      <div>
-                        <div style={{ fontSize: 18, fontWeight: 700 }}>{racha} días seguidos</div>
-                        <div style={{ fontSize: 13, color: 'var(--gris)' }}>
-                          cerrando lo que vence. Vuelve mañana para no perderla.
-                        </div>
-                      </div>
-                    </div>
-                    </ConLaMeta>
-                  )}
-                  <div style={LOGRO}>
-                    <span style={{ fontSize: 28 }}>📅</span>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 700 }}>
-                        {cerradasDelMes.length} de {delMes.length}
-                      </div>
-                      <div style={{ fontSize: 13, color: 'var(--gris)' }}>de este mes, ya resueltas.</div>
-                    </div>
-                  </div>
-                </div>
-              }
-              extras={
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  {siguientes.map((o) => (
-                    <Tarjeta key={o.funcionId} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
-                  ))}
-                </div>
-              }
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {siguientes.map((o) => (
+                <Tarjeta key={o.funcionId} o={o} hoy={hoy} perfil={perfilDeOcurrencia(o)} />
+              ))}
+            </div>
           )}
 
           <Delegadas delegadas={[...delegadas, ...delegadasDeImprevisto]} hoy={hoy} gente={gente} perfilDe={perfilDeDelegada} />
@@ -735,17 +690,6 @@ const FLUJO = {
 } as const;
 
 
-const LOGRO = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 14,
-  background: 'var(--suave)',
-  borderRadius: 20,
-  padding: '12px 18px',
-  flex: '1 1 240px',
-  minWidth: 0,
-  boxSizing: 'border-box',
-} as const;
 
 
 
