@@ -36,6 +36,9 @@ export async function perfiles(abierta: string | undefined) {
       marca: m ? { resultado: m.resultado, razon: m.razon, marcadaEn: m.marcada_en } : null,
     });
 
+  // Un flujo: su hilo es uno solo y no se cierra (periodo 'flujo').
+  const deFlujo = (funcionId: string) => perfil(claveDeOcurrencia(funcionId, 'flujo'), { tipo: 'flujo', marca: null });
+
   // El punto junto al nombre: algo sin leer en alguna tarea abierta de hoy de esa persona.
   const sinLeerDe = (empleadoId: string) =>
     [...porTarea].some(
@@ -44,7 +47,7 @@ export async function perfiles(abierta: string | undefined) {
         sinLeer(cs.map(comoComentario), vistoEn.get(clave) ?? null, yo, !cs[0].abierta),
     );
 
-  return { perfil, deOcurrencia, sinLeerDe };
+  return { perfil, deOcurrencia, deFlujo, sinLeerDe };
 }
 
 // Comentarios sin leer: un punto verde que flota sobre la esquina de la

@@ -123,8 +123,9 @@ delegacion y la ocurrencia que cumple tienen comentarios separados: quien la
 recibe no ve las tareas de su supervisor. En un **traspaso**, los comentarios
 de la ocurrencia abierta se van con ella: el contexto es parte del trabajo, y
 los lee el circulo de hoy, no el de cuando se escribieron. Deshacer la marca reabre los comentarios; una
-delegacion devuelta es un imprevisto nuevo y empieza sin ninguno. Un flujo no
-tiene comentarios: no se marca, asi que no tiene un antes y un despues.
+delegacion devuelta es un imprevisto nuevo y empieza sin ninguno. Un flujo tiene
+un solo hilo permanente (decidido el 09/10/2026; antes no tenia): no se marca
+nunca, asi que no se cierra y siempre admite comentarios.
 _Avoid_: nota, observacion, razon (esa acompana a la marca y es obligatoria).
 
 **Responsabilidad**:
@@ -496,8 +497,8 @@ _Avoid_: problema, falla (senalan a la persona).
   un **Supervisor** no tiene supervisor
 - Un **Administrador de empresa** es de una sola **Empresa**; el
   **Administrador** del grupo no es de ninguna
-- Una **Ocurrencia** o un **Imprevisto** tiene muchos **Comentarios**; un
-  **Flujo**, ninguno. El **Administrador** no es titular de nada: comenta en
+- Una **Ocurrencia**, un **Imprevisto** o un **Flujo** tiene muchos
+  **Comentarios**; el de un **Flujo** es un solo hilo que no se cierra. El **Administrador** no es titular de nada: comenta en
   tareas ajenas
 - Una **Delegacion** une un **Imprevisto** de quien la recibe con una
   **Ocurrencia** de su **Supervisor**; la **Ocurrencia** sigue siendo del

@@ -38,7 +38,8 @@ import { redirect } from 'next/navigation';
 import { DEL_EMPLEADO, DEL_SUPERVISOR, Navegacion } from './navegacion';
 import { NuevoImprevisto, TarjetaDeImprevisto } from './imprevistos';
 import { Delegadas, LoQuePedi, type Delegada } from './delegadas';
-import { perfiles } from './perfil';
+import { NuevoMensaje, perfiles, Titulo } from './perfil';
+import { BotonDeHistoria } from './abrir';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 import { origenesDe, quienPidio } from '@/lib/datos';
 
@@ -59,7 +60,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
       hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
       gente, delegaciones, delegacionesDeImprevisto, pedidos,
     },
-    { perfil, deOcurrencia },
+    { perfil, deOcurrencia, deFlujo },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
 
   // Los fuegos de fin de mes, si el ultimo mes cerrado lo merece.
@@ -384,9 +385,11 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
             {flujos.map((f) => {
               const atrasado = f.vigente?.estado === 'atrasado';
               const dias = atrasado ? calendario.habilesEntre(f.vigente!.en.slice(0, 10), hoy) : 0;
+              const hilo = deFlujo(f.id);
 
               return (
                 <article key={f.id} style={{ position: 'relative', display: 'flex', gap: 10, background: '#E8CE7A', color: '#2A2313', borderRadius: 20, padding: '10px 12px', boxSizing: 'border-box' }}>
+                  {hilo.sinLeer && <NuevoMensaje />}
                   {atrasado && <span style={{ width: 5, borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexGrow: 1, minWidth: 0 }}>
@@ -394,7 +397,11 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                       <span style={{ ...CIRCULO, background: 'rgba(42,35,19,0.14)' }}>{atrasado ? '🐢' : '🍃'}</span>
 
                       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{f.texto}</span>
+                        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+                          <Titulo perfil={hilo} punto={false}>
+                            {f.texto}
+                          </Titulo>
+                        </span>
                         <span style={{ fontSize: 13, color: atrasado ? '#9E3322' : 'rgba(42,35,19,0.66)', fontWeight: atrasado ? 600 : 400 }}>
                           {atrasado ? `me atrasé · ${dias} ${dias === 1 ? 'día' : 'días'}` : 'al día'}
                         </span>
@@ -417,6 +424,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                           Me atrasé
                         </PorQue>
                       )}
+                      <BotonDeHistoria clave={hilo.clave} velo="rgba(42,35,19,0.14)" />
                     </div>
 
                     {atrasado && f.vigente?.razon && (
@@ -424,6 +432,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                         “{f.vigente.razon}”
                       </p>
                     )}
+                    {hilo.contenido}
                   </div>
                 </article>
               );

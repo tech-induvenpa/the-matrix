@@ -95,6 +95,25 @@ describe('INV-63: un comentario avisa al titular, a su supervisor y a quien pidi
   });
 });
 
+describe('un flujo avisa como cualquier tarea, y su aviso no se cierra con una marca', () => {
+  it('SARA comenta el flujo de ANA: avisa a ANA; al abrirlo, se ve', async () => {
+    const f = await sembrarFuncion(ana, {
+      hash_identidad: 'h-flujo',
+      texto: 'Atender solicitudes',
+      importancia: 5,
+      periodicidad: 'diaria',
+      tipo_generado: 'flujo',
+      fecha_alta: '2026-01-01',
+    });
+    const hilo = { funcion_id: f, periodo: 'flujo' };
+    expect((await comentar(sSara, hilo)).error).toBeNull();
+    expect((await avisos(sAna)).map((a) => a.texto)).toContain('Atender solicitudes');
+
+    expect((await ver(sAna, hilo)).error).toBeNull();
+    expect((await avisos(sAna)).map((a) => a.texto)).not.toContain('Atender solicitudes');
+  });
+});
+
 describe('INV-62: cada quien lee solo sus avisos y nadie escribe con su token', () => {
   it('ANA no lee los de SARA ni con una consulta sin filtro', async () => {
     const tarea = await nueva('Aislamiento');

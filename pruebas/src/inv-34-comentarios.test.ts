@@ -175,10 +175,31 @@ describe('INV-35: una tarea marcada no admite comentarios; deshacer la marca los
     expect((await comentar(sAna, ocurrencia)).error).toBeNull();
   });
 
-  it('una ocurrencia vencida sin marca se sigue comentando; un flujo nunca', async () => {
+  it('una ocurrencia vencida sin marca se sigue comentando', async () => {
     expect((await comentar(sAna, { ...ocurrencia, periodo: mesPasado() })).error).toBeNull();
+  });
+
+  // Un flujo no se marca, asi que no se cierra: tiene un solo hilo, el del
+  // periodo 'flujo', que solo el usa (decidido el 09/10/2026).
+  it('un flujo se comenta en su hilo unico, y solo el: lo leen su circulo y nadie mas', async () => {
     const flujo = await sembrarFuncion(ana, entregable('Archivo', 'flujo'));
+    const hilo = { funcion_id: flujo, periodo: 'flujo' };
+
+    expect((await comentar(sAna, hilo, 'uno')).error).toBeNull();
+    expect((await comentar(sSara, hilo, 'dos')).error).toBeNull();
+    expect((await comentar(jefa, hilo, 'tres')).error).toBeNull();
+    for (const s of [sAna, sSara, jefa]) expect(await textos(s, hilo)).toEqual(['uno', 'dos', 'tres']);
+    expect(await textos(sBruno, hilo)).toEqual([]);
+    expect((await comentar(sBruno, hilo)).error).not.toBeNull();
+
     expect((await comentar(sAna, { funcion_id: flujo, periodo: mes() })).error).not.toBeNull();
+    expect((await comentar(sAna, { funcion_id: ocurrencia.funcion_id!, periodo: 'flujo' })).error).not.toBeNull();
+  });
+
+  it('un area no se comenta', async () => {
+    const area = await sembrarFuncion(ana, entregable('Tesoreria', 'area'));
+    expect((await comentar(sAna, { funcion_id: area, periodo: 'flujo' })).error).not.toBeNull();
+    expect((await comentar(sAna, { funcion_id: area, periodo: mes() })).error).not.toBeNull();
   });
 });
 

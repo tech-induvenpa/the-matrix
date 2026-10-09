@@ -185,3 +185,11 @@ describe('quien lo lee', () => {
     expect(loLeen([])).toBe('Lo lee el administrador');
   });
 });
+
+describe('el perfil de un flujo', () => {
+  it('es solo su hilo: ni vencimiento ni marca', () => {
+    const c = { autor: 'a', autorNombre: 'ANA', escritoEn: '2026-10-01T10:00:00Z', texto: 'hola' };
+    const eventos = lineaDeTiempo({ tipo: 'flujo', marca: null }, [c], '2030-01-01');
+    expect(eventos.map((e) => e.tipo)).toEqual(['comentario']);
+  });
+});

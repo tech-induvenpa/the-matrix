@@ -10,6 +10,8 @@ export type MarcaDelPerfil = { resultado: Resultado; razon: string | null; marca
 
 export type TareaDelPerfil =
   | { tipo: 'ocurrencia'; vence: Fecha; marca: MarcaDelPerfil | null }
+  // Un flujo no vence ni se marca: su hilo es uno solo y no se cierra.
+  | { tipo: 'flujo'; marca: null }
   | {
       tipo: 'imprevisto';
       vence: Fecha;
@@ -57,7 +59,7 @@ export function lineaDeTiempo(tarea: TareaDelPerfil, comentarios: readonly Comen
     eventos.push(evento(tarea.delegacion ? 'delegado' : 'pedido', tarea.pedidoEn, tarea.pedidoPor));
     if (tarea.devolucion) eventos.push(evento('devuelto', tarea.devolucion.en, tarea.devolucion.por, tarea.devolucion.razon));
   }
-  if (!tarea.marca && tarea.vence < hoy) eventos.push(evento('vencio', `${tarea.vence}T23:59:59.999Z`));
+  if (tarea.tipo !== 'flujo' && !tarea.marca && tarea.vence < hoy) eventos.push(evento('vencio', `${tarea.vence}T23:59:59.999Z`));
 
   eventos.sort((a, b) => b.cuando.localeCompare(a.cuando));
 
