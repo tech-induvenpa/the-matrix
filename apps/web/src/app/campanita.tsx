@@ -10,6 +10,7 @@ const TITULO: Record<string, (n: number) => string> = {
   imprevisto: () => 'Te pidieron algo',
   delegacion_marcada: () => 'Marcaron lo que delegaste',
   delegacion_devuelta: () => 'Te devolvieron una delegación',
+  vencimiento: (n) => (n === 1 ? 'Una tarea vence' : `${n} tareas vencen`),
 };
 
 // La campanita (CEB-267): los avisos sin ver. Se lee al llegar, al navegar y al

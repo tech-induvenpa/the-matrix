@@ -7,6 +7,8 @@ export { seleccionarPlan, unaPorFuncion } from './plan';
 export { cuadranteDe, importanciaEfectiva, ordenarPlan } from './cuadrante';
 export type { Cuadrante } from './cuadrante';
 export { pendientes } from './marcas';
+export { vencimientosPorAvisar } from './vencimientos';
+export type { PorVencer } from './vencimientos';
 export type { Marca } from './marcas';
 export { estadosVigentes } from './flujos';
 export type { Estado, EventoFlujo } from './flujos';

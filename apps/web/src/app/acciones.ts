@@ -3,10 +3,12 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
-import { Calendario, vencimientoPorUrgencia, vinculables, type Limite } from '@matriz/dominio';
+import { Calendario, vencimientoPorUrgencia, vencimientosPorAvisar, vinculables, type Limite } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { proyectarRazones } from '@/lib/razones';
 import { hoyISO } from '@/lib/datos';
+import { esAdministrador } from '@/lib/administrador';
+import { tareasPorVencer } from '@/lib/vencimientos';
 import { claveDeImprevisto, claveDeOcurrencia, deClave } from '@/lib/comentarios';
 
 // La razon vuelve al documento DESPUES de guardar y DESPUES de responder
@@ -340,16 +342,34 @@ type FilaNotificacion = {
 export async function misNotificaciones(): Promise<Notificacion[]> {
   const supabase = await clienteDelServidor();
   const { data: usuario } = await supabase.auth.getUser();
+  const hoy = hoyISO();
+
+  // Los vencimientos se calculan aqui, al cargar (las ocurrencias no tienen
+  // evento de nacimiento): se registra el aviso de hoy, sin duplicarlo, y mas
+  // abajo su cuenta sale de las tareas que siguen sin marcar.
+  const { tareas, calendario } = (await esAdministrador()) ? { tareas: [], calendario: Calendario.con([]) } : await tareasPorVencer(hoy);
+  const porVencer = vencimientosPorAvisar(tareas, hoy, calendario);
+  await Promise.all(porVencer.map((g) => supabase.rpc('registrar_vencimiento', { el_dia: hoy, los_faltan: g.faltan })));
+
   // Un supervisor lee a su gente: sin filtrar por su cuenta, `empleado` trae varias filas.
   const [{ data: avisos }, { data: yo }] = await Promise.all([
     supabase.rpc('mis_notificaciones'),
     supabase.from('empleado').select('id').eq('auth_user_id', usuario.user?.id ?? '').maybeSingle(),
   ]);
 
-  return ((avisos ?? []) as FilaNotificacion[]).map((a) => {
+  return ((avisos ?? []) as FilaNotificacion[]).flatMap((a): Notificacion[] => {
+    if (a.tipo === 'vencimiento') {
+      // El aviso de un dia que ya paso lo reemplaza el de hoy; uno de hoy cuenta
+      // solo las tareas que siguen abiertas.
+      const [dia, faltan] = a.periodo!.split(':');
+      const claves = porVencer.find((g) => String(g.faltan) === faltan)?.claves ?? [];
+      if (dia !== hoy || claves.length === 0) return [];
+      const unica = claves.length === 1 ? `/?tarea=${encodeURIComponent(claves[0]!)}` : '/';
+      return [{ id: a.id, tipo: a.tipo, texto: faltan === '1' ? 'mañana' : 'en 2 días', cantidad: claves.length, vista: a.vista_en !== null, href: unica }];
+    }
     const clave = a.imprevisto_id ? claveDeImprevisto(a.imprevisto_id) : claveDeOcurrencia(a.funcion_id!, a.periodo!);
     const donde = a.empleado_id && a.empleado_id !== yo?.id ? `/equipo/${a.empleado_id}` : '/';
-    return { id: a.id, tipo: a.tipo, texto: a.texto, cantidad: a.cantidad, vista: a.vista_en !== null, href: `${donde}?tarea=${encodeURIComponent(clave)}` };
+    return [{ id: a.id, tipo: a.tipo, texto: a.texto, cantidad: a.cantidad, vista: a.vista_en !== null, href: `${donde}?tarea=${encodeURIComponent(clave)}` }];
   });
 }
 
