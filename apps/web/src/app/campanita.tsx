@@ -3,7 +3,14 @@
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { misNotificaciones, type Notificacion } from './acciones';
+import { marcarTodasVistas, misNotificaciones, type Notificacion } from './acciones';
+
+const TITULO: Record<string, (n: number) => string> = {
+  comentario: (n) => (n === 1 ? 'Comentario nuevo' : `${n} comentarios nuevos`),
+  imprevisto: () => 'Te pidieron algo',
+  delegacion_marcada: () => 'Marcaron lo que delegaste',
+  delegacion_devuelta: () => 'Te devolvieron una delegación',
+};
 
 // La campanita (CEB-267): los avisos sin ver. Se lee al llegar, al navegar y al
 // volver a la pestana; no hay tiempo real. Abrir una tarea (verTarea) apaga su
@@ -14,11 +21,13 @@ export function Campanita() {
   const donde = usePathname();
   const parametros = useSearchParams().toString();
 
+  const leer = () => misNotificaciones().then(setAvisos).catch(() => {});
+
   useEffect(() => {
     let vigente = true;
-    const leer = () => misNotificaciones().then((a) => vigente && setAvisos(a)).catch(() => {});
-    leer();
-    const alVolver = () => document.visibilityState === 'visible' && leer();
+    const traer = () => misNotificaciones().then((a) => vigente && setAvisos(a)).catch(() => {});
+    traer();
+    const alVolver = () => document.visibilityState === 'visible' && traer();
     document.addEventListener('visibilitychange', alVolver);
     return () => {
       vigente = false;
@@ -28,7 +37,8 @@ export function Campanita() {
 
   useEffect(() => setAbierta(false), [donde, parametros]);
 
-  const total = avisos.length;
+  const sinVer = avisos.filter((a) => !a.vista);
+  const total = sinVer.length;
 
   return (
     <div style={{ position: 'relative', marginLeft: 'auto' }}>
@@ -81,15 +91,30 @@ export function Campanita() {
             fontSize: 13.5,
           }}
         >
-          {total === 0 ? (
+          {avisos.length === 0 ? (
             <p style={{ margin: 0, padding: '10px 12px', color: 'var(--gris)' }}>Nada nuevo.</p>
           ) : (
-            avisos.map((a) => (
-              <Link key={a.id} href={a.href} style={{ display: 'block', padding: '8px 12px', color: 'var(--tinta)', textDecoration: 'none' }}>
-                <strong>{a.cantidad === 1 ? 'Comentario nuevo' : `${a.cantidad} comentarios nuevos`}</strong>
-                <span style={{ display: 'block', color: 'var(--gris)' }}>{a.texto}</span>
-              </Link>
-            ))
+            <>
+              {total > 0 && (
+                <button
+                  type="button"
+                  onClick={() => marcarTodasVistas().then(leer)}
+                  style={{ background: 'none', border: 0, padding: '6px 12px', color: 'var(--gris)', fontSize: 12.5, cursor: 'pointer' }}
+                >
+                  Marcar todas como vistas
+                </button>
+              )}
+              {avisos.map((a) => (
+                <Link
+                  key={a.id}
+                  href={a.href}
+                  style={{ display: 'block', padding: '8px 12px', color: 'var(--tinta)', textDecoration: 'none', opacity: a.vista ? 0.55 : 1 }}
+                >
+                  <strong>{(TITULO[a.tipo] ?? (() => 'Aviso'))(a.cantidad)}</strong>
+                  <span style={{ display: 'block', color: 'var(--gris)' }}>{a.texto}</span>
+                </Link>
+              ))}
+            </>
           )}
         </div>
       )}

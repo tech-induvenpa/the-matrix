@@ -323,20 +323,39 @@ export async function verTarea(clave: string): Promise<void> {
 // Lo que cuenta la campanita (CEB-267): los avisos sin ver, cada uno con el
 // enlace al perfil de su tarea. Si la tarea es mia se abre en mi pantalla; si es
 // de mi equipo, en la de esa persona.
-export type Notificacion = { id: string; texto: string; cantidad: number; href: string };
+export type Notificacion = { id: string; tipo: string; texto: string; cantidad: number; vista: boolean; href: string };
+
+type FilaNotificacion = {
+  id: string;
+  tipo: string;
+  texto: string;
+  cantidad: number;
+  vista_en: string | null;
+  funcion_id: string | null;
+  periodo: string | null;
+  imprevisto_id: string | null;
+  empleado_id: string | null;
+};
 
 export async function misNotificaciones(): Promise<Notificacion[]> {
   const supabase = await clienteDelServidor();
+  const { data: usuario } = await supabase.auth.getUser();
+  // Un supervisor lee a su gente: sin filtrar por su cuenta, `empleado` trae varias filas.
   const [{ data: avisos }, { data: yo }] = await Promise.all([
     supabase.rpc('mis_notificaciones'),
-    supabase.from('empleado').select('id').maybeSingle(),
+    supabase.from('empleado').select('id').eq('auth_user_id', usuario.user?.id ?? '').maybeSingle(),
   ]);
 
-  return (avisos ?? []).map((a: { id: string; texto: string; cantidad: number; funcion_id: string | null; periodo: string | null; imprevisto_id: string | null; empleado_id: string | null }) => {
+  return ((avisos ?? []) as FilaNotificacion[]).map((a) => {
     const clave = a.imprevisto_id ? claveDeImprevisto(a.imprevisto_id) : claveDeOcurrencia(a.funcion_id!, a.periodo!);
     const donde = a.empleado_id && a.empleado_id !== yo?.id ? `/equipo/${a.empleado_id}` : '/';
-    return { id: a.id, texto: a.texto, cantidad: a.cantidad, href: `${donde}?tarea=${encodeURIComponent(clave)}` };
+    return { id: a.id, tipo: a.tipo, texto: a.texto, cantidad: a.cantidad, vista: a.vista_en !== null, href: `${donde}?tarea=${encodeURIComponent(clave)}` };
   });
+}
+
+export async function marcarTodasVistas(): Promise<void> {
+  const supabase = await clienteDelServidor();
+  await supabase.rpc('marcar_notificaciones_vistas');
 }
 
 export async function salir() {

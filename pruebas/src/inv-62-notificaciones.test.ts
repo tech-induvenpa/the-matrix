@@ -16,7 +16,9 @@ const uid = async (s: SupabaseClient) => (await s.auth.getUser()).data.user!.id;
 const comentar = (s: SupabaseClient, tarea: Record<string, string>, texto = 'un comentario') =>
   s.from('comentario').insert({ ...tarea, texto });
 
-const avisos = async (s: SupabaseClient) => ((await s.rpc('mis_notificaciones')).data ?? []) as { cantidad: number; texto: string }[];
+type Fila = { tipo: string; cantidad: number; texto: string; vista_en: string | null };
+const todas = async (s: SupabaseClient) => ((await s.rpc('mis_notificaciones')).data ?? []) as Fila[];
+const avisos = async (s: SupabaseClient) => (await todas(s)).filter((a) => a.vista_en === null);
 const ver = (s: SupabaseClient, t: Record<string, string>) =>
   s.rpc('ver_tarea', { la_funcion: t.funcion_id ?? null, el_periodo: t.periodo ?? null, el_imprevisto: t.imprevisto_id ?? null });
 
@@ -98,10 +100,10 @@ describe('INV-62: cada quien lee solo sus avisos y nadie escribe con su token', 
     const tarea = await nueva('Aislamiento');
     await comentar(sAna, tarea);
 
-    const todas = async (s: SupabaseClient) => ((await s.from('notificacion').select('usuario')).data ?? []).map((n) => n.usuario);
-    expect(new Set(await todas(sSara))).toEqual(new Set([await uid(sSara)]));
-    expect(new Set(await todas(sAna))).toEqual(new Set([await uid(sAna)]));
-    expect(await todas(sBruno)).toEqual([]);
+    const duenos = async (s: SupabaseClient) => ((await s.from('notificacion').select('usuario')).data ?? []).map((n) => n.usuario);
+    expect(new Set(await duenos(sSara))).toEqual(new Set([await uid(sSara)]));
+    expect(new Set(await duenos(sAna))).toEqual(new Set([await uid(sAna)]));
+    expect(await duenos(sBruno)).toEqual([]);
   });
 
   it('nadie inserta, edita ni borra con su token', async () => {
@@ -146,5 +148,85 @@ describe('INV-65: abrir la tarea o marcarla deja el aviso sin pendiente', () => 
     await ver(sSara, tarea);
     await comentar(sAna, tarea, 'cuatro');
     expect((await avisos(sSara)).filter((x) => x.texto === 'Charla').map((x) => x.cantidad)).toEqual([1]);
+  });
+});
+
+describe('CEB-269: la lista de la campanita', () => {
+  it('marcar todas marca solo las mias, y abrir la lista no marca nada', async () => {
+    const tarea = await nueva('Para marcar todas');
+    await comentar(sAna, tarea);
+    await comentar(sSara, tarea);
+    expect((await avisos(sSara)).length).toBeGreaterThan(0);
+    expect((await avisos(sAna)).length).toBeGreaterThan(0);
+
+    expect((await sSara.rpc('marcar_notificaciones_vistas')).error).toBeNull();
+    expect(await avisos(sSara)).toEqual([]);
+    expect((await avisos(sAna)).length).toBeGreaterThan(0);
+  });
+
+  it('las vistas se ocultan a los 30 dias; las sin ver se quedan', async () => {
+    const servicio = comoServicio();
+    const tarea = await nueva('Vieja');
+    await comentar(sAna, tarea);
+    await sSara.rpc('marcar_notificaciones_vistas');
+    expect((await todas(sSara)).some((a) => a.texto === 'Vieja' && a.vista_en)).toBe(true);
+
+    const viejo = new Date(Date.now() - 31 * 86_400_000).toISOString();
+    await servicio.from('notificacion').update({ vista_en: viejo }).eq('usuario', await uid(sSara));
+    expect((await todas(sSara)).some((a) => a.texto === 'Vieja')).toBe(false);
+
+    await comentar(sAna, tarea);
+    expect((await avisos(sSara)).some((a) => a.texto === 'Vieja')).toBe(true);
+  });
+});
+
+describe('CEB-270: imprevistos y delegaciones', () => {
+  const imprevistoPara = async (quien: string, pedido_por: string | null) => {
+    const { data, error } = await comoServicio()
+      .from('imprevisto')
+      .insert({ empleado_id: quien, texto: `Imprevisto ${Math.random()}`, vence: hoy(), pedido_por, ...(pedido_por ? {} : { pedido_por_otro: 'el cliente' }) , registrado_por: await uid(jefa) })
+      .select('id, texto')
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  it('un imprevisto que te piden avisa a quien lo recibe, y solo a el', async () => {
+    const imp = await imprevistoPara(ana, await uid(sSara));
+    expect((await avisos(sAna)).filter((a) => a.tipo === 'imprevisto').map((a) => a.texto)).toContain(imp.texto);
+    expect((await avisos(sSara)).map((a) => a.texto)).not.toContain(imp.texto);
+    expect((await avisos(sBruno)).map((a) => a.texto)).not.toContain(imp.texto);
+  });
+
+  it('un imprevisto que anotas tu mismo no te avisa', async () => {
+    const imp = await imprevistoPara(bruno, null);
+    expect((await avisos(sBruno)).map((a) => a.texto)).not.toContain(imp.texto);
+  });
+
+  it('una delegacion avisa a quien la recibe; marcarla avisa a quien la dio; devolverla, a quien la tenia', async () => {
+    const funcion = await sembrarFuncion(sara, {
+      hash_identidad: 'h-delegable',
+      texto: 'Delegable de Sara',
+      importancia: 5,
+      periodicidad: 'mensual',
+      tipo_generado: 'entregable',
+      fecha_alta: '2026-01-01',
+    });
+    const finDeMes = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+    const { data: delegacion, error } = await sSara.rpc('delegar', { la_funcion: funcion, el_periodo: mes(), a_quien: ana, el_vence: finDeMes });
+    if (error) throw error;
+
+    expect((await avisos(sAna)).filter((a) => a.tipo === 'imprevisto').map((a) => a.texto)).toContain('Delegable de Sara');
+
+    expect((await sAna.rpc('marcar_imprevisto', { el_imprevisto: delegacion, el_resultado: 'hecho', la_razon: null })).error).toBeNull();
+    expect((await avisos(sSara)).filter((a) => a.tipo === 'delegacion_marcada').map((a) => a.texto)).toEqual(['Delegable de Sara']);
+    expect((await avisos(sAna)).some((a) => a.tipo === 'imprevisto' && a.texto === 'Delegable de Sara')).toBe(false);
+
+    expect((await sSara.rpc('devolver', { la_delegacion: delegacion, la_razon: 'esta incompleto' })).error).toBeNull();
+    expect((await avisos(sAna)).filter((a) => a.tipo === 'delegacion_devuelta').map((a) => a.texto)).toEqual(['Delegable de Sara']);
+    expect((await avisos(sBruno)).length).toBe(0);
+
+    await ver(sSara, { imprevisto_id: delegacion });
+    expect((await avisos(sSara)).some((a) => a.tipo === 'delegacion_marcada')).toBe(false);
   });
 });
