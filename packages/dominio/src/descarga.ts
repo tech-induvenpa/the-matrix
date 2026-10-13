@@ -1,4 +1,5 @@
 import type { Calendario, Fecha } from './calendario';
+import { diaDeCaracas } from './cierre-del-mes';
 import type { Resultado } from './imprevistos';
 
 // La descarga es el hecho suelto: una fila por cada vez que algo debia hacerse
@@ -59,6 +60,9 @@ export type HechoDeLaHolgura = {
   cumplio: 0 | 1 | null;
   // Tal cual la escribieron (CEB-218); vacia en lo hecho y en lo vencido sin marcar.
   razon: string;
+  // El dia en que se marco de verdad si fue despues del cierre del mes (ADR
+  // 0020); vacio si no. La fila sigue diciendo lo que el mes vio.
+  fueraDeMes: string;
 };
 
 // Una fila por imprevisto que vencio en el tramo. "No lo tome" sale, pero es
@@ -73,6 +77,8 @@ export function hechosDeHolgura(
     borradoEn: string | null;
     devueltoEn?: string | null;
     devueltoRazon?: string | null;
+    // Cuando se marco tarde, si fue asi.
+    marcadaTardeEn?: string | null;
   }[],
   tramo: Tramo,
   hoy: Fecha,
@@ -89,6 +95,7 @@ export function hechosDeHolgura(
       cumplio: i.devueltoEn ? 0 : i.resultado === 'no_lo_tome' ? null : i.resultado === 'hecho' ? 1 : 0,
       // Devuelto, la razon es la de quien lo devolvio: el "hecho" no tenia.
       razon: (i.devueltoEn ? i.devueltoRazon : i.resultado === 'hecho' ? null : i.razon) ?? '',
+      fueraDeMes: i.marcadaTardeEn ? diaDeCaracas(i.marcadaTardeEn) : '',
     }));
 
   return { filas, veces: filas.filter((f) => f.cumplio !== null).length };
@@ -99,8 +106,12 @@ export function hechosDeHolgura(
 export function hechosDeEntregable(
   ocurrencias: readonly { periodo: string; vence: Fecha }[],
   marcas: readonly { periodo: string; resultado: string; razon?: string | null }[],
-): { que: string; vence: Fecha; resultado: 'hecho' | 'no_pude' | 'sin_marcar'; cumplio: 0 | 1; razon: string }[] {
+  // Las marcas puestas despues del cierre (ADR 0020): no cambian la fila, solo
+  // dejan dicho cuando se marcaron de verdad.
+  tardias: readonly { periodo: string; marcadaEn: string }[] = [],
+): { que: string; vence: Fecha; resultado: 'hecho' | 'no_pude' | 'sin_marcar'; cumplio: 0 | 1; razon: string; fueraDeMes: string }[] {
   const marcaDe = new Map(marcas.map((m) => [m.periodo, m]));
+  const tardiaDe = new Map(tardias.map((t) => [t.periodo, t.marcadaEn]));
   return ocurrencias.map((o) => {
     const m = marcaDe.get(o.periodo);
     const resultado = m?.resultado === 'hecho' ? 'hecho' : m?.resultado === 'no_pude' ? 'no_pude' : 'sin_marcar';
@@ -110,6 +121,7 @@ export function hechosDeEntregable(
       resultado,
       cumplio: resultado === 'hecho' ? 1 : 0,
       razon: (resultado === 'no_pude' && m?.razon) || '',
+      fueraDeMes: tardiaDe.has(o.periodo) ? diaDeCaracas(tardiaDe.get(o.periodo)!) : '',
     };
   });
 }

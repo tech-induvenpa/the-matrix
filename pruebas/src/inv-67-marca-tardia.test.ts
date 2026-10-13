@@ -228,3 +228,23 @@ describe('INV-67: lo marcado tarde, visto por otros', () => {
     expect((await deKia.from('marca_tardia').select('funcion_id').eq('funcion_id', funcion)).data).toEqual([]);
   });
 });
+
+// CEB-277: la descarga deja dicho cuando se marco de verdad, sin mover el monto.
+describe('INV-67: la descarga y lo marcado fuera de mes', () => {
+  it('la fila de quien marco tarde es la de quien no marco, mas el dia real', async () => {
+    const { GET: descargar } = await import('../../apps/web/src/app/admin/descarga/route');
+    const { NextRequest } = (await import(next.servidor)) as typeof import('next/server');
+    const { leerHoja } = await import('./entorno');
+    next.sesion = jefa;
+    const respuesta = await descargar(new NextRequest(`http://localhost/admin/descarga?mes=${MES}`));
+    const filas = leerHoja(await respuesta.text()).filas.filter((f) => f.FUNCION === 'Pagos');
+    const de = (persona: string) => filas.find((f) => f.PERSONA === persona)!;
+
+    expect(de('ANA')).toMatchObject({ RESULTADO: 'vencio sin marcar', CUMPLIO: '0', 'MARCADA FUERA DE MES': '2026-09-02' });
+    expect(de('BENITO')['MARCADA FUERA DE MES']).toBe('');
+    // Lo demas, igual: el monto no se mueve.
+    for (const columna of ['PONDERACION', 'BONO', 'MONTO NO CUMPLIDO', 'PESO NO CUMPLIDO']) {
+      expect(de('ANA')[columna]).toEqual(de('BENITO')[columna]);
+    }
+  });
+});

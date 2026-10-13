@@ -77,7 +77,7 @@ export { barrasDelEquipo, periodosDesplazados } from './barras';
 export type { Barra, FuncionDeLaBarra, Segmento } from './barras';
 export { cargaDeImprevistos } from './carga';
 export type { Carga } from './carga';
-export { avisoDeMarcaTardia, cierreDelMes, comoSeCerro, estadoDelMes, mesDe, ultimoHabilDelMes } from './cierre-del-mes';
+export { avisoDeMarcaTardia, cierreDelMes, comoSeCerro, diaDeCaracas, estadoDelMes, mesDe, ultimoHabilDelMes } from './cierre-del-mes';
 export type { EstadoDelMes, Reapertura, Recierre } from './cierre-del-mes';
 export { conceptoDe, merecenFuegos, nominaDe, partesDelMes, reaperturasDeLaNomina, tareasDelMes, UMBRAL_DE_FUEGOS } from './nomina';
 export type { FuncionDeLaNomina, ImprevistoDeLaNomina, LineaDeNomina, Nomina, ParteDelCargo, ReaperturaDeLaNomina } from './nomina';

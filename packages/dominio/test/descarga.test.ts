@@ -184,3 +184,30 @@ describe('la razon de cada fila', () => {
     ]);
   });
 });
+
+// La marca tardia (ADR 0020): la fila no cambia, solo deja dicho cuando se
+// marco de verdad.
+describe('lo marcado fuera de mes', () => {
+  it('la fila sigue sin cumplir y trae el dia real, a la hora de Caracas', () => {
+    const [h] = hechosDeEntregable(
+      [{ periodo: '2026-08', vence: '2026-08-31' }],
+      [],
+      [{ periodo: '2026-08', marcadaEn: '2026-09-03T02:00:00Z' }],
+    );
+    expect(h).toMatchObject({ resultado: 'sin_marcar', cumplio: 0, fueraDeMes: '2026-09-02' });
+  });
+
+  it('lo marcado a tiempo no trae nada', () => {
+    const [h] = hechosDeEntregable([{ periodo: '2026-08', vence: '2026-08-31' }], [{ periodo: '2026-08', resultado: 'hecho' }]);
+    expect(h!.fueraDeMes).toBe('');
+  });
+
+  it('un imprevisto marcado tarde sigue vencido sin marcar y trae el dia', () => {
+    const { filas } = hechosDeHolgura(
+      [{ texto: 'Uno', vence: '2026-08-20', resultado: null, borradoEn: null, marcadaTardeEn: '2026-09-02T15:00:00Z' }],
+      { desde: '2026-08-01', hasta: '2026-08-31' },
+      '2026-09-10',
+    );
+    expect(filas[0]).toMatchObject({ resultado: 'sin_marcar', cumplio: 0, fueraDeMes: '2026-09-02' });
+  });
+});

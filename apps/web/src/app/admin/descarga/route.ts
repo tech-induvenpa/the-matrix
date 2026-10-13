@@ -48,6 +48,9 @@ const CABECERA = [
   // Al final, para no descuadrar la hoja de quien ya la usa (CEB-218): el texto
   // tal cual de un "no pude", un "no lo tome", una devolucion o un atraso.
   'RAZON', // P
+  // Tambien al final: el dia en que se marco de verdad algo que ya habia cerrado
+  // su mes (ADR 0020). La fila sigue diciendo lo que el mes vio.
+  'MARCADA FUERA DE MES', // Q
 ];
 
 const RESULTADO: Record<string, string> = {
@@ -91,6 +94,7 @@ export async function GET(request: NextRequest) {
     { data: dias },
     { data: titularidades },
     { data: marcas },
+    { data: tardias },
     { data: eventos },
     { data: imprevistos },
     { data: bonos },
@@ -109,10 +113,11 @@ export async function GET(request: NextRequest) {
         .is('hasta', null)
         .not('publicado_en', 'is', null),
       supabase.from('marca').select('funcion_id, periodo, resultado, razon'),
+      supabase.from('marca_tardia').select('funcion_id, periodo, imprevisto_id, marcada_en'),
       supabase.from('evento_flujo').select('funcion_id, estado, razon, en').order('en'),
       supabase
         .from('imprevisto')
-        .select('empleado_id, texto, vence, resultado, razon, borrado_en, devuelto_en, devuelto_razon, delega_funcion, delega_imprevisto, pedido_por, pedido_por_otro')
+        .select('id, empleado_id, texto, vence, resultado, razon, borrado_en, devuelto_en, devuelto_razon, delega_funcion, delega_imprevisto, pedido_por, pedido_por_otro')
         .gte('vence', desde),
       supabase.from('bono').select('empleado_id, monto, rige_desde'),
       supabase.rpc('quienes_piden'),
@@ -190,6 +195,9 @@ export async function GET(request: NextRequest) {
     (marcas ?? [])
       .filter((m) => m.funcion_id === funcionId)
       .map((m) => ({ periodo: m.periodo as string, resultado: m.resultado as string, razon: m.razon as string | null }));
+  const tardiasDe = (funcionId: string) =>
+    (tardias ?? []).flatMap((t) => (t.funcion_id === funcionId ? [{ periodo: t.periodo as string, marcadaEn: t.marcada_en as string }] : []));
+  const tardiaDeImprevisto = new Map((tardias ?? []).flatMap((t) => (t.imprevisto_id ? [[t.imprevisto_id as string, t.marcada_en as string] as const] : [])));
   const eventosDe = (funcionId: string) =>
     (eventos ?? [])
       .filter((e) => e.funcion_id === funcionId)
@@ -207,6 +215,7 @@ export async function GET(request: NextRequest) {
         devueltoEn: i.devuelto_en as string | null,
         devueltoRazon: i.devuelto_razon as string | null,
         razon: i.razon as string | null,
+        marcadaTardeEn: tardiaDeImprevisto.get(i.id as string) ?? null,
         vence: i.vence as string,
         resultado: i.resultado as Resultado | null,
         borradoEn: i.borrado_en as string | null,
@@ -230,6 +239,7 @@ export async function GET(request: NextRequest) {
       veces: number;
       peso: (n: number) => string | number;
       razon: string;
+      fueraDeMes?: string;
     },
   ) => {
     const n = filas.length + 2; // la fila 1 es la cabecera
@@ -251,6 +261,7 @@ export async function GET(request: NextRequest) {
         base.bono ?? '',
         base.bono === null ? '' : `=M${n}*N${n}/100`,
         celdas.razon,
+        celdas.fueraDeMes ?? '',
       ]
         .map(escapar)
         .join(';'),
@@ -284,7 +295,7 @@ export async function GET(request: NextRequest) {
           tramo.hasta,
         ).filter((o) => o.vence <= tramo.hasta);
 
-        for (const h of hechosDeEntregable(ocurrencias, marcasDe(funcionId))) {
+        for (const h of hechosDeEntregable(ocurrencias, marcasDe(funcionId), tardiasDe(funcionId))) {
           escribir(base, {
             ...h,
             resultado: RESULTADO[h.resultado]!,
