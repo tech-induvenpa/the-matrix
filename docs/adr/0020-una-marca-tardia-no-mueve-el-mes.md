@@ -14,9 +14,10 @@ Decidimos permitir la **marca tardia**: quien tiene la tarea puede marcarla
 mueve**. La tarea sigue contando como no cumplida en ese mes: foto, nomina,
 cumplimiento y arrastre quedan como estaban.
 
-- La marca guarda cuando se puso de verdad (`marcada_en`). Un mes solo cuenta
-  las marcas puestas hasta su cierre; las posteriores se ignoran, aunque la
-  foto se tome despues (ADR 0017 la toma la primera vez que se necesita).
+- La marca tardia vive en su propia tabla, aparte de la marca: todo lo que
+  cuenta un mes (foto, nomina, cumplimiento, arrastre, descarga) lee la marca y
+  nunca la ve, aunque la foto se tome despues (ADR 0017 la toma la primera vez
+  que se necesita). Guarda cuando se puso de verdad.
 - Se distingue con un asterisco: "se completó tarde, 9 oct" ("se marcó tarde,
   9 oct" si fue "no pude").
 - La descarga agrega la columna MARCADA FUERA DE MES con la fecha real. La
