@@ -366,6 +366,18 @@ ademas "no lo tome"; una ocurrencia no, porque lo previsto ya se acepto al
 publicar el reparto.
 _Avoid_: check, completar, cerrar.
 
+**Marca tardia**:
+Una marca puesta despues del **cierre del mes** de su tarea (decidido el
+09/10/2026). Quien tiene una tarea vencida de un mes ya cerrado puede
+marcarla, para que deje de estorbar y quede dicho que paso, pero el mes no se
+mueve: la **foto del cierre**, la nomina, el cumplimiento y el arrastre de ese
+mes siguen como estaban, y la tarea sigue contando como no cumplida alli. Se
+distingue con un asterisco, y guarda cuando se marco de verdad. Solo se
+marca lo que seguia sin marca, "hecho" o "no pude", y solo se deshace la propia
+marca tardia: lo marcado a tiempo, y devolver una **delegacion**, siguen
+cerrados con el mes. Si el reporte ya se genero y se pago con lo anterior, no
+hay nada que corregir.
+
 **Estado de flujo**:
 Al dia o atrasado. Un flujo no se marca: su estado lo cambia el empleado cuando
 cambia de verdad, sin que nadie se lo pregunte. Un flujo se da por cumplido
@@ -406,8 +418,8 @@ _Avoid_: liquidacion, pago, sueldo (los tres sugieren el monto completo).
 **Cierre del mes**:
 El momento en que un mes deja de moverse: a las 23:59, hora de Caracas, de su
 ultimo dia habil. Es automatico y es un corte duro: lo que no se marco antes
-cuenta como no cumplido, aunque se haya hecho, y desde ahi nada de ese mes se
-marca, se deshace ni se devuelve. Casi todo lo mensual vence ese mismo dia, asi
+cuenta como no cumplido, aunque se haya hecho, y desde ahi nada de ese mes
+cambia: solo se admiten **marcas tardias**, que no lo mueven. Casi todo lo mensual vence ese mismo dia, asi
 que se marca ese dia o se pierde: es a proposito.
 Solo el administrador puede reabrir un mes cerrado, y siempre con una razon.
 Se reabre para todos, nunca para una persona sola: reabierto, el mes vuelve al
