@@ -143,6 +143,8 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     return o && `pedido original: “${o.texto}” · lo pidió ${quienPidio(o, quienesPiden)}`;
   };
 
+  // Lo marcado tarde (ADR 0020) ya no estorba abierto.
+  const imprevistosMarcadosTarde = new Set(marcasTardias.flatMap((m) => (m.imprevisto_id ? [m.imprevisto_id] : [])));
   const imprevistosAbiertos = ordenarImprevistos(
     imprevistos.filter((i) => !i.resultado && !imprevistosMarcadosTarde.has(i.id) && !enManosDeOtroImprevisto.has(i.id)),
     hoy,
@@ -170,7 +172,6 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   const cerradas = marcas.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
   const tardiasDeOcurrencias = marcasTardias.flatMap((m) => (m.funcion_id ? [{ ...m, funcion_id: m.funcion_id, periodo: m.periodo! }] : []));
   const cerradasOTardias = [...cerradas, ...tardiasDeOcurrencias.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }))];
-  const imprevistosMarcadosTarde = new Set(marcasTardias.flatMap((m) => (m.imprevisto_id ? [m.imprevisto_id] : [])));
   const marcaDe = new Map<string, { resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string; tardia?: boolean }>([
     ...marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m] as const),
     ...tardiasDeOcurrencias.map((m) => [`${m.funcion_id}|${m.periodo}`, { ...m, tardia: true }] as const),

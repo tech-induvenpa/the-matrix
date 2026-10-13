@@ -18,6 +18,8 @@ export type PersonaACargo = {
   // Todo su reparto, de mas a menos peso, con como va cada funcion.
   funciones: ComoVaUnaFuncion[];
   imprevistos: FilaImprevisto[];
+  // Los que marco tarde (ADR 0020): resueltos, aunque el mes los siga viendo sin cumplir.
+  imprevistosMarcadosTarde: string[];
 };
 
 export async function loDeMiGente() {
@@ -54,6 +56,7 @@ export async function loDeMiGente() {
         (a, b) => b.ponderacion - a.ponderacion || a.texto.localeCompare(b.texto),
       ),
       imprevistos: datos.imprevistos.filter((i) => i.empleado_id === p.id),
+      imprevistosMarcadosTarde: (datos.marcas_tardias ?? []).flatMap((m) => (m.imprevisto_id ? [m.imprevisto_id] : [])),
     };
   });
 
