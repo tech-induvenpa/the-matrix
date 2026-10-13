@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 // Cerrar la meta se recuerda por semana, en este navegador: el banner no
-// vuelve a bajar y la racha se va con el. La semana que viene se celebra otra
+// vuelve a bajar. La semana que viene se celebra otra
 // vez. Sin almacenamiento (ventana privada), se recuerda solo mientras dure la
 // pagina.
 const META = 'matriz:meta:';
@@ -40,12 +40,6 @@ function useMetaCerrada(semana: string) {
   return [cerrada, cerrar] as const;
 }
 
-// Lo que se va con la meta al cerrarla, como la racha.
-export function ConLaMeta({ semana, children }: { semana: string; children: ReactNode }) {
-  const [cerrada] = useMetaCerrada(semana);
-  return cerrada === false ? <>{children}</> : null;
-}
-
 // El cierre de la semana baja desde arriba y se puede cerrar. Al cerrarlo
 // vuelve la cabecera de siempre: la celebracion no deja a nadie sin su pantalla.
 export function CierreDeSemana({ cabecera, nota, semana }: { cabecera: ReactNode; nota: string; semana: string }) {
@@ -68,50 +62,6 @@ export function CierreDeSemana({ cabecera, nota, semana }: { cabecera: ReactNode
         </svg>
       </button>
     </div>
-  );
-}
-
-// Las dos salidas, y las dos estan bien: seguir o parar. Parar no se disculpa.
-export function Adelantar({
-  logros,
-  extras,
-  cuantas,
-}: {
-  logros: ReactNode;
-  extras: ReactNode;
-  cuantas: number;
-}) {
-  const [estado, setEstado] = useState<'preguntando' | 'siguiendo' | 'parado'>('preguntando');
-
-  // Al seguir trabajando se van las dos cosas: los logros y la pregunta. Dejar
-  // las estadisticas entre las tarjetas parte la lista por la mitad.
-  if (estado === 'siguiendo') return <>{extras}</>;
-
-  return (
-    <>
-      {logros}
-
-      {estado === 'parado' ? (
-        <p style={{ fontSize: 14, color: 'var(--gris)', margin: '4px 0 0' }}>
-          Perfecto. Lo de la semana está cerrado; el resto puede esperar.
-        </p>
-      ) : (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {cuantas > 0 && (
-            <button onClick={() => setEstado('siguiendo')} style={SEGUIR}>
-              Me provoca adelantar, tráeme {cuantas} más
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
-              </svg>
-            </button>
-          )}
-          <button onClick={() => setEstado('parado')} style={PARAR}>
-            Por hoy está bien 🙂
-          </button>
-        </div>
-      )}
-    </>
   );
 }
 
@@ -142,31 +92,5 @@ const CERRAR = {
   borderRadius: 999,
   background: 'rgba(255,244,240,0.18)',
   color: '#fff4f0',
-  cursor: 'pointer',
-} as const;
-
-const SEGUIR = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 10,
-  background: 'var(--tinta)',
-  color: '#ffffff',
-  height: 54,
-  flexGrow: 1,
-  borderRadius: 999,
-  fontSize: 15,
-  fontWeight: 700,
-  cursor: 'pointer',
-} as const;
-
-const PARAR = {
-  background: 'rgba(26,23,19,0.06)',
-  color: 'var(--tinta)',
-  height: 54,
-  padding: '0 22px',
-  borderRadius: 999,
-  fontSize: 14,
-  flexShrink: 0,
   cursor: 'pointer',
 } as const;
