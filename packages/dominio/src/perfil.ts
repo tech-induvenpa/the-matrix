@@ -1,12 +1,14 @@
 import type { Calendario, Fecha } from './calendario';
 import type { Resultado } from './imprevistos';
+import { avisoDeMarcaTardia } from './cierre-del-mes';
 import { urgenciaDe } from './urgencia';
 
 // El perfil de la tarea (CEB-198): la historia de una ocurrencia o un
 // imprevisto en una sola linea de tiempo. Toda la regla vive aqui; la pantalla
 // solo pinta.
 
-export type MarcaDelPerfil = { resultado: Resultado; razon: string | null; marcadaEn: string };
+// `tardia`: puesta despues del cierre del mes de la tarea (ADR 0020).
+export type MarcaDelPerfil = { resultado: Resultado; razon: string | null; marcadaEn: string; tardia?: boolean };
 
 export type TareaDelPerfil =
   | { tipo: 'ocurrencia'; vence: Fecha; marca: MarcaDelPerfil | null }
@@ -27,7 +29,8 @@ export type Comentario = { autor: string; autorNombre: string; escritoEn: string
 
 export type TipoDeEvento = 'pedido' | 'delegado' | 'devuelto' | 'comentario' | 'vencio' | Resultado;
 
-export type EventoDelPerfil = { tipo: TipoDeEvento; emoji: string; quien?: string; cuando: string; texto?: string };
+// `nota`: el asterisco de una marca tardia, "se completó tarde, 9 oct".
+export type EventoDelPerfil = { tipo: TipoDeEvento; emoji: string; quien?: string; cuando: string; texto?: string; nota?: string };
 
 const EMOJI: Record<TipoDeEvento, string> = {
   pedido: '📥',
@@ -64,7 +67,10 @@ export function lineaDeTiempo(tarea: TareaDelPerfil, comentarios: readonly Comen
   eventos.sort((a, b) => b.cuando.localeCompare(a.cuando));
 
   if (tarea.marca) {
-    eventos.unshift(evento(tarea.marca.resultado, tarea.marca.marcadaEn, undefined, tarea.marca.razon ?? undefined));
+    const { resultado, marcadaEn, razon, tardia } = tarea.marca;
+    const marca = evento(resultado, marcadaEn, undefined, razon ?? undefined);
+    if (tardia && resultado !== 'no_lo_tome') marca.nota = avisoDeMarcaTardia(resultado, marcadaEn);
+    eventos.unshift(marca);
   }
   return eventos;
 }

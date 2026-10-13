@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Calendario } from '../src/calendario';
-import { cierreDelMes, comoSeCerro, estadoDelMes, mesDe, ultimoHabilDelMes } from '../src/cierre-del-mes';
+import { avisoDeMarcaTardia, cierreDelMes, comoSeCerro, estadoDelMes, mesDe, ultimoHabilDelMes } from '../src/cierre-del-mes';
 
 const sinFeriados = Calendario.con([]);
 
@@ -106,5 +106,20 @@ describe('la reapertura', () => {
     });
     expect(comoSeCerro(reabierto('2026-10-02T14:00:00.000Z'), ahora)).toEqual({ como: 'solo', en: '2026-10-03T14:00:00.000Z' });
     expect(comoSeCerro(reabierto('2026-10-09T14:00:00.000Z'), ahora)).toEqual({ como: 'sigue_abierto', en: '2026-10-10T14:00:00.000Z' });
+  });
+});
+
+describe('el asterisco de la marca tardia', () => {
+  it('"hecho" se completo tarde, con el dia corto', () => {
+    expect(avisoDeMarcaTardia('hecho', '2026-10-09T15:00:00Z')).toBe('se completó tarde, 9 oct');
+  });
+
+  it('"no pude" solo se marco tarde: no se completo nada', () => {
+    expect(avisoDeMarcaTardia('no_pude', '2026-10-09T15:00:00Z')).toBe('se marcó tarde, 9 oct');
+  });
+
+  it('el dia es el de Caracas, no el de UTC', () => {
+    // 01:00 UTC del 10 de octubre son las 21:00 del 9 en Caracas.
+    expect(avisoDeMarcaTardia('hecho', '2026-10-10T01:00:00Z')).toBe('se completó tarde, 9 oct');
   });
 });

@@ -165,11 +165,16 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   const ultimoDelMes = new Date(Date.UTC(+hoy.slice(0, 4), +hoy.slice(5, 7), 0)).toISOString().slice(0, 10);
 
   const cobertura = coberturaDe(calendario, hoy, cargadoHasta);
-  // Lo marcado tarde ya no estorba en la lista, pero no cuenta como marca: el
-  // mes lo sigue viendo sin cumplir (ADR 0020).
-  const cerradas = [...marcas, ...marcasTardias.filter((m) => m.funcion_id)].map((m) => ({ funcionId: m.funcion_id!, periodo: m.periodo! }));
+  // Lo que cuenta el mes: solo las marcas. Lo marcado tarde sale de la lista
+  // pero el mes lo sigue viendo sin cumplir (ADR 0020).
+  const cerradas = marcas.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
+  const tardiasDeOcurrencias = marcasTardias.flatMap((m) => (m.funcion_id ? [{ ...m, funcion_id: m.funcion_id, periodo: m.periodo! }] : []));
+  const cerradasOTardias = [...cerradas, ...tardiasDeOcurrencias.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }))];
   const imprevistosMarcadosTarde = new Set(marcasTardias.flatMap((m) => (m.imprevisto_id ? [m.imprevisto_id] : [])));
-  const marcaDe = new Map(marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m]));
+  const marcaDe = new Map<string, { resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string; tardia?: boolean }>([
+    ...marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m] as const),
+    ...tardiasDeOcurrencias.map((m) => [`${m.funcion_id}|${m.periodo}`, { ...m, tardia: true }] as const),
+  ]);
 
   const ocurrencias = funciones
     .filter((f) => tipoDe(f) === 'entregable')
@@ -223,7 +228,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     return delegable(o, hoy, lista, false).si ? gente : [];
   };
 
-  const abiertas = pendientes(ocurrencias, cerradas).filter((o) => !enManosDeOtro.has(`${o.funcionId}|${o.periodo}`));
+  const abiertas = pendientes(ocurrencias, cerradasOTardias).filter((o) => !enManosDeOtro.has(`${o.funcionId}|${o.periodo}`));
 
   // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
   const conCuadrante = (o: (typeof ocurrencias)[number]) => {
@@ -271,7 +276,13 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   // Lo resuelto que se muestra debajo de la lista sigue siendo el de la semana.
   const deLaSemana = ocurrencias.filter((o) => o.vence >= lunes && o.vence <= domingo);
   const abiertasDeLaSemana = new Set(pendientes(deLaSemana, cerradas).map((o) => `${o.funcionId}|${o.periodo}`));
+  const marcadasTardeEstaSemana = ocurrencias.filter((o) => {
+    const m = tardiasDeOcurrencias.find((t) => t.funcion_id === o.funcionId && t.periodo === o.periodo);
+    return m && m.marcada_en.slice(0, 10) >= lunes && m.marcada_en.slice(0, 10) <= domingo;
+  });
   const cerradasDeLaSemana = deLaSemana.filter((o) => !abiertasDeLaSemana.has(`${o.funcionId}|${o.periodo}`));
+  // Lo marcado esta semana de un mes ya cerrado se ve siempre: es lo que hizo, con su asterisco.
+  const resueltasAMostrar = [...(mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) ? cerradasDeLaSemana : []), ...marcadasTardeEstaSemana];
 
   // La meta de la semana: todo lo que vencia entre lunes y domingo, cerrado.
   const metaCumplida = deLaSemana.length > 0 && abiertasDeLaSemana.size === 0;
@@ -531,9 +542,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
           <LoQuePedi pedidos={pedidos} hoy={hoy} perfilDe={perfilDePedido} />
 
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
-          {mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) && (
-            <YaResueltas cerradas={cerradasDeLaSemana} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />
-          )}
+          {resueltasAMostrar.length > 0 && <YaResueltas cerradas={resueltasAMostrar} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />}
         </section>
 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>

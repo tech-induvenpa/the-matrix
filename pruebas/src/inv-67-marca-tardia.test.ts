@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { comoAdministrador, comoEmpleado, comoServicio, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
+import { comoAdministrador, comoEmpleado, comoServicio, empresa, sembrarEmpleado, sembrarFuncion, vaciar } from './entorno';
 
 // INV-67 · Una marca tardia no mueve el mes (CEB-273, ADR 0020). Agosto de 2026
 // ya cerro. Ana y Benito tienen lo mismo: Pagos, mensual, vencida sin marcar.
@@ -171,5 +171,60 @@ describe('INV-67: poner y quitar una marca tardia', () => {
     expect((await comoServicio().from('imprevisto').select('resultado').eq('id', imprevisto).single()).data!.resultado).toBeNull();
     expect((await sesionCarla.rpc('deshacer_marca_tardia_de_imprevisto', { el_imprevisto: imprevistoMarcado })).data).toBe(false);
     expect((await sesionCarla.rpc('deshacer_marca_tardia_de_imprevisto', { el_imprevisto: imprevisto })).data).toBe(true);
+  });
+});
+
+// CEB-276: lo que ven otros. Lo marcado tarde sale de las abiertas del equipo,
+// llega aparte al supervisor y cada empresa ve solo lo suyo.
+describe('INV-67: lo marcado tarde, visto por otros', () => {
+  it('el supervisor ve la marca tardia aparte, y la tarea ya no esta abierta', async () => {
+    const servicio = comoServicio();
+    const sara = await sembrarEmpleado('SARA', 'sara@prueba.test');
+    const dina = await sembrarEmpleado('DINA', 'dina@prueba.test', { supervisor_id: sara });
+    const sesionSara = await comoEmpleado('sara@prueba.test');
+    const lista = await sembrarFuncion(dina, { ...pagos('h-lista'), texto: 'Lista', ponderacion: 50 });
+    await sembrarFuncion(dina, { ...pagos('h-abierta'), texto: 'Abierta', ponderacion: 50 });
+    const quien = (await jefa.auth.getUser()).data.user!.id;
+    const { data: filas } = await servicio
+      .from('imprevisto')
+      .insert({ empleado_id: dina, texto: 'Tarde', vence: '2026-08-20', pedido_en: '2026-08-18T12:00:00Z', pedido_por_otro: 'el banco', registrado_por: quien })
+      .select('id')
+      .single();
+    await servicio.from('marca_tardia').insert([
+      // Hoy de verdad: el supervisor solo ve lo que paso desde que su gente tiene la funcion.
+      { funcion_id: lista, periodo: '2026-08', resultado: 'hecho', marcada_en: new Date().toISOString() },
+      { imprevisto_id: filas!.id, resultado: 'hecho', marcada_en: new Date().toISOString() },
+    ]);
+
+    const abiertas = (await sesionSara.rpc('tareas_de', { el_empleado: dina })).data as {
+      marcas: unknown[];
+      marcas_tardias: { funcion_id: string }[];
+      imprevistos: { id: string }[];
+    };
+    expect(abiertas.marcas_tardias.map((m) => m.funcion_id)).toEqual([lista]);
+    expect(abiertas.marcas).toEqual([]);
+    expect(abiertas.imprevistos).toEqual([]);
+
+    const gente = (await sesionSara.rpc('lo_de_mi_gente')).data as {
+      marcas: unknown[];
+      marcas_tardias: { funcion_id: string | null; imprevisto_id: string | null }[];
+    };
+    expect(gente.marcas).toEqual([]);
+    expect(gente.marcas_tardias).toHaveLength(2);
+  });
+
+  it('el administrador de una empresa no ve la marca tardia de otra', async () => {
+    const servicio = comoServicio();
+    const toyota = await empresa('Toyota');
+    const kia = await empresa('KIA');
+    const dario = await sembrarEmpleado('DARIO', 'dario@prueba.test', { empresa_id: toyota });
+    const funcion = await sembrarFuncion(dario, { ...pagos('h-dario'), texto: 'Conciliacion', ponderacion: 50 });
+    await servicio.from('marca_tardia').insert({ funcion_id: funcion, periodo: '2026-08', resultado: 'hecho' });
+
+    const deToyota = await comoAdministrador('admin-toyota@prueba.test', toyota);
+    const deKia = await comoAdministrador('admin-kia@prueba.test', kia);
+    const veToyota = (await deToyota.from('marca_tardia').select('funcion_id')).data!.map((m) => m.funcion_id);
+    expect(veToyota).toContain(funcion);
+    expect((await deKia.from('marca_tardia').select('funcion_id').eq('funcion_id', funcion)).data).toEqual([]);
   });
 });

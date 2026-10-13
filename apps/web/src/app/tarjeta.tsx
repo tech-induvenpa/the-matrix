@@ -1,4 +1,4 @@
-import { emojiDe, type Cuadrante } from '@matriz/dominio';
+import { avisoDeMarcaTardia, emojiDe, type Cuadrante } from '@matriz/dominio';
 import { comoVence } from '@/lib/datos';
 import { delegar, deshacerMarca, marcarHecho, marcarNoPude } from './acciones';
 import { Accion } from './accion';
@@ -216,7 +216,7 @@ export const REDONDO = {
 } as const;
 
 type Resuelta = { funcionId: string; periodo: string; texto: string; vence: string };
-type Marca = { resultado: string; razon?: string | null };
+type Marca = { resultado: string; razon?: string | null; tardia?: boolean; marcada_en?: string };
 
 // Lo ya cerrado, igual en la semana y en el mes: tachado, con lo que se dijo si
 // no se pudo, y con Deshacer al lado porque marcar de mas es el error facil.
@@ -262,6 +262,9 @@ export function YaResueltas({
               </span>
               <span style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>
                 {pudo ? 'lista' : `no pude: ${marca?.razon ?? ''}`}
+                {marca?.tardia && marca.marcada_en && (
+                  <> · *{avisoDeMarcaTardia(pudo ? 'hecho' : 'no_pude', marca.marcada_en)}</>
+                )}
               </span>
               <Accion accion={deshacerMarca.bind(null, o.funcionId, o.periodo)}>
                 <Enviar style={DESHACER} enviando="…">

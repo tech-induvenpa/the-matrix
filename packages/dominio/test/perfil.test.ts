@@ -55,6 +55,24 @@ describe('la linea de tiempo del perfil', () => {
     expect(eventos[0]).toEqual({ tipo: 'no_pude', emoji: '❌', cuando: '2026-09-15T12:00:00Z', texto: 'sin sistema' });
   });
 
+  it('una marca tardia lleva su asterisco con la fecha real', () => {
+    const [marca] = lineaDeTiempo(
+      { tipo: 'ocurrencia', vence: '2026-08-31', marca: { resultado: 'hecho', razon: null, marcadaEn: '2026-09-09T15:00:00Z', tardia: true } },
+      [],
+      hoy,
+    );
+    expect(marca).toMatchObject({ tipo: 'hecho', nota: 'se completó tarde, 9 sep' });
+  });
+
+  it('una marca a tiempo no lleva asterisco', () => {
+    const [marca] = lineaDeTiempo(
+      { tipo: 'ocurrencia', vence: '2026-09-20', marca: { resultado: 'hecho', razon: null, marcadaEn: '2026-09-15T12:00:00Z' } },
+      [],
+      hoy,
+    );
+    expect(marca).not.toHaveProperty('nota');
+  });
+
   const imprevisto = {
     tipo: 'imprevisto' as const,
     vence: '2026-09-17',

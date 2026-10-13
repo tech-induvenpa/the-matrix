@@ -28,12 +28,12 @@ export async function perfiles(abierta: string | undefined) {
   // Una ocurrencia, con su marca si la tiene.
   const deOcurrencia = (
     o: { funcionId: string; periodo: string; vence: string },
-    m?: { resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string },
+    m?: { resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string; tardia?: boolean },
   ) =>
     perfil(claveDeOcurrencia(o.funcionId, o.periodo), {
       tipo: 'ocurrencia',
       vence: o.vence,
-      marca: m ? { resultado: m.resultado, razon: m.razon, marcadaEn: m.marcada_en } : null,
+      marca: m ? { resultado: m.resultado, razon: m.razon, marcadaEn: m.marcada_en, tardia: m.tardia } : null,
     });
 
   // Un flujo: su hilo es uno solo y no se cierra (periodo 'flujo').
@@ -122,7 +122,9 @@ function PerfilDeTarea({
         {eventos.map((e, n) => (
           <li key={n} style={{ display: 'flex', gap: 9, alignItems: 'baseline', fontSize: 13.5, lineHeight: 1.4 }}>
             <span aria-hidden style={{ flexShrink: 0 }}>{e.emoji}</span>
-            <span style={{ flexGrow: 1, minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{enPalabras(e)}</span>
+            <span style={{ flexGrow: 1, minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{enPalabras(e)}
+              {e.nota && <span style={{ color: 'var(--gris)' }}> · *{e.nota}</span>}
+            </span>
             <span style={{ fontSize: 12, color: 'var(--gris)', whiteSpace: 'nowrap' }}>{momentoCorto(e.cuando)}</span>
           </li>
         ))}

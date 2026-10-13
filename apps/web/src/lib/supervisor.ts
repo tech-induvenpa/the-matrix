@@ -37,6 +37,7 @@ export async function loDeMiGente() {
     gente: todo.gente ?? [],
     funciones: todo.funciones ?? [],
     marcas: todo.marcas ?? [],
+    marcas_tardias: todo.marcas_tardias ?? [],
     eventos: todo.eventos ?? [],
     imprevistos: todo.imprevistos ?? [],
     intromisiones: todo.intromisiones ?? [],
