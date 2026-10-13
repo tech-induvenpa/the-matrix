@@ -50,6 +50,22 @@ const siCerro = (error: { message: string; hint?: string } | null): Aviso | null
     ? { mensaje: `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}: lo de ese mes ya no se mueve.`, celebra: false }
     : null;
 
+// Marca tardia (ADR 0020): si el mes de la tarea ya cerro, marcar sigue siendo
+// posible pero no mueve el mes. Quien llama ya vio que la base dijo "mes
+// cerrado"; aqui se intenta como marca tardia. Si tampoco se puede (por
+// ejemplo, ya estaba marcada a tiempo), vale el rechazo original.
+const comoTardia = (aviso: Aviso, celebra = false): Aviso => ({
+  mensaje: `${aviso.mensaje.split(':')[0]}: anotado como marca tardía. El mes no se mueve.`,
+  celebra,
+});
+
+async function marcarTarde(funcionId: string, periodo: string, resultado: 'hecho' | 'no_pude', razon: string | null) {
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('marcar_tarde', { la_funcion: funcionId, el_periodo: periodo, el_resultado: resultado, la_razon: razon });
+  revalidatePath('/');
+  return error;
+}
+
 // Marcar cierra la ocurrencia (funcion, periodo). La seguridad por fila decide
 // si esa funcion es de quien marca: aqui no se filtra a mano.
 async function marcar(funcionId: string, periodo: string, resultado: 'hecho' | 'no_pude', razon?: string) {
@@ -60,7 +76,9 @@ async function marcar(funcionId: string, periodo: string, resultado: 'hecho' | '
 }
 
 export async function marcarHecho(funcionId: string, periodo: string): Promise<Aviso> {
-  return siCerro(await marcar(funcionId, periodo, 'hecho')) ?? { mensaje: alAzar(AL_TERMINAR), celebra: true };
+  const cerro = siCerro(await marcar(funcionId, periodo, 'hecho'));
+  if (!cerro) return { mensaje: alAzar(AL_TERMINAR), celebra: true };
+  return (await marcarTarde(funcionId, periodo, 'hecho', null)) ? cerro : comoTardia(cerro);
 }
 
 // "No pude" puede traer los imprevistos que lo causaron (intromision). La base
@@ -84,7 +102,7 @@ export async function marcarNoPude(
     imprevistos,
   });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) return (await marcarTarde(funcionId, periodo, 'no_pude', razon)) ? cerro : comoTardia(cerro);
   if (error) throw error;
 
   revalidatePath('/');
@@ -154,7 +172,12 @@ export async function deshacerMarca(funcionId: string, periodo: string): Promise
   const supabase = await clienteDelServidor();
   const { error } = await supabase.from('marca').delete().eq('funcion_id', funcionId).eq('periodo', periodo);
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    // Solo se deshace la propia marca tardia: lo marcado a tiempo sigue cerrado.
+    const { data: quitada } = await supabase.rpc('deshacer_marca_tardia', { la_funcion: funcionId, el_periodo: periodo });
+    revalidatePath('/');
+    return quitada ? { mensaje: 'Deshecho. Vuelve a tu lista.', celebra: false } : cerro;
+  }
   revalidatePath('/');
   llevarRazonesAlDocumento();
 
@@ -194,7 +217,11 @@ export async function marcarImprevistoHecho(id: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('marcar_imprevisto', { el_imprevisto: id, el_resultado: 'hecho', la_razon: null });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    const { error: tarde } = await supabase.rpc('marcar_imprevisto_tarde', { el_imprevisto: id, el_resultado: 'hecho', la_razon: null });
+    revalidatePath('/', 'layout');
+    return tarde ? cerro : comoTardia(cerro);
+  }
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: alAzar(AL_TERMINAR), celebra: true };
@@ -212,7 +239,13 @@ export async function marcarImprevistoSinHacer(
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('marcar_imprevisto', { el_imprevisto: id, el_resultado: resultado, la_razon: razon });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    // La marca tardia es "hecho" o "no pude"; "no lo tome" a destiempo no existe.
+    if (resultado === 'no_lo_tome') return cerro;
+    const { error: tarde } = await supabase.rpc('marcar_imprevisto_tarde', { el_imprevisto: id, el_resultado: resultado, la_razon: razon });
+    revalidatePath('/', 'layout');
+    return tarde ? cerro : comoTardia(cerro);
+  }
   if (error) throw error;
   revalidatePath('/', 'layout');
   return {
@@ -225,7 +258,11 @@ export async function desmarcarImprevisto(id: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('desmarcar_imprevisto', { el_imprevisto: id });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    const { data: quitada } = await supabase.rpc('deshacer_marca_tardia_de_imprevisto', { el_imprevisto: id });
+    revalidatePath('/', 'layout');
+    return quitada ? { mensaje: 'Deshecho. Vuelve a estar abierto.', celebra: false } : cerro;
+  }
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: 'Deshecho. Vuelve a estar abierto.', celebra: false };

@@ -57,7 +57,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
 
   const [
     {
-      hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
+      hoy, nombre, calendario, cargadoHasta, funciones, marcas, marcasTardias, eventos, empleadoId, yo, imprevistos, quienesPiden,
       gente, delegaciones, delegacionesDeImprevisto, pedidos,
     },
     { perfil, deOcurrencia, deFlujo },
@@ -144,7 +144,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   };
 
   const imprevistosAbiertos = ordenarImprevistos(
-    imprevistos.filter((i) => !i.resultado && !enManosDeOtroImprevisto.has(i.id)),
+    imprevistos.filter((i) => !i.resultado && !imprevistosMarcadosTarde.has(i.id) && !enManosDeOtroImprevisto.has(i.id)),
     hoy,
     calendario,
   );
@@ -165,7 +165,10 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   const ultimoDelMes = new Date(Date.UTC(+hoy.slice(0, 4), +hoy.slice(5, 7), 0)).toISOString().slice(0, 10);
 
   const cobertura = coberturaDe(calendario, hoy, cargadoHasta);
-  const cerradas = marcas.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
+  // Lo marcado tarde ya no estorba en la lista, pero no cuenta como marca: el
+  // mes lo sigue viendo sin cumplir (ADR 0020).
+  const cerradas = [...marcas, ...marcasTardias.filter((m) => m.funcion_id)].map((m) => ({ funcionId: m.funcion_id!, periodo: m.periodo! }));
+  const imprevistosMarcadosTarde = new Set(marcasTardias.flatMap((m) => (m.imprevisto_id ? [m.imprevisto_id] : [])));
   const marcaDe = new Map(marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m]));
 
   const ocurrencias = funciones

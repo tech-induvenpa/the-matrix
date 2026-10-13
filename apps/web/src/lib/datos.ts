@@ -15,6 +15,19 @@ export type FilaFuncion = {
   fecha_alta: string;
 };
 
+// La marca tardia (ADR 0020): puesta despues del cierre del mes. No es una
+// FilaMarca a proposito: nada que cuente un mes la lee. Quien solo quiere saber
+// si la tarea sigue pendiente, o mostrar su asterisco, la lee de aqui.
+export type FilaMarcaTardia = {
+  id: string;
+  funcion_id: string | null;
+  periodo: string | null;
+  imprevisto_id: string | null;
+  resultado: 'hecho' | 'no_pude';
+  razon: string | null;
+  marcada_en: string;
+};
+
 export type FilaMarca = { id: string; funcion_id: string; periodo: string; resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string };
 export type FilaEvento = { id: string; funcion_id: string; estado: string; razon: string | null; en: string };
 
@@ -142,6 +155,7 @@ export async function panorama() {
     { data: funciones },
     { data: noHabiles },
     { data: marcas },
+    { data: marcasTardias },
     { data: eventos },
     { data: calendario },
     { data: empleado },
@@ -161,6 +175,7 @@ export async function panorama() {
         .eq('activa', true),
       supabase.from('dia_no_habil').select('desde, hasta'),
       supabase.from('marca').select('id, funcion_id, periodo, resultado, razon, marcada_en'),
+      supabase.from('marca_tardia').select('id, funcion_id, periodo, imprevisto_id, resultado, razon, marcada_en'),
       supabase.from('evento_flujo').select('id, funcion_id, estado, razon, en'),
       supabase.from('calendario').select('cargado_hasta').maybeSingle(),
       supabase.from('empleado').select('id, nombre_bloque, auth_user_id').maybeSingle(),
@@ -203,6 +218,7 @@ export async function panorama() {
       return { ...resto, ponderacion: titularidad[0]?.ponderacion ?? 0 } as FilaFuncion;
     }),
     marcas: (marcas ?? []) as FilaMarca[],
+    marcasTardias: (marcasTardias ?? []) as FilaMarcaTardia[],
     eventos: (eventos ?? []) as FilaEvento[],
     empleadoId: (empleado?.id as string | undefined) ?? '',
     yo: (empleado?.auth_user_id as string | undefined) ?? '',
