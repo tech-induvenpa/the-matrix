@@ -159,7 +159,9 @@ describe('INV-42: un imprevisto borrado no cuenta en nada', () => {
     const respuesta = await descargar(new NextRequest(`http://localhost/admin/descarga?mes=${mes}`));
     const csv = await respuesta.text();
     expect(csv).toContain('RAZON');
-    expect(csv).toContain('Cierre');
+    // La descarga solo trae lo que ya vencio al dia real: el "Cierre" mensual
+    // no sale hasta fin de mes, la caja diaria si.
+    expect(csv).toContain('Caja');
     expect(csv).not.toContain('BORRADO-');
     expect(csv).not.toContain('RAZON-BORRADA');
   });
