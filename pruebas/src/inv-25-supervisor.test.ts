@@ -55,7 +55,7 @@ beforeAll(async () => {
   const servicio = comoServicio();
   await servicio.from('bono').insert([
     { empleado_id: ana, monto: 1000, rige_desde: '2026-01-01' },
-    { empleado_id: benito, monto: 777, rige_desde: '2026-01-01' },
+    { empleado_id: benito, monto: 777.31, rige_desde: '2026-01-01' },
   ]);
   await servicio.from('marca').insert({ funcion_id: deBenito, periodo: '2026-01', resultado: 'no_pude', razon: 'sin sistema' });
 
@@ -127,7 +127,7 @@ describe('INV-40 e INV-1: los pesos de su gente, nunca un monto', () => {
   it('lo que obtiene de su gente no trae bono, monto ni dolares', async () => {
     const { data } = await sesionAna.rpc('lo_de_mi_gente');
     expect(claves(data).filter((k) => /bono|monto|dolar/i.test(k))).toEqual([]);
-    expect(JSON.stringify(data)).not.toContain('777');
+    expect(JSON.stringify(data)).not.toContain('777.31');
   });
 
   it('por las tablas sigue sin nada: ni titularidades ni bonos de benito', async () => {
