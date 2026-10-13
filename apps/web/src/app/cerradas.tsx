@@ -1,4 +1,4 @@
-import { cerradasDelMes } from '@matriz/dominio';
+import { avisoDeMarcaTardia, cerradasDelMes } from '@matriz/dominio';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 import type { QuienPide } from '@/lib/datos';
 import type { DatosDelEquipo } from '@/lib/equipo';
@@ -26,9 +26,25 @@ export function CerradasDelMes({
   abierta?: string;
 }) {
   const suyas = new Map(datos.funciones.filter((f) => f.empleado_id === empleadoId).map((f) => [f.id, f.texto]));
+  // Lo marcado tarde (ADR 0020) se ve como cualquier cerrada, con su asterisco:
+  // para el mes no cuenta, pero la tarea ya esta resuelta.
+  const tardias = datos.marcas_tardias ?? [];
+  const tardiaDe = new Map(tardias.flatMap((m) => (m.imprevisto_id ? [[m.imprevisto_id, m] as const] : [])));
   const cerradas = cerradasDelMes(
-    datos.marcas.filter((m) => suyas.has(m.funcion_id)).map((m) => ({ ...m, marcadaEn: m.marcada_en })),
-    datos.imprevistos.filter((i) => i.empleado_id === empleadoId).map((i) => ({ ...i, marcadaEn: i.marcada_en, borradoEn: i.borrado_en })),
+    [
+      ...datos.marcas.filter((m) => suyas.has(m.funcion_id)).map((m) => ({ ...m, marcadaEn: m.marcada_en, tardia: false })),
+      ...tardias
+        .filter((m) => m.funcion_id && suyas.has(m.funcion_id))
+        .map((m) => ({ ...m, funcion_id: m.funcion_id!, periodo: m.periodo!, marcadaEn: m.marcada_en, tardia: true })),
+    ],
+    datos.imprevistos
+      .filter((i) => i.empleado_id === empleadoId)
+      .map((i) => {
+        const t = tardiaDe.get(i.id);
+        return t
+          ? { ...i, resultado: t.resultado, razon: t.razon, marcada_en: t.marcada_en, marcadaEn: t.marcada_en, borradoEn: i.borrado_en, tardia: true }
+          : { ...i, marcadaEn: i.marcada_en, borradoEn: i.borrado_en, tardia: false };
+      }),
     hoy,
   ).map((c) => {
     if (c.tipo === 'ocurrencia') {
@@ -38,7 +54,7 @@ export function CerradasDelMes({
         perfil: deOcurrencia({ funcionId: m.funcion_id, periodo: m.periodo, vence: '' }, m),
         texto: suyas.get(m.funcion_id) ?? '',
         pudo: m.resultado === 'hecho',
-        dice: m.resultado === 'hecho' ? 'lista' : `no pude: ${m.razon ?? ''}`,
+        dice: (m.resultado === 'hecho' ? 'lista' : `no pude: ${m.razon ?? ''}`) + (m.tardia ? ` · *${avisoDeMarcaTardia(m.resultado, m.marcada_en)}` : ''),
       };
     }
     const i = c.tarea;
@@ -47,11 +63,13 @@ export function CerradasDelMes({
       texto: i.texto,
       // Un "hecho" devuelto no cumple (ADR 0012).
       pudo: i.resultado === 'hecho' && !i.devuelto_en,
-      dice: i.devuelto_en
-        ? `devuelto: ${i.devuelto_razon ?? ''}`
-        : i.resultado === 'hecho'
-          ? 'lista'
-          : `${i.resultado === 'no_lo_tome' ? 'no lo tomé' : 'no pude'}: ${i.razon ?? ''}`,
+      dice:
+        (i.devuelto_en
+          ? `devuelto: ${i.devuelto_razon ?? ''}`
+          : i.resultado === 'hecho'
+            ? 'lista'
+            : `${i.resultado === 'no_lo_tome' ? 'no lo tomé' : 'no pude'}: ${i.razon ?? ''}`) +
+        (i.tardia && i.resultado && i.resultado !== 'no_lo_tome' && i.marcada_en ? ` · *${avisoDeMarcaTardia(i.resultado, i.marcada_en)}` : ''),
     };
   });
 

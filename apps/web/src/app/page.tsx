@@ -37,7 +37,8 @@ import { redirect } from 'next/navigation';
 import { DEL_EMPLEADO, DEL_SUPERVISOR, Navegacion } from './navegacion';
 import { NuevoImprevisto, TarjetaDeImprevisto } from './imprevistos';
 import { Delegadas, LoQuePedi, type Delegada } from './delegadas';
-import { perfiles } from './perfil';
+import { NuevoMensaje, perfiles, Titulo } from './perfil';
+import { BotonDeHistoria } from './abrir';
 import { claveDeImprevisto, tareaDeImprevisto } from '@/lib/comentarios';
 import { origenesDe, quienPidio } from '@/lib/datos';
 
@@ -55,10 +56,10 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
 
   const [
     {
-      hoy, nombre, calendario, cargadoHasta, funciones, marcas, eventos, empleadoId, yo, imprevistos, quienesPiden,
+      hoy, nombre, calendario, cargadoHasta, funciones, marcas, marcasTardias, eventos, empleadoId, yo, imprevistos, quienesPiden,
       gente, delegaciones, delegacionesDeImprevisto, pedidos,
     },
-    { perfil, deOcurrencia },
+    { perfil, deOcurrencia, deFlujo },
   ] = await Promise.all([panorama(), searchParams.then((p) => perfiles(p.tarea))]);
 
   // Los fuegos de fin de mes, si el ultimo mes cerrado lo merece.
@@ -141,8 +142,10 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     return o && `pedido original: “${o.texto}” · lo pidió ${quienPidio(o, quienesPiden)}`;
   };
 
+  // Lo marcado tarde (ADR 0020) ya no estorba abierto.
+  const imprevistosMarcadosTarde = new Set(marcasTardias.flatMap((m) => (m.imprevisto_id ? [m.imprevisto_id] : [])));
   const imprevistosAbiertos = ordenarImprevistos(
-    imprevistos.filter((i) => !i.resultado && !enManosDeOtroImprevisto.has(i.id)),
+    imprevistos.filter((i) => !i.resultado && !imprevistosMarcadosTarde.has(i.id) && !enManosDeOtroImprevisto.has(i.id)),
     hoy,
     calendario,
   );
@@ -163,8 +166,15 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   const ultimoDelMes = new Date(Date.UTC(+hoy.slice(0, 4), +hoy.slice(5, 7), 0)).toISOString().slice(0, 10);
 
   const cobertura = coberturaDe(calendario, hoy, cargadoHasta);
+  // Lo que cuenta el mes: solo las marcas. Lo marcado tarde sale de la lista
+  // pero el mes lo sigue viendo sin cumplir (ADR 0020).
   const cerradas = marcas.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }));
-  const marcaDe = new Map(marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m]));
+  const tardiasDeOcurrencias = marcasTardias.flatMap((m) => (m.funcion_id ? [{ ...m, funcion_id: m.funcion_id, periodo: m.periodo! }] : []));
+  const cerradasOTardias = [...cerradas, ...tardiasDeOcurrencias.map((m) => ({ funcionId: m.funcion_id, periodo: m.periodo }))];
+  const marcaDe = new Map<string, { resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string; tardia?: boolean }>([
+    ...marcas.map((m) => [`${m.funcion_id}|${m.periodo}`, m] as const),
+    ...tardiasDeOcurrencias.map((m) => [`${m.funcion_id}|${m.periodo}`, { ...m, tardia: true }] as const),
+  ]);
 
   const ocurrencias = funciones
     .filter((f) => tipoDe(f) === 'entregable')
@@ -218,7 +228,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
     return delegable(o, hoy, lista, false).si ? gente : [];
   };
 
-  const abiertas = pendientes(ocurrencias, cerradas).filter((o) => !enManosDeOtro.has(`${o.funcionId}|${o.periodo}`));
+  const abiertas = pendientes(ocurrencias, cerradasOTardias).filter((o) => !enManosDeOtro.has(`${o.funcionId}|${o.periodo}`));
 
   // Una funcion aporta una sola fila: la ocurrencia que viene (INV-10).
   const conCuadrante = (o: (typeof ocurrencias)[number]) => {
@@ -266,7 +276,13 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
   // Lo resuelto que se muestra debajo de la lista sigue siendo el de la semana.
   const deLaSemana = ocurrencias.filter((o) => o.vence >= lunes && o.vence <= domingo);
   const abiertasDeLaSemana = new Set(pendientes(deLaSemana, cerradas).map((o) => `${o.funcionId}|${o.periodo}`));
+  const marcadasTardeEstaSemana = ocurrencias.filter((o) => {
+    const m = tardiasDeOcurrencias.find((t) => t.funcion_id === o.funcionId && t.periodo === o.periodo);
+    return m && m.marcada_en.slice(0, 10) >= lunes && m.marcada_en.slice(0, 10) <= domingo;
+  });
   const cerradasDeLaSemana = deLaSemana.filter((o) => !abiertasDeLaSemana.has(`${o.funcionId}|${o.periodo}`));
+  // Lo marcado esta semana de un mes ya cerrado se ve siempre: es lo que hizo, con su asterisco.
+  const resueltasAMostrar = [...(mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) ? cerradasDeLaSemana : []), ...marcadasTardeEstaSemana];
 
   // La meta de la semana: todo lo que vencia entre lunes y domingo, cerrado.
   const metaCumplida = deLaSemana.length > 0 && abiertasDeLaSemana.size === 0;
@@ -370,9 +386,11 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
             {flujos.map((f) => {
               const atrasado = f.vigente?.estado === 'atrasado';
               const dias = atrasado ? calendario.habilesEntre(f.vigente!.en.slice(0, 10), hoy) : 0;
+              const hilo = deFlujo(f.id);
 
               return (
                 <article key={f.id} style={{ position: 'relative', display: 'flex', gap: 10, background: '#E8CE7A', color: '#2A2313', borderRadius: 20, padding: '10px 12px', boxSizing: 'border-box' }}>
+                  {hilo.sinLeer && <NuevoMensaje />}
                   {atrasado && <span style={{ width: 5, borderRadius: 999, background: '#D9503A', flexShrink: 0 }} />}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexGrow: 1, minWidth: 0 }}>
@@ -380,7 +398,11 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                       <span style={{ ...CIRCULO, background: 'rgba(42,35,19,0.14)' }}>{atrasado ? '🐢' : '🍃'}</span>
 
                       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{f.texto}</span>
+                        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+                          <Titulo perfil={hilo} punto={false}>
+                            {f.texto}
+                          </Titulo>
+                        </span>
                         <span style={{ fontSize: 13, color: atrasado ? '#9E3322' : 'rgba(42,35,19,0.66)', fontWeight: atrasado ? 600 : 400 }}>
                           {atrasado ? `me atrasé · ${dias} ${dias === 1 ? 'día' : 'días'}` : 'al día'}
                         </span>
@@ -403,6 +425,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                           Me atrasé
                         </PorQue>
                       )}
+                      <BotonDeHistoria clave={hilo.clave} velo="rgba(42,35,19,0.14)" />
                     </div>
 
                     {atrasado && f.vigente?.razon && (
@@ -410,6 +433,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
                         “{f.vigente.razon}”
                       </p>
                     )}
+                    {hilo.contenido}
                   </div>
                 </article>
               );
@@ -474,9 +498,7 @@ export default async function Semana({ searchParams }: { searchParams: Promise<{
           <LoQuePedi pedidos={pedidos} hoy={hoy} perfilDe={perfilDePedido} />
 
           {/* Lo ya resuelto no estorba mientras queda mucho por hacer. */}
-          {mostrarResueltas(cerradasDeLaSemana.length, deLaSemana.length) && (
-            <YaResueltas cerradas={cerradasDeLaSemana} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />
-          )}
+          {resueltasAMostrar.length > 0 && <YaResueltas cerradas={resueltasAMostrar} marcaDe={marcaDe} perfilDe={perfilDeOcurrencia} />}
         </section>
 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>

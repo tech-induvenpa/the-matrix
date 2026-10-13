@@ -110,7 +110,7 @@ export async function comoAdministrador(correo: string, empresaId: string | null
 // no se vacia: vuelve al de las pruebas.
 export async function vaciar(): Promise<void> {
   const servicio = comoServicio();
-  for (const tabla of ['reapertura', 'bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
+  for (const tabla of ['notificacion', 'reapertura', 'bono', 'intromision', 'imprevisto', 'evento_flujo', 'marca_tardia', 'marca', 'titularidad', 'funcion', 'empleado', 'administrador']) {
     const columna = tabla === 'administrador' ? 'auth_user_id' : 'id';
     // Tragarse este error costo una tarde: una restriccion nueva bloqueaba el
     // borrado, las tablas quedaban con datos de la corrida anterior, y el fallo

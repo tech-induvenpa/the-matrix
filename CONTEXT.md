@@ -123,8 +123,9 @@ delegacion y la ocurrencia que cumple tienen comentarios separados: quien la
 recibe no ve las tareas de su supervisor. En un **traspaso**, los comentarios
 de la ocurrencia abierta se van con ella: el contexto es parte del trabajo, y
 los lee el circulo de hoy, no el de cuando se escribieron. Deshacer la marca reabre los comentarios; una
-delegacion devuelta es un imprevisto nuevo y empieza sin ninguno. Un flujo no
-tiene comentarios: no se marca, asi que no tiene un antes y un despues.
+delegacion devuelta es un imprevisto nuevo y empieza sin ninguno. Un flujo tiene
+un solo hilo permanente (decidido el 09/10/2026; antes no tenia): no se marca
+nunca, asi que no se cierra y siempre admite comentarios.
 _Avoid_: nota, observacion, razon (esa acompana a la marca y es obligatoria).
 
 **Responsabilidad**:
@@ -220,6 +221,23 @@ cargo. La delegacion cuenta como pedida por el supervisor; quien la recibe ve en
 su historia el pedido original, que se cuenta una sola vez, en el imprevisto del
 supervisor.
 _Avoid_: traspaso (ese mueve la funcion), reasignacion, encargo.
+
+**Notificacion**:
+Un aviso que se guarda para una persona cuando pasa algo que le toca saber, y
+que se ve en la campanita hasta que lo abre. Es un registro propio: no se
+deduce del "sin leer" de los comentarios, porque tambien avisa de cosas que no
+dejan nada sin leer en una tarea (que te delegaron algo, que te traspasaron una
+funcion). Abrirla la marca como vista.
+Avisa de: un comentario nuevo (al titular, a su supervisor y, en un imprevisto,
+a quien lo pidio; nunca al autor), un imprevisto o delegacion que te llega, una
+delegacion que diste y fue marcada, una devuelta que habias recibido, y que a
+una tarea sin marcar le faltan 2 o 1 dias habiles (solo al titular, y solo a lo
+que dura mas de un dia: una diaria no avisa). Los administradores no reciben
+avisos de comentarios (decidido el 09/10/2026). Los avisos de una misma cosa se
+juntan en uno solo --"3 comentarios nuevos", "3 tareas vencen en 2 dias"-- y
+solo viven dentro de la aplicacion: no hay correo ni push.
+_Avoid_: alerta, mensaje, ticket (no existe: la tarea es la ocurrencia o el
+imprevisto).
 
 ### Los tres ejes
 
@@ -348,6 +366,18 @@ ademas "no lo tome"; una ocurrencia no, porque lo previsto ya se acepto al
 publicar el reparto.
 _Avoid_: check, completar, cerrar.
 
+**Marca tardia**:
+Una marca puesta despues del **cierre del mes** de su tarea (decidido el
+09/10/2026). Quien tiene una tarea vencida de un mes ya cerrado puede
+marcarla, para que deje de estorbar y quede dicho que paso, pero el mes no se
+mueve: la **foto del cierre**, la nomina, el cumplimiento y el arrastre de ese
+mes siguen como estaban, y la tarea sigue contando como no cumplida alli. Se
+distingue con un asterisco, y guarda cuando se marco de verdad. Solo se
+marca lo que seguia sin marca, "hecho" o "no pude", y solo se deshace la propia
+marca tardia: lo marcado a tiempo, y devolver una **delegacion**, siguen
+cerrados con el mes. Si el reporte ya se genero y se pago con lo anterior, no
+hay nada que corregir.
+
 **Estado de flujo**:
 Al dia o atrasado. Un flujo no se marca: su estado lo cambia el empleado cuando
 cambia de verdad, sin que nadie se lo pregunte. Un flujo se da por cumplido
@@ -388,8 +418,8 @@ _Avoid_: liquidacion, pago, sueldo (los tres sugieren el monto completo).
 **Cierre del mes**:
 El momento en que un mes deja de moverse: a las 23:59, hora de Caracas, de su
 ultimo dia habil. Es automatico y es un corte duro: lo que no se marco antes
-cuenta como no cumplido, aunque se haya hecho, y desde ahi nada de ese mes se
-marca, se deshace ni se devuelve. Casi todo lo mensual vence ese mismo dia, asi
+cuenta como no cumplido, aunque se haya hecho, y desde ahi nada de ese mes
+cambia: solo se admiten **marcas tardias**, que no lo mueven. Casi todo lo mensual vence ese mismo dia, asi
 que se marca ese dia o se pierde: es a proposito.
 Solo el administrador puede reabrir un mes cerrado, y siempre con una razon.
 Se reabre para todos, nunca para una persona sola: reabierto, el mes vuelve al
@@ -479,8 +509,8 @@ _Avoid_: problema, falla (senalan a la persona).
   un **Supervisor** no tiene supervisor
 - Un **Administrador de empresa** es de una sola **Empresa**; el
   **Administrador** del grupo no es de ninguna
-- Una **Ocurrencia** o un **Imprevisto** tiene muchos **Comentarios**; un
-  **Flujo**, ninguno. El **Administrador** no es titular de nada: comenta en
+- Una **Ocurrencia**, un **Imprevisto** o un **Flujo** tiene muchos
+  **Comentarios**; el de un **Flujo** es un solo hilo que no se cierra. El **Administrador** no es titular de nada: comenta en
   tareas ajenas
 - Una **Delegacion** une un **Imprevisto** de quien la recibe con una
   **Ocurrencia** de su **Supervisor**; la **Ocurrencia** sigue siendo del

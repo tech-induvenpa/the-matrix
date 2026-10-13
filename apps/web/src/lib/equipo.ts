@@ -22,6 +22,16 @@ export type FuncionDelEquipo = {
 };
 
 export type MarcaDelEquipo = { id: string; funcion_id: string; periodo: string; resultado: 'hecho' | 'no_pude'; razon: string | null; marcada_en: string };
+// Lo marcado despues del cierre de su mes (ADR 0020): nunca cuenta en una cifra.
+export type MarcaTardiaDelEquipo = {
+  id: string;
+  funcion_id: string | null;
+  periodo: string | null;
+  imprevisto_id: string | null;
+  resultado: 'hecho' | 'no_pude';
+  razon: string | null;
+  marcada_en: string;
+};
 export type EventoDelEquipo = { id: string; funcion_id: string; estado: 'al_dia' | 'atrasado'; razon: string | null; en: string };
 export type IntromisionDelEquipo = { imprevisto_id: string; marca_id: string | null; evento_flujo_id: string | null };
 
@@ -29,6 +39,7 @@ export type DatosDelEquipo = {
   gente: { id: string; nombre: string; empresa: string | null; sede: string | null; cotidianidad: number }[];
   funciones: FuncionDelEquipo[];
   marcas: MarcaDelEquipo[];
+  marcas_tardias?: MarcaTardiaDelEquipo[];
   eventos: EventoDelEquipo[];
   imprevistos: FilaImprevisto[];
   intromisiones: IntromisionDelEquipo[];
@@ -84,8 +95,9 @@ export async function datosDelEquipo(soloDe?: string): Promise<DatosDelEquipo> {
   const ids = funciones.map((f) => f.id);
   const desdeDe = new Map(funciones.map((f) => [f.id, f.desde]));
 
-  const [{ data: marcas }, { data: eventos }, { data: intromisiones }] = await Promise.all([
+  const [{ data: marcas }, { data: tardias }, { data: eventos }, { data: intromisiones }] = await Promise.all([
     supabase.from('marca').select('id, funcion_id, periodo, resultado, razon, marcada_en').in('funcion_id', ids),
+    supabase.from('marca_tardia').select('id, funcion_id, periodo, imprevisto_id, resultado, razon, marcada_en'),
     supabase.from('evento_flujo').select('id, funcion_id, estado, razon, en').in('funcion_id', ids).order('en'),
     // Un imprevisto borrado no cuenta en ninguna cifra (INV-42), tampoco en lo desplazado.
     supabase.from('intromision').select('imprevisto_id, marca_id, evento_flujo_id, imprevisto!inner(borrado_en)').is('imprevisto.borrado_en', null),
@@ -104,6 +116,9 @@ export async function datosDelEquipo(soloDe?: string): Promise<DatosDelEquipo> {
     })),
     funciones,
     marcas: ((marcas ?? []) as MarcaDelEquipo[]).filter((m) => suyo(m.funcion_id, m.marcada_en)),
+    marcas_tardias: ((tardias ?? []) as MarcaTardiaDelEquipo[]).filter((m) =>
+      m.funcion_id ? suyo(m.funcion_id, m.marcada_en) : (imprevistos ?? []).some((i) => i.id === m.imprevisto_id),
+    ),
     eventos: ((eventos ?? []) as EventoDelEquipo[]).filter((e) => suyo(e.funcion_id, e.en)),
     imprevistos: (imprevistos ?? []) as FilaImprevisto[],
     intromisiones: ((intromisiones ?? []) as Record<string, unknown>[]).map((x) => ({

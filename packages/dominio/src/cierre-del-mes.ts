@@ -22,6 +22,21 @@ export const ultimoHabilDelMes = (mes: Mes, calendario: Calendario): Fecha =>
 export const cierreDelMes = (mes: Mes, calendario: Calendario): string =>
   new Date(`${ultimoHabilDelMes(mes, calendario)}T23:59:00${CARACAS_EN_UTC}`).toISOString();
 
+// El asterisco de la marca tardia (ADR 0020): lo que se dice de una marca puesta
+// despues del cierre de su mes, con el dia en que se puso de verdad, a la hora
+// de Caracas. "Se completo" solo si fue "hecho": un "no pude" no completo nada.
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+// El dia de Caracas de un instante, "2026-10-09": el que escribe la descarga.
+export const diaDeCaracas = (instante: string): Fecha =>
+  new Date(new Date(instante).getTime() - 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+export function avisoDeMarcaTardia(resultado: 'hecho' | 'no_pude', marcadaEn: string): string {
+  const caracas = new Date(new Date(marcadaEn).getTime() - 4 * 60 * 60 * 1000);
+  const dia = `${caracas.getUTCDate()} ${MESES_CORTOS[caracas.getUTCMonth()]}`;
+  return `${resultado === 'hecho' ? 'se completó tarde' : 'se marcó tarde'}, ${dia}`;
+}
+
 // Solo el administrador reabre un mes cerrado, con razon, y para todos
 // (CEB-229). Se vuelve a cerrar cuando el lo cierra (`cerradaEn`) o, si se le
 // olvida, solo, a las veinticuatro horas: sin un proceso que lo haga, un mes

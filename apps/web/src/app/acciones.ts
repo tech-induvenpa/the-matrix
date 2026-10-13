@@ -3,11 +3,13 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
-import { Calendario, vencimientoPorUrgencia, vinculables, type Limite } from '@matriz/dominio';
+import { Calendario, vencimientoPorUrgencia, vencimientosPorAvisar, vinculables, type Limite } from '@matriz/dominio';
 import { clienteDelServidor } from '@/lib/supabase/servidor';
 import { proyectarRazones } from '@/lib/razones';
 import { hoyISO } from '@/lib/datos';
-import { deClave } from '@/lib/comentarios';
+import { esAdministrador } from '@/lib/administrador';
+import { tareasPorVencer } from '@/lib/vencimientos';
+import { claveDeImprevisto, claveDeOcurrencia, deClave } from '@/lib/comentarios';
 
 // La razon vuelve al documento DESPUES de guardar y DESPUES de responder
 // (INV-4). Si Google esta caido, el empleado ya vio su marca guardada y no
@@ -48,6 +50,22 @@ const siCerro = (error: { message: string; hint?: string } | null): Aviso | null
     ? { mensaje: `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}: lo de ese mes ya no se mueve.`, celebra: false }
     : null;
 
+// Marca tardia (ADR 0020): si el mes de la tarea ya cerro, marcar sigue siendo
+// posible pero no mueve el mes. Quien llama ya vio que la base dijo "mes
+// cerrado"; aqui se intenta como marca tardia. Si tampoco se puede (por
+// ejemplo, ya estaba marcada a tiempo), vale el rechazo original.
+const comoTardia = (aviso: Aviso, celebra = false): Aviso => ({
+  mensaje: `${aviso.mensaje.split(':')[0]}: anotado como marca tardía. El mes no se mueve.`,
+  celebra,
+});
+
+async function marcarTarde(funcionId: string, periodo: string, resultado: 'hecho' | 'no_pude', razon: string | null) {
+  const supabase = await clienteDelServidor();
+  const { error } = await supabase.rpc('marcar_tarde', { la_funcion: funcionId, el_periodo: periodo, el_resultado: resultado, la_razon: razon });
+  revalidatePath('/');
+  return error;
+}
+
 // Marcar cierra la ocurrencia (funcion, periodo). La seguridad por fila decide
 // si esa funcion es de quien marca: aqui no se filtra a mano.
 async function marcar(funcionId: string, periodo: string, resultado: 'hecho' | 'no_pude', razon?: string) {
@@ -58,7 +76,9 @@ async function marcar(funcionId: string, periodo: string, resultado: 'hecho' | '
 }
 
 export async function marcarHecho(funcionId: string, periodo: string): Promise<Aviso> {
-  return siCerro(await marcar(funcionId, periodo, 'hecho')) ?? { mensaje: alAzar(AL_TERMINAR), celebra: true };
+  const cerro = siCerro(await marcar(funcionId, periodo, 'hecho'));
+  if (!cerro) return { mensaje: alAzar(AL_TERMINAR), celebra: true };
+  return (await marcarTarde(funcionId, periodo, 'hecho', null)) ? cerro : comoTardia(cerro);
 }
 
 // "No pude" puede traer los imprevistos que lo causaron (intromision). La base
@@ -82,7 +102,7 @@ export async function marcarNoPude(
     imprevistos,
   });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) return (await marcarTarde(funcionId, periodo, 'no_pude', razon)) ? cerro : comoTardia(cerro);
   if (error) throw error;
 
   revalidatePath('/');
@@ -152,7 +172,12 @@ export async function deshacerMarca(funcionId: string, periodo: string): Promise
   const supabase = await clienteDelServidor();
   const { error } = await supabase.from('marca').delete().eq('funcion_id', funcionId).eq('periodo', periodo);
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    // Solo se deshace la propia marca tardia: lo marcado a tiempo sigue cerrado.
+    const { data: quitada } = await supabase.rpc('deshacer_marca_tardia', { la_funcion: funcionId, el_periodo: periodo });
+    revalidatePath('/');
+    return quitada ? { mensaje: 'Deshecho. Vuelve a tu lista.', celebra: false } : cerro;
+  }
   revalidatePath('/');
   llevarRazonesAlDocumento();
 
@@ -192,7 +217,11 @@ export async function marcarImprevistoHecho(id: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('marcar_imprevisto', { el_imprevisto: id, el_resultado: 'hecho', la_razon: null });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    const { error: tarde } = await supabase.rpc('marcar_imprevisto_tarde', { el_imprevisto: id, el_resultado: 'hecho', la_razon: null });
+    revalidatePath('/', 'layout');
+    return tarde ? cerro : comoTardia(cerro);
+  }
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: alAzar(AL_TERMINAR), celebra: true };
@@ -210,7 +239,13 @@ export async function marcarImprevistoSinHacer(
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('marcar_imprevisto', { el_imprevisto: id, el_resultado: resultado, la_razon: razon });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    // La marca tardia es "hecho" o "no pude"; "no lo tome" a destiempo no existe.
+    if (resultado === 'no_lo_tome') return cerro;
+    const { error: tarde } = await supabase.rpc('marcar_imprevisto_tarde', { el_imprevisto: id, el_resultado: resultado, la_razon: razon });
+    revalidatePath('/', 'layout');
+    return tarde ? cerro : comoTardia(cerro);
+  }
   if (error) throw error;
   revalidatePath('/', 'layout');
   return {
@@ -223,7 +258,11 @@ export async function desmarcarImprevisto(id: string): Promise<Aviso> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('desmarcar_imprevisto', { el_imprevisto: id });
   const cerro = siCerro(error);
-  if (cerro) return cerro;
+  if (cerro) {
+    const { data: quitada } = await supabase.rpc('deshacer_marca_tardia_de_imprevisto', { el_imprevisto: id });
+    revalidatePath('/', 'layout');
+    return quitada ? { mensaje: 'Deshecho. Vuelve a estar abierto.', celebra: false } : cerro;
+  }
   if (error) throw error;
   revalidatePath('/', 'layout');
   return { mensaje: 'Deshecho. Vuelve a estar abierto.', celebra: false };
@@ -318,6 +357,62 @@ export async function verTarea(clave: string): Promise<void> {
   const supabase = await clienteDelServidor();
   const { error } = await supabase.rpc('ver_tarea', { la_funcion: funcion_id, el_periodo: periodo, el_imprevisto: imprevisto_id });
   if (!error) revalidatePath('/', 'layout');
+}
+
+// Lo que cuenta la campanita (CEB-267): los avisos sin ver, cada uno con el
+// enlace al perfil de su tarea. Si la tarea es mia se abre en mi pantalla; si es
+// de mi equipo, en la de esa persona.
+export type Notificacion = { id: string; tipo: string; texto: string; cantidad: number; vista: boolean; href: string };
+
+type FilaNotificacion = {
+  id: string;
+  tipo: string;
+  texto: string;
+  cantidad: number;
+  vista_en: string | null;
+  funcion_id: string | null;
+  periodo: string | null;
+  imprevisto_id: string | null;
+  empleado_id: string | null;
+};
+
+export async function misNotificaciones(): Promise<Notificacion[]> {
+  const supabase = await clienteDelServidor();
+  const { data: usuario } = await supabase.auth.getUser();
+  const hoy = hoyISO();
+
+  // Los vencimientos se calculan aqui, al cargar (las ocurrencias no tienen
+  // evento de nacimiento): se registra el aviso de hoy, sin duplicarlo, y mas
+  // abajo su cuenta sale de las tareas que siguen sin marcar.
+  const { tareas, calendario } = (await esAdministrador()) ? { tareas: [], calendario: Calendario.con([]) } : await tareasPorVencer(hoy);
+  const porVencer = vencimientosPorAvisar(tareas, hoy, calendario);
+  await Promise.all(porVencer.map((g) => supabase.rpc('registrar_vencimiento', { el_dia: hoy, los_faltan: g.faltan })));
+
+  // Un supervisor lee a su gente: sin filtrar por su cuenta, `empleado` trae varias filas.
+  const [{ data: avisos }, { data: yo }] = await Promise.all([
+    supabase.rpc('mis_notificaciones'),
+    supabase.from('empleado').select('id').eq('auth_user_id', usuario.user?.id ?? '').maybeSingle(),
+  ]);
+
+  return ((avisos ?? []) as FilaNotificacion[]).flatMap((a): Notificacion[] => {
+    if (a.tipo === 'vencimiento') {
+      // El aviso de un dia que ya paso lo reemplaza el de hoy; uno de hoy cuenta
+      // solo las tareas que siguen abiertas.
+      const [dia, faltan] = a.periodo!.split(':');
+      const claves = porVencer.find((g) => String(g.faltan) === faltan)?.claves ?? [];
+      if (dia !== hoy || claves.length === 0) return [];
+      const unica = claves.length === 1 ? `/?tarea=${encodeURIComponent(claves[0]!)}` : '/';
+      return [{ id: a.id, tipo: a.tipo, texto: faltan === '1' ? 'mañana' : 'en 2 días', cantidad: claves.length, vista: a.vista_en !== null, href: unica }];
+    }
+    const clave = a.imprevisto_id ? claveDeImprevisto(a.imprevisto_id) : claveDeOcurrencia(a.funcion_id!, a.periodo!);
+    const donde = a.empleado_id && a.empleado_id !== yo?.id ? `/equipo/${a.empleado_id}` : '/';
+    return [{ id: a.id, tipo: a.tipo, texto: a.texto, cantidad: a.cantidad, vista: a.vista_en !== null, href: `${donde}?tarea=${encodeURIComponent(clave)}` }];
+  });
+}
+
+export async function marcarTodasVistas(): Promise<void> {
+  const supabase = await clienteDelServidor();
+  await supabase.rpc('marcar_notificaciones_vistas');
 }
 
 export async function salir() {

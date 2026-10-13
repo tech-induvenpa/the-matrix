@@ -108,9 +108,9 @@ export default async function TuGente({ searchParams }: { searchParams: Promise<
 
 const pendientes = (p: Pick<PersonaACargo, 'funciones'>) => p.funciones.filter((f) => f.atraso || f.arrastre?.periodos).length;
 
-function resumenDe(p: Pick<PersonaACargo, 'funciones' | 'imprevistos'>): string {
+function resumenDe(p: Pick<PersonaACargo, 'funciones' | 'imprevistos' | 'imprevistosMarcadosTarde'>): string {
   const n = pendientes(p);
-  const abiertos = p.imprevistos.filter((i) => !i.resultado).length;
+  const abiertos = p.imprevistos.filter((i) => !i.resultado && !p.imprevistosMarcadosTarde.includes(i.id)).length;
   const partes = [
     n ? `${n} ${n === 1 ? 'función sin cumplirse' : 'funciones sin cumplirse'}` : 'todo al día',
     abiertos ? `${abiertos} ${abiertos === 1 ? 'imprevisto abierto' : 'imprevistos abiertos'}` : '',

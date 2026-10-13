@@ -46,9 +46,10 @@ export async function tareasAbiertasDe(empleadoId: string, hoy: string, calendar
   const todo = (data ?? {}) as {
     funciones?: FuncionDeLaPersona[];
     marcas?: { funcion_id: string; periodo: string }[];
+    marcas_tardias?: { funcion_id: string; periodo: string }[];
     imprevistos?: FilaImprevisto[];
   };
-  const marcadas = new Set((todo.marcas ?? []).map((m) => `${m.funcion_id}|${m.periodo}`));
+  const marcadas = new Set([...(todo.marcas ?? []), ...(todo.marcas_tardias ?? [])].map((m) => `${m.funcion_id}|${m.periodo}`));
 
   const abiertas = (todo.funciones ?? []).flatMap((f) =>
     ocurrenciasEntre(
