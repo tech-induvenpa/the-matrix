@@ -27,7 +27,7 @@ const supabase = createClient(url, entorno('SUPABASE_SERVICE_ROLE_KEY'), { auth:
 const local = url.includes('127.0.0.1') || url.includes('localhost');
 const sitio =
   process.env.SITIO ??
-  (local ? 'http://localhost:3000' : 'https://the-matrix-production-dkqpmp.laravel.cloud');
+  (local ? 'http://localhost:3000' : 'https://las-tareas.laravel.cloud');
 
 const { data: empleados, error } = await supabase.from('empleado').select('nombre_bloque, correo, auth_user_id');
 if (error) throw error;
